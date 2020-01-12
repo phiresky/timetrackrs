@@ -14,7 +14,16 @@ use x11rb::generated::xproto::ConnectionExt;
 use x11rb::generated::xproto::ATOM;
 use x11rb::generated::xproto::WINDOW;
 use x11rb::xcb_ffi::XCBConnection;
+use sysinfo::SystemExt;
+use sysinfo::ProcessExt;
 
+fn timestamp_to_iso_string(timestamp: u64) -> String {
+    use std::time::{SystemTime, UNIX_EPOCH, Duration};
+    use chrono::{DateTime, TimeZone, NaiveDateTime, Utc, Local};
+    //let dt = DateTime::<Local>::from_utc(NaiveDateTime::from_timestamp(timestamp, 0), Local);
+    let datetime = DateTime::<Local>::from(UNIX_EPOCH + Duration::from_secs(timestamp));
+    datetime.to_rfc3339()
+}
 fn to_u32s(v1: &Vec<u8>) -> Vec<u32> {
     let mut c = std::io::Cursor::new(v1);
     let mut v2 = Vec::new();
@@ -57,99 +66,174 @@ fn split_zero(s: &str) -> Vec<String> {
     return vec;
 }
 
-pub fn capture() -> anyhow::Result<()> {
-    let (conn, screen_num) = XCBConnection::connect(None)?;
-    let screen = &conn.setup().roots[screen_num];
-    let root_window = screen.root;
-    let atom = |e: &str| -> anyhow::Result<u32> {
-        Ok(intern_atom(&conn, true, e.as_bytes())?.reply()?.atom)
-    };
-
-    let mut atom_name_map: HashMap<u32, anyhow::Result<String>> = HashMap::new();
-    let mut atom_name = |e: u32| -> anyhow::Result<String> {
-        let z = atom_name_map
+pub struct X11Capturer {
+    conn: XCBConnection,
+    root_window: u32,
+    atom_name_map: HashMap<u32, anyhow::Result<String>>,
+    system: sysinfo::System
+}
+impl X11Capturer {
+    fn atom(&self, e: &str) -> anyhow::Result<u32> {
+        Ok(intern_atom(&self.conn, true, e.as_bytes())?.reply()?.atom)
+    }
+    fn atom_name(&mut self, e: u32) -> anyhow::Result<String> {
+        let conn = &self.conn;
+        let z = self
+            .atom_name_map
             .entry(e.into())
             .or_insert_with(|| -> anyhow::Result<String> {
                 Ok(String::from_utf8(conn.get_atom_name(e)?.reply()?.name)?)
             });
         match z {
-            Err(_e) => Err(anyhow::anyhow!("idk dude")),
+            Err(_e) => Err(anyhow::anyhow!("idk: {}", _e)),
             Ok(ok) => Ok(ok.clone()),
         }
-    };
-
-    let NET_CLIENT_LIST = atom("_NET_CLIENT_LIST")?;
-    let NET_WM_NAME = atom("_NET_WM_NAME")?;
-    let WM_NAME = atom("WM_NAME")?;
-    let WM_CLASS = atom("WM_CLASS")?;
-    let NET_CURRENT_DESKTOP = atom("_NET_CURRENT_DESKTOP")?;
-    let NET_DESKTOP_NAMES = atom("_NET_DESKTOP_NAMES")?;
-    let NET_WM_WINDOW_TYPE = atom("_NET_WM_WINDOW_TYPE")?;
-    let NET_WM_DESKTOP = atom("_NET_WM_DESKTOP")?;
-    let current_desktop = single(&get_property32(&conn, root_window, NET_CURRENT_DESKTOP)?);
-    let desktop_names = split_zero(&get_property_text(&conn, root_window, NET_DESKTOP_NAMES)?);
-    //let mut WINDOW = x11rb::wrapper::LazyAtom::new(&conn, true, b"XCB_ATOM_WINDOW");
-    let windows = get_property32(&conn, root_window, NET_CLIENT_LIST)?;
-
-    println!(
-        "current_desktop: {:?} ({:?})",
-        current_desktop, desktop_names[current_desktop as usize]
-    );
-    println!("desktops: {:?}", desktop_names);
-    println!("focus: {:x?}", conn.get_input_focus()?.reply()?.focus);
-    let blacklist = vec![atom("_NET_WM_ICON")?];
-    for window in windows {
-        /*let name = get_property_text(&conn, window, NET_WM_NAME)?;
-        let wtype = get_property32(&conn, window, NET_WM_WINDOW_TYPE)?;
-        let wtypenames = wtype
-            .into_iter()
-            .map(|e| atom_name(e))
-            .collect::<anyhow::Result<Vec<String>>>()?;
-        let desktop = single(&get_property32(&conn, window, NET_WM_DESKTOP)?);
-        let wmclass = split_zero(&get_property_text(&conn, window, WM_CLASS)?);
-        let wmclass = format!("{}.{}", wmclass[0], wmclass[1]);
-        println!("window: {:02x?} on {}: {}: {:?} {:?}", window, desktop_names[desktop as usize], wmclass, wtypenames, name);
-        */
-        let props = conn.list_properties(window)?.reply()?.atoms;
-        let mut propmap: BTreeMap<String, J> = BTreeMap::new();
-        for prop in props {
-            if blacklist.contains(&prop) {
-                continue;
-            }
-            let val = get_property(&conn, false, window, prop, 0, 0, std::u32::MAX)?.reply()?;
-            assert!(val.bytes_after == 0);
-            let prop_name = atom_name(prop)?;
-            let prop_type = atom_name(val.type_)?;
-            let pval = match prop_type.as_str() {
-                "UTF8_STRING" | "STRING" => {
-                    let s = String::from_utf8(val.value)?;
-                    // if(s[s.len() - 1] == '\0') return 
-                    J::String(s)
-                },
-                "ATOM" => {
-                    assert!(val.format == 32);
-                    let vec = to_u32s(&val.value);
-                    //let vec = to_u32s(&val.value).into_iter().map(|e| J::Number(e)).collect();
-                    json!({
-                        "type": "ATOM",
-                        "value": vec.into_iter().map(|e| atom_name(e)).collect::<anyhow::Result<Vec<_>>>()?
-                    })
-                }
-                _ => {
-                    println!("unknown type {}", prop_type);
-                    json!({
-                        "type": prop_type,
-                        "value": hex::encode(val.value)
-                    })
-                }
-            };
-            propmap.insert(prop_name, pval);
-        }
-        println!(
-            "propmap: {}",
-            serde_json::to_string_pretty(&json!({"id": window, "properties": &propmap}))?
-        );
     }
+    pub fn init() -> anyhow::Result<X11Capturer> {
+        let (conn, screen_num) = XCBConnection::connect(None)?;
+        let screen = &conn.setup().roots[screen_num];
+        let root_window = screen.root;
+        Ok(X11Capturer {
+            conn,
+            root_window,
+            atom_name_map: HashMap::new(),
+            system: sysinfo::System::new()
+        })
+    }
+    pub fn capture(&mut self) -> anyhow::Result<J> {
+        let NET_CLIENT_LIST = self.atom("_NET_CLIENT_LIST")?;
+        let NET_WM_NAME = self.atom("_NET_WM_NAME")?;
+        let WM_NAME = self.atom("WM_NAME")?;
+        let WM_CLASS = self.atom("WM_CLASS")?;
+        let NET_CURRENT_DESKTOP = self.atom("_NET_CURRENT_DESKTOP")?;
+        let NET_DESKTOP_NAMES = self.atom("_NET_DESKTOP_NAMES")?;
+        let NET_WM_WINDOW_TYPE = self.atom("_NET_WM_WINDOW_TYPE")?;
+        let NET_WM_DESKTOP = self.atom("_NET_WM_DESKTOP")?;
+        let blacklist = vec![
+            self.atom("_NET_WM_ICON")?, // HUUGE
+            self.atom("WM_ICON_NAME")?,  // invalid unicode _NET_WM_ICON_NAME
+            self.atom("WM_NAME")?,       // invalid unicode, use _NET_WM_NAME
+        ];
 
-    Ok(())
+        let current_desktop = single(&get_property32(
+            &self.conn,
+            self.root_window,
+            NET_CURRENT_DESKTOP,
+        )?);
+        let desktop_names = split_zero(&get_property_text(
+            &self.conn,
+            self.root_window,
+            NET_DESKTOP_NAMES,
+        )?);
+        let focus = self.conn.get_input_focus()?.reply()?.focus;
+        //let mut WINDOW = x11rb::wrapper::LazyAtom::new(&conn, true, b"XCB_ATOM_WINDOW");
+        let mut windows = get_property32(&self.conn, self.root_window, NET_CLIENT_LIST)?;
+        windows.sort();
+
+        let mut windowsdata = vec![];
+
+        for window in windows {
+            /*let name = get_property_text(&conn, window, NET_WM_NAME)?;
+            let wtype = get_property32(&conn, window, NET_WM_WINDOW_TYPE)?;
+            let wtypenames = wtype
+                .into_iter()
+                .map(|e| atom_name(e))
+                .collect::<anyhow::Result<Vec<String>>>()?;
+            let desktop = single(&get_property32(&conn, window, NET_WM_DESKTOP)?);
+            let wmclass = split_zero(&get_property_text(&conn, window, WM_CLASS)?);
+            let wmclass = format!("{}.{}", wmclass[0], wmclass[1]);
+            println!("window: {:02x?} on {}: {}: {:?} {:?}", window, desktop_names[desktop as usize], wmclass, wtypenames, name);
+            */
+            let props = self.conn.list_properties(window)?.reply()?.atoms;
+            let mut propmap: BTreeMap<String, J> = BTreeMap::new();
+            let mut pid = None;
+            for prop in props {
+                if blacklist.contains(&prop) {
+                    continue;
+                }
+                let val =
+                    get_property(&self.conn, false, window, prop, 0, 0, std::u32::MAX)?.reply()?;
+                assert!(val.bytes_after == 0);
+                let prop_name = self.atom_name(prop)?;
+                let prop_type = self.atom_name(val.type_)?;
+                if prop_name == "_NET_WM_PID" && prop_type == "CARDINAL" && val.format == 32 {
+                    pid = Some(single(&to_u32s(&val.value)));
+                }
+                let pval = match (prop_name.as_str(), prop_type.as_str(), val.format) {
+                    (_, "UTF8_STRING", _) | (_, "STRING", _) => {
+                        let QQQ = val.value.clone();
+                        let s = String::from_utf8(val.value).map_err(|e| {
+                            println!("str {} was!! {:x?}", &prop_name, QQQ);
+                            e
+                        })?;
+                        // if(s[s.len() - 1] == '\0') return
+                        J::String(s)
+                    }
+                    (_, "ATOM", _) => {
+                        assert!(val.format == 32);
+                        let vec = to_u32s(&val.value);
+                        //let vec = to_u32s(&val.value).into_iter().map(|e| J::Number(e)).collect();
+                        json!({
+                            "type": format!("{}/{}", prop_type, val.format),
+                            "value": vec.into_iter().map(|e| self.atom_name(e)).collect::<anyhow::Result<Vec<_>>>()?
+                        })
+                    },
+                    (_, "CARDINAL", 32) | (_, "WINDOW", _) => {
+                        assert!(val.format == 32);
+                        let vec = to_u32s(&val.value);
+                        //let vec = to_u32s(&val.value).into_iter().map(|e| J::Number(e)).collect();
+                        json!({
+                            "type": format!("{}/{}", prop_type, val.format),
+                            "value": vec
+                        })
+                    }
+                    _ => {
+                        json!({
+                            "type": format!("{}/{}", prop_type, val.format),
+                            "value": hex::encode(val.value)
+                        })
+                    }
+                };
+                propmap.insert(prop_name, pval);
+            }
+
+            let geo = self.conn.get_geometry(window)?.reply()?;
+            let coords = self.conn.translate_coordinates(window, self.root_window, 0, 0)?.reply()?;
+            
+            let process = if let Some(pid) = pid {
+                let procinfo = self.system.get_process(pid as i32).ok_or(anyhow::anyhow!("invalid pid {} for window {}", pid, window))?;
+                json!({
+                    "pid": procinfo.pid(),
+                    "name": procinfo.name(),
+                    "cmd": procinfo.cmd(),
+                    "exe": procinfo.exe(),
+                    "cwd": procinfo.cwd(),
+                    "memory_kB": procinfo.memory(),
+                    "parent": procinfo.parent(),
+                    "status": procinfo.status().to_string(),
+                    "start_time": timestamp_to_iso_string(procinfo.start_time()),
+                    "cpu_usage": procinfo.cpu_usage(),
+                })
+            } else {
+                json!(null)
+            };
+            windowsdata.push(json!({
+                "window_id": window,
+                "geometry": {
+                    "x": coords.dst_x,
+                    "y": coords.dst_y,
+                    "width": geo.width,
+                    "height": geo.height
+                },
+                "process": process,
+                "window_properties": &propmap,
+            }));
+        }
+        Ok(json!({
+            "desktop_names": desktop_names,
+            "current_desktop_id": current_desktop as usize,
+            "focused_window": focus,
+            "windows": windowsdata
+        }))
+    }
 }
