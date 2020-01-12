@@ -1,6 +1,9 @@
 // https://bitbucket.org/nomeata/arbtt/src/master/src/Capture/X11.hs
 // https://docs.rs/x11rb/0.3.0/x11rb/
 // Root Window Properties (and Related Messages) https://specifications.freedesktop.org/wm-spec/latest/ar01s03.html
+
+#![allow(non_snake_case)]
+
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde_json::{json, Value as J};
 use std::collections::{BTreeMap, HashMap};
@@ -18,9 +21,8 @@ use sysinfo::SystemExt;
 use sysinfo::ProcessExt;
 
 fn timestamp_to_iso_string(timestamp: u64) -> String {
-    use std::time::{SystemTime, UNIX_EPOCH, Duration};
-    use chrono::{DateTime, TimeZone, NaiveDateTime, Utc, Local};
-    //let dt = DateTime::<Local>::from_utc(NaiveDateTime::from_timestamp(timestamp, 0), Local);
+    use std::time::{UNIX_EPOCH, Duration};
+    use chrono::{DateTime, Local};
     let datetime = DateTime::<Local>::from(UNIX_EPOCH + Duration::from_secs(timestamp));
     datetime.to_rfc3339()
 }
@@ -37,6 +39,7 @@ fn get_property32<Conn: ?Sized + RequestConnection>(
     window: WINDOW,
     property: ATOM,
 ) -> Result<Vec<u32>, ConnectionErrorOrX11Error> {
+    // TODO: use helper from https://github.com/psychon/x11rb/pull/172/files
     let reply = get_property(conn, false, window, property, 0, 0, std::u32::MAX)?.reply()?;
 
     Ok(to_u32s(&reply.value))
@@ -102,13 +105,9 @@ impl X11Capturer {
     }
     pub fn capture(&mut self) -> anyhow::Result<J> {
         let NET_CLIENT_LIST = self.atom("_NET_CLIENT_LIST")?;
-        let NET_WM_NAME = self.atom("_NET_WM_NAME")?;
-        let WM_NAME = self.atom("WM_NAME")?;
-        let WM_CLASS = self.atom("WM_CLASS")?;
         let NET_CURRENT_DESKTOP = self.atom("_NET_CURRENT_DESKTOP")?;
         let NET_DESKTOP_NAMES = self.atom("_NET_DESKTOP_NAMES")?;
-        let NET_WM_WINDOW_TYPE = self.atom("_NET_WM_WINDOW_TYPE")?;
-        let NET_WM_DESKTOP = self.atom("_NET_WM_DESKTOP")?;
+
         let blacklist = vec![
             self.atom("_NET_WM_ICON")?, // HUUGE
             self.atom("WM_ICON_NAME")?,  // invalid unicode _NET_WM_ICON_NAME
@@ -126,24 +125,12 @@ impl X11Capturer {
             NET_DESKTOP_NAMES,
         )?);
         let focus = self.conn.get_input_focus()?.reply()?.focus;
-        //let mut WINDOW = x11rb::wrapper::LazyAtom::new(&conn, true, b"XCB_ATOM_WINDOW");
         let mut windows = get_property32(&self.conn, self.root_window, NET_CLIENT_LIST)?;
         windows.sort();
 
         let mut windowsdata = vec![];
 
         for window in windows {
-            /*let name = get_property_text(&conn, window, NET_WM_NAME)?;
-            let wtype = get_property32(&conn, window, NET_WM_WINDOW_TYPE)?;
-            let wtypenames = wtype
-                .into_iter()
-                .map(|e| atom_name(e))
-                .collect::<anyhow::Result<Vec<String>>>()?;
-            let desktop = single(&get_property32(&conn, window, NET_WM_DESKTOP)?);
-            let wmclass = split_zero(&get_property_text(&conn, window, WM_CLASS)?);
-            let wmclass = format!("{}.{}", wmclass[0], wmclass[1]);
-            println!("window: {:02x?} on {}: {}: {:?} {:?}", window, desktop_names[desktop as usize], wmclass, wtypenames, name);
-            */
             let props = self.conn.list_properties(window)?.reply()?.atoms;
             let mut propmap: BTreeMap<String, J> = BTreeMap::new();
             let mut pid = None;
