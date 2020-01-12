@@ -1,0 +1,5 @@
+CREATE TABLE activity (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    created TEXT NOT NULL,
+    data TEXT NOT NULL
+)
