@@ -6,9 +6,10 @@ track which programs is used how much and stores data in database. Inspired by [
 
 - analyse data (ui / graphs etc)
 - autoimport more detailed / other data
-    - (phone usage via [App Usage](https://play.google.com/store/apps/details?id=com.a0soft.gphone.uninstaller&hl=en)
+    - (phone usage via [App Usage](https://play.google.com/store/apps/details?id=com.a0soft.gphone.uninstaller&hl=en))
     - browser usage via own firefox/chrome `permanent-history-webextension`, tbd
     - mpv usage via own mpv tracking lua script `.config/mpv/scripts/logall.lua` tbu
+    - shell usage via zsh-histdb
 - make non-crap
 - look at similar tools, e.g. https://www.raymond.cc/blog/check-application-usage-times-personal-activity-monitor/
 

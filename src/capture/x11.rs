@@ -4,12 +4,16 @@
 
 #![allow(non_snake_case)]
 
+use super::{Captured, CapturedData};
 use byteorder::{LittleEndian, ReadBytesExt};
+use chrono::DateTime;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as J};
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryInto;
 use sysinfo::ProcessExt;
 use sysinfo::SystemExt;
+use typescript_definitions::TypeScriptify;
 use x11rb::connection::Connection;
 use x11rb::connection::RequestConnection;
 use x11rb::errors::ConnectionErrorOrX11Error;
@@ -19,14 +23,53 @@ use x11rb::generated::xproto::ConnectionExt;
 use x11rb::generated::xproto::ATOM;
 use x11rb::generated::xproto::WINDOW;
 use x11rb::xcb_ffi::XCBConnection;
-use super::CapturedData;
 
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+pub struct X11CapturedData {
+    desktop_names: Vec<String>,
+    current_desktop_id: usize,
+    focused_window: u32,
+    ms_since_user_input: u32,
+    ms_until_screensaver: u32,
+    screensaver_window: u32,
+    windows: Vec<X11WindowData>,
+}
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+pub struct X11WindowData {
+    window_id: u32,
+    geometry: X11WindowGeometry,
+    process: Option<ProcessData>,
+    window_properties: BTreeMap<String, J>,
+}
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+pub struct X11WindowGeometry {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+pub struct ProcessData {
+    pid: i32,
+    name: String,
+    cmd: Vec<String>,
+    exe: String,
+    cwd: String,
+    memory_kB: i64,
+    parent: Option<i32>,
+    status: String,
+    start_time: DateTime<chrono::Local>,
+    cpu_usage: f32,
+}
 fn timestamp_to_iso_string(timestamp: u64) -> String {
+    timestamp_to_iso(timestamp).to_rfc3339()
+}
+fn timestamp_to_iso(timestamp: u64) -> DateTime<chrono::Local> {
     use chrono::{DateTime, Local};
     use std::time::{Duration, UNIX_EPOCH};
-    let datetime = DateTime::<Local>::from(UNIX_EPOCH + Duration::from_secs(timestamp));
-    datetime.to_rfc3339()
+    DateTime::<Local>::from(UNIX_EPOCH + Duration::from_secs(timestamp))
 }
+// TODO: replace with https://github.com/psychon/x11rb/issues/163
 fn to_u32s(v1: &Vec<u8>) -> Vec<u32> {
     let mut c = std::io::Cursor::new(v1);
     let mut v2 = Vec::new();
@@ -186,17 +229,17 @@ impl X11Capturer {
 
             let process = if let Some(pid) = pid {
                 if let Some(procinfo) = system.get_process(pid as i32) {
-                    json!({
-                        "pid": procinfo.pid(),
-                        "name": procinfo.name(),
-                        "cmd": procinfo.cmd(),
-                        "exe": procinfo.exe(),
-                        "cwd": procinfo.cwd(),
-                        "memory_kB": procinfo.memory(),
-                        "parent": procinfo.parent(),
-                        "status": procinfo.status().to_string(),
-                        "start_time": timestamp_to_iso_string(procinfo.start_time()),
-                        "cpu_usage": procinfo.cpu_usage(),
+                    Some(ProcessData {
+                        pid: procinfo.pid(),
+                        name: procinfo.name().to_string(),
+                        cmd: procinfo.cmd().to_vec(),
+                        exe: procinfo.exe().to_string_lossy().to_string(), // tbh i don't care if your executables have filenames that are not unicode
+                        cwd: procinfo.cwd().to_string_lossy().to_string(),
+                        memory_kB: procinfo.memory() as i64,
+                        parent: procinfo.parent(),
+                        status: procinfo.status().to_string().to_string(),
+                        start_time: timestamp_to_iso(procinfo.start_time()),
+                        cpu_usage: procinfo.cpu_usage(),
                     })
                 } else {
                     println!(
@@ -205,10 +248,10 @@ impl X11Capturer {
                         window,
                         json!(&propmap)
                     );
-                    json!(null)
+                    None
                 }
             } else {
-                json!(null)
+                None
             };
 
             let geo = self.conn.get_geometry(window)?.reply()?;
@@ -217,29 +260,30 @@ impl X11Capturer {
                 .translate_coordinates(window, self.root_window, 0, 0)?
                 .reply()?;
 
-            windowsdata.push(json!({
-                "window_id": window,
-                "geometry": {
-                    "x": coords.dst_x,
-                    "y": coords.dst_y,
-                    "width": geo.width,
-                    "height": geo.height
+            windowsdata.push(X11WindowData {
+                window_id: window,
+                geometry: X11WindowGeometry {
+                    x: coords.dst_x as i32,
+                    y: coords.dst_y as i32,
+                    width: geo.width as i32,
+                    height: geo.height as i32,
                 },
-                "process": process,
-                "window_properties": &propmap,
-            }));
+                process,
+                window_properties: propmap,
+            });
         }
-        let xscreensaver = x11rb::generated::screensaver::query_info(&self.conn, self.root_window)?.reply()?;
+        let xscreensaver =
+            x11rb::generated::screensaver::query_info(&self.conn, self.root_window)?.reply()?;
         // see XScreenSaverQueryInfo at https://linux.die.net/man/3/xscreensaverunsetattributes
-        let data = json!({
-            "desktop_names": desktop_names,
-            "current_desktop_id": current_desktop as usize,
-            "focused_window": focus,
-            "ms_since_user_input": xscreensaver.ms_since_user_input,
-            "ms_until_screensaver": xscreensaver.ms_until_server,
-            "screensaver_window": xscreensaver.saver_window,
-            "windows": windowsdata
-        });
-        Ok(CapturedData {data_type: "x11".to_string(), data_type_version: 2, data})
+        let data = X11CapturedData {
+            desktop_names: desktop_names,
+            current_desktop_id: current_desktop as usize,
+            focused_window: focus,
+            ms_since_user_input: xscreensaver.ms_since_user_input,
+            ms_until_screensaver: xscreensaver.ms_until_server,
+            screensaver_window: xscreensaver.saver_window,
+            windows: windowsdata,
+        };
+        Ok(CapturedData::x11(data))
     }
 }

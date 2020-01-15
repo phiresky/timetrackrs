@@ -1,15 +1,9 @@
 use track_pc_usage_rs as trbtt;
 
 use diesel::prelude::*;
-use dotenv::dotenv;
 use rand::Rng;
-use serde::{Serialize, Deserialize};
-use std::env;
-
-#[macro_use]
-extern crate diesel_migrations;
-use diesel_migrations::embed_migrations;
-embed_migrations!();
+use serde::{Deserialize, Serialize};
+use trbtt::capture::serialize_captured;
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -28,20 +22,7 @@ fn get_sample(s: &Sampler) -> f64 {
 }
 
 fn main() -> anyhow::Result<()> {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let db = SqliteConnection::establish(&database_url)?;
-    db.execute("pragma page_size = 32768;")?;
-    db.execute("pragma foreign_keys = on;")?;
-    db.execute("pragma temp_store = memory;")?;
-    db.execute("pragma journal_mode = WAL;")?;
-    db.execute("pragma synchronous = normal;")?;
-    db.execute("pragma mmap_size= 30000000000;")?;
-    db.execute("pragma auto_vacuum = incremental")?;
-    db.execute("pragma optimize;")?;
-
-    embedded_migrations::run_with_output(&db, &mut std::io::stdout())?;
+    let db = trbtt::database::connect()?;
 
     let mut c = trbtt::capture::x11::X11Capturer::init()?;
 
@@ -58,17 +39,17 @@ fn main() -> anyhow::Result<()> {
 
             let res = c.capture()?;
 
+            let (data_type, data_type_version, data) = serialize_captured(&res)?;
+
             diesel::insert_into(activity::table)
                 .values(&NewActivity {
                     timestamp: Timestamptz::now(),
                     sampler: serde_json::to_string(&sampler)?,
-                    data_type: res.data_type,
-                    data_type_version: res.data_type_version,
-                    data: res.data.to_string(),
+                    data_type,
+                    data_type_version,
+                    data,
                 })
                 .execute(&db)?;
-
-            
         }
     }
 }
