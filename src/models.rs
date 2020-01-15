@@ -5,7 +5,10 @@ use super::schema::*;
 #[derive(Queryable)]
 pub struct Activity {
     pub id: i64,
-    pub created: DateTime<Local>,
+    pub timestamp: Timestamptz,
+    pub data_type: String,
+    pub data_type_version: i32,
+    pub sampler: String,
     pub data: String
 }
 
@@ -49,6 +52,9 @@ impl FromSql<Text, Sqlite> for Timestamptz {
 #[derive(Insertable)]
 #[table_name = "activity"]
 pub struct NewActivity {
-    pub created: Timestamptz,
+    pub timestamp: Timestamptz,
+    pub data_type: String,
+    pub data_type_version: i32,
+    pub sampler: String,
     pub data: String
 }

@@ -8,6 +8,8 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use serde_json::{json, Value as J};
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryInto;
+use sysinfo::ProcessExt;
+use sysinfo::SystemExt;
 use x11rb::connection::Connection;
 use x11rb::connection::RequestConnection;
 use x11rb::errors::ConnectionErrorOrX11Error;
@@ -17,12 +19,11 @@ use x11rb::generated::xproto::ConnectionExt;
 use x11rb::generated::xproto::ATOM;
 use x11rb::generated::xproto::WINDOW;
 use x11rb::xcb_ffi::XCBConnection;
-use sysinfo::SystemExt;
-use sysinfo::ProcessExt;
+use super::CapturedData;
 
 fn timestamp_to_iso_string(timestamp: u64) -> String {
-    use std::time::{UNIX_EPOCH, Duration};
     use chrono::{DateTime, Local};
+    use std::time::{Duration, UNIX_EPOCH};
     let datetime = DateTime::<Local>::from(UNIX_EPOCH + Duration::from_secs(timestamp));
     datetime.to_rfc3339()
 }
@@ -73,7 +74,6 @@ pub struct X11Capturer {
     conn: XCBConnection,
     root_window: u32,
     atom_name_map: HashMap<u32, anyhow::Result<String>>,
-    system: sysinfo::System
 }
 impl X11Capturer {
     fn atom(&self, e: &str) -> anyhow::Result<u32> {
@@ -100,18 +100,18 @@ impl X11Capturer {
             conn,
             root_window,
             atom_name_map: HashMap::new(),
-            system: sysinfo::System::new()
         })
     }
-    pub fn capture(&mut self) -> anyhow::Result<J> {
+    pub fn capture(&mut self) -> anyhow::Result<CapturedData> {
+        let system = sysinfo::System::new();
         let NET_CLIENT_LIST = self.atom("_NET_CLIENT_LIST")?;
         let NET_CURRENT_DESKTOP = self.atom("_NET_CURRENT_DESKTOP")?;
         let NET_DESKTOP_NAMES = self.atom("_NET_DESKTOP_NAMES")?;
 
         let blacklist = vec![
             self.atom("_NET_WM_ICON")?, // HUUGE
-            self.atom("WM_ICON_NAME")?,  // invalid unicode _NET_WM_ICON_NAME
-            self.atom("WM_NAME")?,       // invalid unicode, use _NET_WM_NAME
+            self.atom("WM_ICON_NAME")?, // invalid unicode _NET_WM_ICON_NAME
+            self.atom("WM_NAME")?,      // invalid unicode, use _NET_WM_NAME
         ];
 
         let current_desktop = single(&get_property32(
@@ -129,7 +129,9 @@ impl X11Capturer {
         windows.sort();
 
         let mut windowsdata = vec![];
-
+        if !windows.contains(&focus) {
+            println!("Focussed thing is not in window list!!");
+        }
         for window in windows {
             let props = self.conn.list_properties(window)?.reply()?.atoms;
             let mut propmap: BTreeMap<String, J> = BTreeMap::new();
@@ -164,7 +166,7 @@ impl X11Capturer {
                             "type": format!("{}/{}", prop_type, val.format),
                             "value": vec.into_iter().map(|e| self.atom_name(e)).collect::<anyhow::Result<Vec<_>>>()?
                         })
-                    },
+                    }
                     (_, "CARDINAL", 32) | (_, "WINDOW", _) => {
                         assert!(val.format == 32);
                         let vec = to_u32s(&val.value);
@@ -174,36 +176,47 @@ impl X11Capturer {
                             "value": vec
                         })
                     }
-                    _ => {
-                        json!({
-                            "type": format!("{}/{}", prop_type, val.format),
-                            "value": hex::encode(val.value)
-                        })
-                    }
+                    _ => json!({
+                        "type": format!("{}/{}", prop_type, val.format),
+                        "value": hex::encode(val.value)
+                    }),
                 };
                 propmap.insert(prop_name, pval);
             }
 
-            let geo = self.conn.get_geometry(window)?.reply()?;
-            let coords = self.conn.translate_coordinates(window, self.root_window, 0, 0)?.reply()?;
-            
             let process = if let Some(pid) = pid {
-                let procinfo = self.system.get_process(pid as i32).ok_or(anyhow::anyhow!("invalid pid {} for window {}", pid, window))?;
-                json!({
-                    "pid": procinfo.pid(),
-                    "name": procinfo.name(),
-                    "cmd": procinfo.cmd(),
-                    "exe": procinfo.exe(),
-                    "cwd": procinfo.cwd(),
-                    "memory_kB": procinfo.memory(),
-                    "parent": procinfo.parent(),
-                    "status": procinfo.status().to_string(),
-                    "start_time": timestamp_to_iso_string(procinfo.start_time()),
-                    "cpu_usage": procinfo.cpu_usage(),
-                })
+                if let Some(procinfo) = system.get_process(pid as i32) {
+                    json!({
+                        "pid": procinfo.pid(),
+                        "name": procinfo.name(),
+                        "cmd": procinfo.cmd(),
+                        "exe": procinfo.exe(),
+                        "cwd": procinfo.cwd(),
+                        "memory_kB": procinfo.memory(),
+                        "parent": procinfo.parent(),
+                        "status": procinfo.status().to_string(),
+                        "start_time": timestamp_to_iso_string(procinfo.start_time()),
+                        "cpu_usage": procinfo.cpu_usage(),
+                    })
+                } else {
+                    println!(
+                        "could not get process by pid {} for window {} ({})",
+                        pid,
+                        window,
+                        json!(&propmap)
+                    );
+                    json!(null)
+                }
             } else {
                 json!(null)
             };
+
+            let geo = self.conn.get_geometry(window)?.reply()?;
+            let coords = self
+                .conn
+                .translate_coordinates(window, self.root_window, 0, 0)?
+                .reply()?;
+
             windowsdata.push(json!({
                 "window_id": window,
                 "geometry": {
@@ -216,11 +229,17 @@ impl X11Capturer {
                 "window_properties": &propmap,
             }));
         }
-        Ok(json!({
+        let xscreensaver = x11rb::generated::screensaver::query_info(&self.conn, self.root_window)?.reply()?;
+        // see XScreenSaverQueryInfo at https://linux.die.net/man/3/xscreensaverunsetattributes
+        let data = json!({
             "desktop_names": desktop_names,
             "current_desktop_id": current_desktop as usize,
             "focused_window": focus,
+            "ms_since_user_input": xscreensaver.ms_since_user_input,
+            "ms_until_screensaver": xscreensaver.ms_until_server,
+            "screensaver_window": xscreensaver.saver_window,
             "windows": windowsdata
-        }))
+        });
+        Ok(CapturedData {data_type: "x11".to_string(), data_type_version: 2, data})
     }
 }
