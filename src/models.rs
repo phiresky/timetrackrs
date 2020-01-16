@@ -1,11 +1,12 @@
 use super::schema::*;
 use chrono::DateTime;
 use chrono::Utc;
+use diesel::sql_types::BigInt;
 use serde::Serialize;
 
 #[derive(Queryable, Serialize)]
 pub struct Activity {
-    pub id: i32,
+    pub id: i64,
     pub timestamp: Timestamptz,
     pub data_type: String,
     pub data_type_version: i32,

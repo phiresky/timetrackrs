@@ -17,7 +17,7 @@ pub fn connect() -> anyhow::Result<SqliteConnection> {
     db.execute("pragma synchronous = normal;")?;
     db.execute("pragma mmap_size= 30000000000;")?;
     db.execute("pragma auto_vacuum = incremental")?;
-    db.execute("pragma optimize;")?;
+    // db.execute("pragma optimize;")?;
 
     embedded_migrations::run_with_output(&db, &mut std::io::stdout())?;
     Ok(db)
