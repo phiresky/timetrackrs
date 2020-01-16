@@ -1,25 +1,9 @@
 use track_pc_usage_rs as trbtt;
 
 use diesel::prelude::*;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use trbtt::capture::serialize_captured;
-
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "type")]
-enum Sampler {
-    RandomSampler { avg_time: f64 },
-}
-
-fn get_sample(s: &Sampler) -> f64 {
-    match s {
-        Sampler::RandomSampler { avg_time } => {
-            let distribution = rand::distributions::Uniform::new(0f64, (avg_time) * 2.0);
-            let mut rng = rand::thread_rng();
-            return rng.sample(distribution);
-        }
-    }
-}
+use trbtt::sampler::Sampler;
 
 fn main() -> anyhow::Result<()> {
     let db = trbtt::database::connect()?;
@@ -31,9 +15,10 @@ fn main() -> anyhow::Result<()> {
 
     // println!("{}", serde_json::to_string_pretty(&data)?);
     let sampler = Sampler::RandomSampler { avg_time: 60.0 };
+    let sampler_sequence_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
     {
         loop {
-            let sample = get_sample(&sampler);
+            let sample = sampler.get_sample();
             println!("sleeping {}s", sample);
             std::thread::sleep(std::time::Duration::from_secs_f64(sample));
 
@@ -44,7 +29,8 @@ fn main() -> anyhow::Result<()> {
             diesel::insert_into(activity::table)
                 .values(&NewActivity {
                     timestamp: Timestamptz::now(),
-                    sampler: serde_json::to_string(&sampler)?,
+                    sampler: sampler.clone(),
+                    sampler_sequence_id: sampler_sequence_id.clone(),
                     data_type,
                     data_type_version,
                     data,

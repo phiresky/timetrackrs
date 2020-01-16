@@ -4,7 +4,7 @@
 
 #![allow(non_snake_case)]
 
-use super::{Captured, CapturedData};
+use super::CapturedData;
 use byteorder::{LittleEndian, ReadBytesExt};
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
@@ -26,40 +26,60 @@ use x11rb::xcb_ffi::XCBConnection;
 
 #[derive(Debug, Serialize, Deserialize, TypeScriptify)]
 pub struct X11CapturedData {
-    desktop_names: Vec<String>,
-    current_desktop_id: usize,
-    focused_window: u32,
-    ms_since_user_input: u32,
-    ms_until_screensaver: u32,
-    screensaver_window: u32,
-    windows: Vec<X11WindowData>,
+    #[serde(default)]
+    pub os_info: OsInfo,
+    pub desktop_names: Vec<String>,
+    pub current_desktop_id: usize,
+    pub focused_window: u32,
+    pub ms_since_user_input: u32,
+    pub ms_until_screensaver: u32,
+    pub screensaver_window: u32,
+    pub windows: Vec<X11WindowData>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct OsInfo {
+    pub os_type: String,
+    pub version: String,
+    #[serde(default)]
+    pub batteries: i32,
+    pub hostname: String,
+}
+impl Default for OsInfo {
+    fn default() -> OsInfo {
+        OsInfo {
+            os_type: "Arch Linux".to_string(),
+            version: "1".to_string(),
+            batteries: 0,
+            hostname: "phirearch".to_string(),
+        }
+    }
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify)]
 pub struct X11WindowData {
-    window_id: u32,
-    geometry: X11WindowGeometry,
-    process: Option<ProcessData>,
-    window_properties: BTreeMap<String, J>,
+    pub window_id: u32,
+    pub geometry: X11WindowGeometry,
+    pub process: Option<ProcessData>,
+    pub window_properties: BTreeMap<String, J>,
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify)]
 pub struct X11WindowGeometry {
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessData {
-    pid: i32,
-    name: String,
-    cmd: Vec<String>,
-    exe: String,
-    cwd: String,
-    memory_kB: i64,
-    parent: Option<i32>,
-    status: String,
-    start_time: DateTime<chrono::Local>,
-    cpu_usage: f32,
+    pub pid: i32,
+    pub name: String,
+    pub cmd: Vec<String>,
+    pub exe: String,
+    pub cwd: String,
+    pub memory_kB: i64,
+    pub parent: Option<i32>,
+    pub status: String,
+    pub start_time: DateTime<chrono::Local>,
+    pub cpu_usage: f32,
 }
 fn timestamp_to_iso_string(timestamp: u64) -> String {
     timestamp_to_iso(timestamp).to_rfc3339()
@@ -104,7 +124,7 @@ fn single<T: Copy>(v: &Vec<T>) -> T {
     v[0]
 }
 // "2\u{0}4\u{0}5\u{0}6\u{0}8\u{0}9\u{0}1\u{0}" to array of strings
-fn split_zero(s: &str) -> Vec<String> {
+pub fn split_zero(s: &str) -> Vec<String> {
     let mut vec: Vec<String> = s.split("\0").map(|e| String::from(e)).collect();
     let last = vec.pop().unwrap();
     if last.len() != 0 {
@@ -117,6 +137,7 @@ pub struct X11Capturer {
     conn: XCBConnection,
     root_window: u32,
     atom_name_map: HashMap<u32, anyhow::Result<String>>,
+    os_info: OsInfo,
 }
 impl X11Capturer {
     fn atom(&self, e: &str) -> anyhow::Result<u32> {
@@ -139,9 +160,20 @@ impl X11Capturer {
         let (conn, screen_num) = XCBConnection::connect(None)?;
         let screen = &conn.setup().roots[screen_num];
         let root_window = screen.root;
+        let os_info1 = os_info::get();
+        let batteries = battery::Manager::new()?.batteries()?.count();
+        let os_info = OsInfo {
+            os_type: os_info1.os_type().to_string(),
+            version: format!("{}", os_info1.version()),
+            hostname: hostname::get()
+                .map(|e| e.to_string_lossy().to_string())
+                .unwrap_or("".to_string()),
+            batteries: batteries as i32,
+        };
         Ok(X11Capturer {
             conn,
             root_window,
+            os_info,
             atom_name_map: HashMap::new(),
         })
     }
@@ -275,8 +307,10 @@ impl X11Capturer {
         let xscreensaver =
             x11rb::generated::screensaver::query_info(&self.conn, self.root_window)?.reply()?;
         // see XScreenSaverQueryInfo at https://linux.die.net/man/3/xscreensaverunsetattributes
+
         let data = X11CapturedData {
             desktop_names: desktop_names,
+            os_info: self.os_info.clone(),
             current_desktop_id: current_desktop as usize,
             focused_window: focus,
             ms_since_user_input: xscreensaver.ms_since_user_input,

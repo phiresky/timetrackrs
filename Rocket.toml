@@ -1,0 +1,2 @@
+[global.databases]
+activity_database = { url = "activity.sqlite3" }

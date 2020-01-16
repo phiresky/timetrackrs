@@ -4,5 +4,8 @@ CREATE TABLE activity (
     data_type TEXT NOT NULL,
     data_type_version INTEGER NOT NULL,
     sampler TEXT NOT NULL, -- JSON
+    sampler_sequence_id TEXT NOT NULL, -- UUID
     data TEXT NOT NULL -- JSON
 )
+
+CREATE INDEX activity_timestamp_idx on activity(timestamp);
