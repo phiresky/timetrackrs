@@ -10,6 +10,7 @@
 		"@babel/plugin-proposal-decorators": "^7.8.3",
 		"@babel/preset-react": "^7.8.3",
 		"@babel/preset-typescript": "^7.8.3",
+		"@types/lodash": "^4.14.149",
 		"@types/react": "^16.9.17",
 		"@types/react-dom": "^16.9.4",
 		"@typescript-eslint/eslint-plugin": "^2.16.0",
@@ -70,5 +71,8 @@
 			],
 			"@babel/plugin-proposal-class-properties"
 		]
+	},
+	"devDependencies": {
+		"sass": "^1.24.5"
 	}
 }

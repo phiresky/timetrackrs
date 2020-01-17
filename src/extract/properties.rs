@@ -93,8 +93,8 @@ lazy_static! {
     static ref UNINTERESTING_BINARY: Regex = Regex::new(r#"/electron\d*$"#).unwrap();
     static ref BROWSER_BINARY: Regex = Regex::new(r#"/(firefox|google-chrome|chromium)$"#).unwrap();
     static ref URL: Regex =
-        //Regex::new(r#"(?i)https?://(-\.)?([^\s/?\.#-]+\.?)+(/[^\s]*)?"#).unwrap();
-        Regex::new(r#"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"#).unwrap();
+        Regex::new(r#"(?i)https?://(-\.)?([^\s/?\.#-]+\.?)+(/[^\s]*)?"#).unwrap();
+        // Regex::new(r#"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"#).unwrap();
 }
 fn match_from_title(window: &X11WindowData, info: &mut ExtractedInfo) {
     if let Some(J::String(title)) = &window.window_properties.get("_NET_WM_NAME") {
@@ -156,11 +156,8 @@ fn match_from_title(window: &X11WindowData, info: &mut ExtractedInfo) {
         }
         if let Some(p) = &window.process {
             if BROWSER_BINARY.is_match(&p.exe) {
-                println!("is browser{}", &p.exe);
                 if let Some(cap) = URL.find(&title) {
-                    println!("is url");
                     if let Ok(url) = url::Url::parse(cap.as_str()) {
-                        println!("parsed url");
                         info.web_browser = Some(WebBrowser {
                             url: cap.as_str().to_string(),
                             origin: url.origin().ascii_serialization(),

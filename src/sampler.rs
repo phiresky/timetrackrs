@@ -22,4 +22,10 @@ impl Sampler {
             }
         }
     }
+    /// get the (approximate duration value for each entry that used this sampler
+    pub fn get_duration(&self) -> f64 {
+        match &self {
+            Sampler::RandomSampler { avg_time } => *avg_time,
+        }
+    }
 }

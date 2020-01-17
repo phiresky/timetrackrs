@@ -24,13 +24,20 @@ const fs: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     extract::properties::MediaPlayer::type_script_ify,
     extract::properties::Software::type_script_ify,
     extract::properties::PhysicalActivity::type_script_ify,
+    extract::properties::MediaType::type_script_ify,
+    extract::properties::SoftwareDeviceType::type_script_ify,
+    extract::properties::Identifier::type_script_ify,
 ];
 
 // const all_types: Vec<
 fn main() -> anyhow::Result<()> {
     let mut ofile = std::fs::File::create("frontend/src/server.d.ts")?;
     writeln!(ofile, "type DateTime<T> = string;")?;
+    writeln!(ofile, "type Local = unknown;")?;
     writeln!(ofile, "type Timestamptz = string;")?;
+    for i in &[10, 100, 1000, 10000, 100000] {
+        writeln!(ofile, "type Text{} = string;", i)?;
+    }
     if cfg!(any(debug_assertions, feature = "export-typescript")) {
         for f in fs {
             writeln!(ofile, "{}", f())?;

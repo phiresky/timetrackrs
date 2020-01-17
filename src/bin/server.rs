@@ -18,19 +18,13 @@ extern crate rocket_contrib;
 #[database("activity_database")]
 struct DbConn(diesel::SqliteConnection);
 
-#[get("/fetch-activity/<from>/<to>")]
-fn fetch_activity(db: DbConn, from: String, to: String) -> anyhow::Result<Json<J>> {
-    // println!("handling...");
-    let from =
-        DateTime::<chrono::FixedOffset>::parse_from_rfc3339(&from)?.with_timezone(&chrono::Utc);
-    let to = DateTime::<chrono::FixedOffset>::parse_from_rfc3339(&to)?.with_timezone(&chrono::Utc);
-
-    use trbtt::schema::activity::dsl::*;
-    // println!("querying...");
-    let mdata = activity
-        .filter(timestamp.ge(Timestamptz::new(from)))
-        .filter(timestamp.lt(Timestamptz::new(to)))
-        .load::<Activity>(&*db)?;
+/*#[get("/fetch-activity?<from>&<to>&<limit>")]
+fn fetch_activity(
+    db: DbConn,
+    from: Option<String>,
+    limit: Option<u32>,
+    to: String,
+) -> anyhow::Result<Json<J>> {
     // println!("jsonifying...");
     let v = mdata
         .into_iter()
@@ -45,26 +39,37 @@ fn fetch_activity(db: DbConn, from: String, to: String) -> anyhow::Result<Json<J
             }))
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
-    Ok(Json(json!({
-        "from": from,
-        "to": to,
-        "data": &v
-    })))
-}
-#[get("/fetch-info/<from>/<to>")]
-fn fetch_info(db: DbConn, from: String, to: String) -> anyhow::Result<Json<J>> {
+    Ok(Json(json!({ "data": &v })))
+}*/
+#[get("/fetch-info?<after>&<before>&<limit>")]
+fn fetch_info(
+    db: DbConn,
+    after: Option<String>,
+    limit: Option<u32>,
+    before: Option<String>,
+) -> anyhow::Result<Json<J>> {
     // println!("handling...");
-    let from =
-        DateTime::<chrono::FixedOffset>::parse_from_rfc3339(&from)?.with_timezone(&chrono::Utc);
-    let to = DateTime::<chrono::FixedOffset>::parse_from_rfc3339(&to)?.with_timezone(&chrono::Utc);
-
     // println!("querying...");
     let mdata = {
         use trbtt::schema::activity::dsl::*;
-        activity
-            .filter(timestamp.ge(Timestamptz::new(from)))
-            .filter(timestamp.lt(Timestamptz::new(to)))
-            .load::<Activity>(&*db)?
+        let mut query = activity.into_boxed();
+        // let query = activity.filter(timestamp.lt(Timestamptz::new(to)));
+        if let Some(after) = after {
+            let after = DateTime::<chrono::FixedOffset>::parse_from_rfc3339(&after)?
+                .with_timezone(&chrono::Utc);
+            query = query
+                .filter(timestamp.gt(Timestamptz::new(after)))
+                .order(timestamp.asc());
+        }
+        if let Some(before) = before {
+            let before = DateTime::<chrono::FixedOffset>::parse_from_rfc3339(&before)?
+                .with_timezone(&chrono::Utc);
+            query = query
+                .filter(timestamp.lt(Timestamptz::new(before)))
+                .order(timestamp.desc());
+        }
+        let limit = limit.unwrap_or(100);
+        query.limit(limit as i64).load::<Activity>(&*db)?
     };
     // println!("jsonifying...");
     let v = mdata
@@ -77,9 +82,7 @@ fn fetch_info(db: DbConn, from: String, to: String) -> anyhow::Result<Json<J>> {
                         Some(json!({
                             "id": a.id,
                             "timestamp": a.timestamp,
-                            "data_type": a.data_type,
-                            "data_type_version": a.data_type_version,
-                            "sampler": a.sampler,
+                            "duration": a.sampler.get_duration(),
                             "data": data,
                         }))
                     } else {
@@ -87,17 +90,13 @@ fn fetch_info(db: DbConn, from: String, to: String) -> anyhow::Result<Json<J>> {
                     }
                 }
                 Err(e) => {
-                    println!("deser error: {:?}", e);
+                    println!("deser of {} error: {:?}", a.id, e);
                     None
                 }
             }
         })
         .collect::<Vec<_>>();
-    Ok(Json(json!({
-        "from": from,
-        "to": to,
-        "data": &v
-    })))
+    Ok(Json(json!({ "data": &v })))
 }
 
 fn main() -> anyhow::Result<()> {
@@ -107,7 +106,7 @@ fn main() -> anyhow::Result<()> {
     }
     .to_cors()?;
     rocket::ignite()
-        .mount("/", routes![fetch_activity, fetch_info])
+        .mount("/", routes![fetch_info])
         .attach(cors)
         .attach(DbConn::fairing())
         .launch();

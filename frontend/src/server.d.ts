@@ -1,5 +1,11 @@
 type DateTime<T> = string
+type Local = unknown
 type Timestamptz = string
+type Text10 = string
+type Text100 = string
+type Text1000 = string
+type Text10000 = string
+type Text100000 = string
 export type Activity = {
 	id: number
 	timestamp: Timestamptz
@@ -84,3 +90,14 @@ export type Software = {
 	unique_name: Text100
 }
 export type PhysicalActivity = { activity_type: Text100 }
+export enum MediaType {
+	Audio = "Audio",
+	Video = "Video",
+}
+export enum SoftwareDeviceType {
+	Desktop = "Desktop",
+	Laptop = "Laptop",
+	Smartphone = "Smartphone",
+	Tablet = "Tablet",
+}
+export type Identifier = string
