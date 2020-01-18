@@ -138,7 +138,9 @@ const timeFmt = new Intl.DateTimeFormat("en-US", {
 function EntriesTime({ entries }: { entries: Activity[] }) {
 	const duration = totalDuration(entries)
 	const from = timeFmt.format(new Date(entries[entries.length - 1].timestamp))
-	const to = timeFmt.format(new Date(entries[0].timestamp))
+	const _to = new Date(entries[0].timestamp)
+	_to.setSeconds(_to.getSeconds() + entries[0].duration)
+	const to = timeFmt.format(_to)
 	const range = from === to ? from : `${from} - ${to}`
 	return (
 		<>
@@ -191,6 +193,7 @@ class GUI extends React.Component {
 	@observable oldestData = new Date().toISOString()
 	constructor(p: {}) {
 		super(p)
+		Object.assign(window, { gui: this })
 		this.fetchData()
 	}
 
@@ -210,6 +213,15 @@ class GUI extends React.Component {
 			url.searchParams.set("before", this.oldestData)
 			url.searchParams.set("limit", "300")
 			const resp = await fetch(url.toString())
+			if (!resp.ok) {
+				console.error(
+					"could not fetch data from",
+					url.toString(),
+					":",
+					resp.status,
+					await resp.text(),
+				)
+			}
 			const { data }: { data: Activity[] } = await resp.json()
 			runInAction(() => {
 				let l = null

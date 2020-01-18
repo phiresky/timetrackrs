@@ -5,7 +5,9 @@ CREATE TABLE activity (
     data_type_version INTEGER NOT NULL,
     sampler TEXT NOT NULL, -- JSON
     sampler_sequence_id TEXT NOT NULL, -- UUID
-    data TEXT NOT NULL -- JSON
+    import_id TEXT, -- any id to prevent duplicate imports
+    data TEXT NOT NULL, -- JSON
+    UNIQUE(data_type, import_id) ON CONFLICT IGNORE
 )
 
 CREATE INDEX activity_timestamp_idx on activity(timestamp);

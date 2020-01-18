@@ -5,6 +5,9 @@ export function totalDuration(entries: Activity[]) {
 }
 
 export function durationToString(duration: number) {
+	if (duration < 60) {
+		return Math.round(duration) + " s"
+	}
 	duration = Math.round(duration / 60)
 	if (duration >= 60)
 		return Math.round(duration / 60) + " h " + (duration % 60) + " min"

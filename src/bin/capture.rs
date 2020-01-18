@@ -14,7 +14,7 @@ fn main() -> anyhow::Result<()> {
     use trbtt::schema::activity;
 
     // println!("{}", serde_json::to_string_pretty(&data)?);
-    let sampler = Sampler::RandomSampler { avg_time: 60.0 };
+    let sampler = Sampler::RandomSampler { avg_time: 30.0 };
     let sampler_sequence_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
     {
         loop {
@@ -33,6 +33,7 @@ fn main() -> anyhow::Result<()> {
                     sampler_sequence_id: sampler_sequence_id.clone(),
                     data_type,
                     data_type_version,
+                    import_id: None,
                     data,
                 })
                 .execute(&db)?;

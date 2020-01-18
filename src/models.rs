@@ -20,6 +20,7 @@ pub struct Activity {
     pub data_type_version: i32,
     pub sampler: Sampler,
     pub sampler_sequence_id: String,
+    pub import_id: Option<String>,
     pub data: String,
 }
 
@@ -82,5 +83,6 @@ pub struct NewActivity {
     pub data_type_version: i32,
     pub sampler: Sampler,
     pub sampler_sequence_id: String,
+    pub import_id: Option<String>,
     pub data: String,
 }

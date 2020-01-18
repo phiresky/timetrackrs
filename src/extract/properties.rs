@@ -102,6 +102,7 @@ fn match_from_title(window: &X11WindowData, info: &mut ExtractedInfo) {
             sw.title = title.clone();
             if let Some(p) = &window.process {
                 sw.identifier = Identifier(p.exe.to_string());
+                sw.unique_name = p.exe.to_string();
                 if UNINTERESTING_BINARY.is_match(&p.exe) {
                     if let Some(J::String(cls)) = window.window_properties.get("WM_CLASS") {
                         let v = split_zero(cls);
@@ -206,6 +207,27 @@ pub fn extract_info(event_id: String, data: &CapturedData) -> Option<ExtractedIn
                 Some(w) => match_from_title(w, &mut info),
             };
             Some(info)
+        }
+        CapturedData::app_usage(x) => {
+            if x.act_type == crate::import::app_usage_sqlite::UseType::UseApp {
+                let pkg_name = x.pkg_name.as_deref().unwrap_or("").to_string();
+                Some(ExtractedInfo {
+                    software: Some(Software {
+                        hostname: x.device_name.clone(),
+                        device_type: SoftwareDeviceType::Smartphone,
+                        device_os: "Android".to_string(),
+                        title: pkg_name.clone(),
+                        identifier: Identifier(format!(
+                            "android:{}",
+                            x.pkg_pkg.as_deref().unwrap_or("??").to_string()
+                        )),
+                        unique_name: pkg_name.clone(),
+                    }),
+                    ..Default::default()
+                })
+            } else {
+                None
+            }
         }
     }
 }

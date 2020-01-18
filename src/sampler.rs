@@ -10,6 +10,7 @@ use typescript_definitions::TypeScriptify;
 #[serde(tag = "type")]
 pub enum Sampler {
     RandomSampler { avg_time: f64 },
+    Explicit { duration: f64 },
 }
 
 impl Sampler {
@@ -20,12 +21,14 @@ impl Sampler {
                 let mut rng = rand::thread_rng();
                 return rng.sample(distribution);
             }
+            Sampler::Explicit { duration } => panic!("cant sample explicit"),
         }
     }
     /// get the (approximate duration value for each entry that used this sampler
     pub fn get_duration(&self) -> f64 {
         match &self {
             Sampler::RandomSampler { avg_time } => *avg_time,
+            Sampler::Explicit { duration } => *duration,
         }
     }
 }

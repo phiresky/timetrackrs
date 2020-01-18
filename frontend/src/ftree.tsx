@@ -4,47 +4,58 @@ import { Activity } from "./main"
 import { durationToString, totalDuration } from "./util"
 
 type Filter = {
-	name: string | null | undefined
+	key: string | null | undefined
+	name?: string | null | undefined
 	group?(e: Activity): Filter
 }
 const Browser: Filter = {
-	name: "Browser",
+	key: "Browser",
 	group(e: Activity) {
 		return {
-			name: e.data.web_browser?.service,
+			key: e.data.web_browser?.service,
 			group(e: Activity) {
-				return { name: e.data.web_browser?.url }
+				return { key: e.data.web_browser?.url }
 			},
 		}
 	},
 }
 const SoftwareDev: Filter = {
-	name: "Software Develompent",
+	key: "Software Develompent",
 	group(e: Activity) {
 		return {
-			name: e.data.software_development?.project_path,
+			key: e.data.software_development?.project_path,
 			group(e: Activity) {
 				return {
-					name: e.data.software_development?.file_path,
+					key: e.data.software_development?.file_path,
 				}
 			},
 		}
 	},
 }
 const Shell: Filter = {
-	name: "Shell",
+	key: "Shell",
 	group(e: Activity) {
-		return { name: e.data.shell?.cwd }
+		return { key: e.data.shell?.cwd }
 	},
 }
 const agg: Filter = {
-	name: "Activity",
+	key: "Activity",
 	group(e: Activity) {
 		if (e.data.web_browser) return Browser
 		if (e.data.software_development) return SoftwareDev
 		if (e.data.shell) return Shell
 
-		return { name: "Other" }
+		return {
+			key: "Other",
+			group(e) {
+				return {
+					key: e.data.software?.identifier,
+					name:
+						e.data.software?.unique_name ||
+						e.data.software?.identifier,
+				}
+			},
+		}
 	},
 }
 
@@ -58,14 +69,14 @@ export function SummaryFilter(p: {
 	const durString = durationToString(totalDuration(p.entries))
 	const h = header ? (
 		<div className="clickable" onClick={e => setExpanded(!expanded)}>
-			{filter.name}: {durString}
+			{filter.name || filter.key}: {durString}
 		</div>
 	) : (
 		<></>
 	)
 	if (!filter.group || !expanded) return <div>{h}</div>
 	const g = filter.group
-	const _gs = _.groupBy(entries, e => g(e).name)
+	const _gs = _.groupBy(entries, e => g(e).key)
 	const gs = Object.entries(_gs).sort((a, b) => b[1].length - a[1].length)
 	return (
 		<div>

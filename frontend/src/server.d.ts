@@ -13,10 +13,15 @@ export type Activity = {
 	data_type_version: number
 	sampler: Sampler
 	sampler_sequence_id: string
+	import_id: string | null
 	data: string
 }
-export type Sampler = { type: "RandomSampler"; avg_time: number }
-export type CapturedData = { data_type: "x11"; data: X11CapturedData }
+export type Sampler =
+	| { type: "RandomSampler"; avg_time: number }
+	| { type: "Explicit"; duration: number }
+export type CapturedData =
+	| { data_type: "x11"; data: X11CapturedData }
+	| { data_type: "app_usage"; data: AppUsageEntry }
 export type X11CapturedData = {
 	os_info: OsInfo
 	desktop_names: string[]
