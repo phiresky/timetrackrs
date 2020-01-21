@@ -1,11 +1,10 @@
-use serde::Serialize;
 use std::io::prelude::*;
 use track_pc_usage_rs as trbtt;
 use trbtt::capture::*;
 use trbtt::extract;
 use trbtt::models::*;
+use trbtt::prelude::*;
 use trbtt::sampler::Sampler;
-use typescript_definitions::TypeScriptify;
 use typescript_definitions::TypeScriptifyTrait;
 
 const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
@@ -16,7 +15,7 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     x11::X11WindowData::type_script_ify,
     x11::X11WindowGeometry::type_script_ify,
     x11::ProcessData::type_script_ify,
-    x11::OsInfo::type_script_ify,
+    util::OsInfo::type_script_ify,
     extract::properties::ExtractedInfo::type_script_ify,
     extract::properties::SoftwareDevelopment::type_script_ify,
     extract::properties::Shell::type_script_ify,

@@ -71,10 +71,11 @@ fn fetch_info(
     let v = mdata
         .into_iter()
         .filter_map(|a| {
-            let r = deserialize_captured((&a.data_type, a.data_type_version, &a.data));
+            let r = deserialize_captured((&a.data_type, &a.data));
             match r {
                 Ok(r) => {
-                    if let Some(data) = r.extract_info(a.id.to_string()) {
+                    if let Some(mut data) = r.extract_info() {
+                        data.event_id = a.id.to_string();
                         Some(json!({
                             "id": a.id,
                             "timestamp": a.timestamp,

@@ -1,29 +1,30 @@
 #![allow(non_snake_case)]
 
-use crate::import::Importable;
-use crate::models::NewActivity;
-use crate::sampler::Sampler;
-use crate::util::iso_string_to_date;
-use crate::util::unix_epoch_millis_to_date;
-use chrono::prelude::*;
-use lazy_static::lazy_static;
-use num_enum::TryFromPrimitive;
-use rusqlite::params;
-use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::PathBuf;
+use crate::prelude::*;
+
 use structopt::StructOpt;
-use typescript_definitions::TypeScriptify;
 
 #[derive(StructOpt)]
 pub struct JournaldImportArgs {}
 
-/*pub struct JournaldBoot {
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+pub struct JournaldEntry {
+    os_info: util::OsInfo,
+    event: JournaldEvent,
+}
 
-}*/
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+enum JournaldEvent {
+    Powerup,
+    Shutdown,
+    LogEntry(J),
+}
 
+impl ExtractInfo for JournaldEntry {
+    fn extract_info(&self) -> Option<ExtractedInfo> {
+        None
+    }
+}
 lazy_static! {
     // example:
     // -74 daee0006297641feb18738955c7c125e Fri 2019-06-21 18:14:04 UTC—Fri 2019-06-21 20:29:58 UTC
@@ -45,15 +46,16 @@ impl Importable for JournaldImportArgs {
     fn import(&self) -> anyhow::Result<Vec<NewActivity>> {
         use std::io::{BufRead, BufReader};
         use std::process::{Command, Stdio};
+        let os_info = util::get_os_info();
 
-        let mut child = Command::new("journalctl")
+        let child = Command::new("journalctl")
             .arg("--list-boots")
             .arg("--utc")
             .stdout(Stdio::piped())
             .spawn()?;
 
         let output = BufReader::new(child.stdout.unwrap());
-        // let v = vec![];
+        let mut outs = vec![];
         for line in output.lines() {
             let line = line?;
             let cap = JOURNALD_LIST_BOOTS
@@ -62,19 +64,44 @@ impl Importable for JournaldImportArgs {
             let boot_id = cap.name("boot_id").unwrap().as_str();
             let start = cap.name("start").unwrap().as_str();
             let end = cap.name("end").unwrap().as_str();
-            println!(
-                "{} @ {}={:#?}",
-                boot_id,
-                start,
-                DateTime::<Utc>::from_utc(
-                    NaiveDateTime::parse_from_str(start, "%Y-%m-%d %H:%M:%S")?,
-                    Utc
-                )
+            let start = DateTime::<Utc>::from_utc(
+                NaiveDateTime::parse_from_str(start, "%Y-%m-%d %H:%M:%S")?,
+                Utc,
+            );
+            let end = DateTime::<Utc>::from_utc(
+                NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?,
+                Utc,
+            );
+            outs.push(
+                CreateNewActivity {
+                    id: format!("{}.powerup", boot_id),
+                    timestamp: start,
+                    data: CapturedData::journald(JournaldEntry {
+                        os_info: os_info.clone(),
+                        event: JournaldEvent::Powerup,
+                    }),
+                    sampler: Sampler::Explicit { duration: 0.0 },
+                    sampler_sequence_id: "".to_string(),
+                }
+                .try_into()?,
+            );
+            outs.push(
+                CreateNewActivity {
+                    id: format!("{}.shutdown", boot_id),
+                    timestamp: end,
+                    data: CapturedData::journald(JournaldEntry {
+                        os_info: os_info.clone(),
+                        event: JournaldEvent::Shutdown,
+                    }),
+                    sampler: Sampler::Explicit { duration: 0.0 },
+                    sampler_sequence_id: "".to_string(),
+                }
+                .try_into()?,
             );
         }
         let s = Sampler::Explicit { duration: 0.0 };
 
-        Ok(vec![])
+        Ok(outs)
 
         // journalctl -t systemd-sleep --output=json --all
 

@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
     let mdata = activity.select((id, timestamp)).load::<RefreshDate>(&db)?;
     // println!("{:?}", mdata);
     for x in mdata {
-        if (x.id.len() < 8) {
+        if x.id.len() < 8 {
             let new_id = trbtt::util::random_uuid();
             let upd = diesel::update(activity)
                 .filter(id.eq(&x.id))

@@ -6,6 +6,7 @@
 
 use super::CapturedData;
 
+use crate::prelude::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use chrono::DateTime;
 use regex::Regex;
@@ -29,7 +30,7 @@ use x11rb::xcb_ffi::XCBConnection;
 #[derive(Debug, Serialize, Deserialize, TypeScriptify)]
 pub struct X11CapturedData {
     #[serde(default)]
-    pub os_info: OsInfo,
+    pub os_info: util::OsInfo,
     pub desktop_names: Vec<String>,
     pub current_desktop_id: usize,
     pub focused_window: u32,
@@ -37,24 +38,6 @@ pub struct X11CapturedData {
     pub ms_until_screensaver: u32,
     pub screensaver_window: u32,
     pub windows: Vec<X11WindowData>,
-}
-#[derive(Debug, Clone, Serialize, Deserialize, TypeScriptify)]
-pub struct OsInfo {
-    pub os_type: String,
-    pub version: String,
-    #[serde(default)]
-    pub batteries: i32,
-    pub hostname: String,
-}
-impl Default for OsInfo {
-    fn default() -> OsInfo {
-        OsInfo {
-            os_type: "Arch Linux".to_string(),
-            version: "1".to_string(),
-            batteries: 0,
-            hostname: "phirearch".to_string(),
-        }
-    }
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify)]
 pub struct X11WindowData {
@@ -87,7 +70,6 @@ fn timestamp_to_iso_string(timestamp: u64) -> String {
     timestamp_to_iso(timestamp).to_rfc3339()
 }
 fn timestamp_to_iso(timestamp: u64) -> DateTime<chrono::Local> {
-    use chrono::{DateTime, Local};
     use std::time::{Duration, UNIX_EPOCH};
     DateTime::<Local>::from(UNIX_EPOCH + Duration::from_secs(timestamp))
 }
@@ -139,7 +121,7 @@ pub struct X11Capturer {
     conn: XCBConnection,
     root_window: u32,
     atom_name_map: HashMap<u32, anyhow::Result<String>>,
-    os_info: OsInfo,
+    os_info: util::OsInfo,
 }
 impl X11Capturer {
     fn atom(&self, e: &str) -> anyhow::Result<u32> {
@@ -162,20 +144,10 @@ impl X11Capturer {
         let (conn, screen_num) = XCBConnection::connect(None)?;
         let screen = &conn.setup().roots[screen_num];
         let root_window = screen.root;
-        let os_info1 = os_info::get();
-        let batteries = battery::Manager::new()?.batteries()?.count();
-        let os_info = OsInfo {
-            os_type: os_info1.os_type().to_string(),
-            version: format!("{}", os_info1.version()),
-            hostname: hostname::get()
-                .map(|e| e.to_string_lossy().to_string())
-                .unwrap_or("".to_string()),
-            batteries: batteries as i32,
-        };
         Ok(X11Capturer {
             conn,
             root_window,
-            os_info,
+            os_info: util::get_os_info(),
             atom_name_map: HashMap::new(),
         })
     }
@@ -320,7 +292,7 @@ impl X11Capturer {
             screensaver_window: xscreensaver.saver_window,
             windows: windowsdata,
         };
-        Ok(CapturedData::x11(data))
+        Ok(CapturedData::x11_v2(data))
     }
 }
 
@@ -413,7 +385,7 @@ fn match_from_title(window: &X11WindowData, info: &mut ExtractedInfo) {
 
 use crate::extract::{properties::ExtractedInfo, ExtractInfo};
 impl ExtractInfo for X11CapturedData {
-    fn extract_info(&self, event_id: String) -> Option<ExtractedInfo> {
+    fn extract_info(&self) -> Option<ExtractedInfo> {
         use crate::extract::properties::*;
         let x = &self;
         if x.ms_since_user_input > 120 * 1000 {
@@ -421,7 +393,6 @@ impl ExtractInfo for X11CapturedData {
         }
         let window = x.windows.iter().find(|e| e.window_id == x.focused_window);
         let mut info = ExtractedInfo {
-            event_id,
             ..Default::default()
         }; /* Software {
                pub device: Text100,
@@ -433,7 +404,7 @@ impl ExtractInfo for X11CapturedData {
            }*/
         info.software = Some(Software {
             hostname: x.os_info.hostname.clone(),
-            device_type: if x.os_info.batteries > 0 {
+            device_type: if x.os_info.batteries.unwrap_or(0) > 0 {
                 SoftwareDeviceType::Laptop
             } else {
                 SoftwareDeviceType::Desktop

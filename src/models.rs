@@ -1,16 +1,10 @@
-use super::sampler::Sampler;
-use super::schema::*;
-use crate::capture::CapturedData;
-use crate::util::iso_string_to_date;
-use chrono::DateTime;
-use chrono::Utc;
+use crate::prelude::*;
+use crate::schema::activity;
 use diesel::deserialize::{self, FromSql};
 use diesel::serialize::{self, Output, ToSql};
 use diesel::sql_types::Text;
 use diesel::sqlite::Sqlite;
-use serde::Serialize;
 use std::io::Write;
-use typescript_definitions::TypeScriptify;
 use uuid::Uuid;
 
 #[derive(Queryable, Serialize, TypeScriptify)]
@@ -18,7 +12,6 @@ pub struct Activity {
     pub id: String,
     pub timestamp: Timestamptz,
     pub data_type: String,
-    pub data_type_version: i32,
     pub sampler: Sampler,
     pub sampler_sequence_id: String,
     pub data: String,
@@ -31,9 +24,6 @@ pub enum Timestamptz {
     N(DateTime<Utc>),
 }
 impl Timestamptz {
-    pub fn now() -> Timestamptz {
-        Timestamptz::N(chrono::Utc::now())
-    }
     pub fn new(d: DateTime<Utc>) -> Timestamptz {
         Timestamptz::N(d)
     }
@@ -44,7 +34,7 @@ impl FromSql<Text, Sqlite> for Timestamptz {
         bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
     ) -> deserialize::Result<Self> {
         let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
-        Ok(Timestamptz::new(iso_string_to_date(&s)?))
+        Ok(Timestamptz::new(util::iso_string_to_date(&s)?))
     }
 }
 impl ToSql<Text, Sqlite> for Timestamptz {
@@ -79,7 +69,6 @@ pub struct NewActivity {
     pub id: String,
     pub timestamp: Timestamptz,
     pub data_type: String,
-    pub data_type_version: i32,
     pub sampler: Sampler,
     pub sampler_sequence_id: String,
     pub data: String,

@@ -7,21 +7,20 @@ type Text1000 = string
 type Text10000 = string
 type Text100000 = string
 export type Activity = {
-	id: number
+	id: string
 	timestamp: Timestamptz
 	data_type: string
-	data_type_version: number
 	sampler: Sampler
 	sampler_sequence_id: string
-	import_id: string | null
 	data: string
 }
 export type Sampler =
 	| { type: "RandomSampler"; avg_time: number }
 	| { type: "Explicit"; duration: number }
 export type CapturedData =
-	| { data_type: "x11"; data: X11CapturedData }
-	| { data_type: "app_usage"; data: AppUsageEntry }
+	| { data_type: "x11_v2"; data: X11CapturedData }
+	| { data_type: "app_usage_v1"; data: AppUsageEntry }
+	| { data_type: "journald"; data: JournaldEntry }
 export type X11CapturedData = {
 	os_info: OsInfo
 	desktop_names: string[]
@@ -59,8 +58,9 @@ export type ProcessData = {
 export type OsInfo = {
 	os_type: string
 	version: string
-	batteries: number
+	batteries: number | null
 	hostname: string
+	machine_id: string | null
 }
 export type ExtractedInfo = {
 	event_id: string

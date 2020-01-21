@@ -1,27 +1,8 @@
 use diesel::prelude::*;
-use import::Importable;
-use structopt::StructOpt;
+use enum_dispatch::enum_dispatch;
+
 use track_pc_usage_rs as trbtt;
-use track_pc_usage_rs::models::NewActivity;
-use trbtt::import;
-
-#[derive(StructOpt)]
-#[structopt(about = "Import events from a different program")]
-enum ImportArgs {
-    AppUsage(import::app_usage_sqlite::AppUsageImportArgs),
-    Journald(import::journald::JournaldImportArgs),
-}
-
-// stupid. how to make shorter?
-impl Importable for ImportArgs {
-    fn import(&self) -> anyhow::Result<Vec<NewActivity>> {
-        use ImportArgs::*;
-        match &self {
-            AppUsage(a) => a.import(),
-            Journald(a) => a.import(),
-        }
-    }
-}
+use trbtt::prelude::*;
 
 fn main() -> anyhow::Result<()> {
     let opt = ImportArgs::from_args();

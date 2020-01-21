@@ -20,22 +20,10 @@ order by time desc
 */
 #![allow(non_snake_case)]
 
-use crate::capture::serialize_captured;
-use crate::capture::CapturedData;
-use crate::import::Importable;
-use crate::models::{NewActivity, Timestamptz};
-use crate::sampler::Sampler;
-use crate::util::unix_epoch_millis_to_date;
-use lazy_static::lazy_static;
+use crate::prelude::*;
 use num_enum::TryFromPrimitive;
 use rusqlite::params;
-use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
-use std::fs::File;
-use std::io::{Read, Write};
 use std::path::PathBuf;
-use structopt::StructOpt;
-use typescript_definitions::TypeScriptify;
 
 lazy_static! {
     static ref TIBU_FNAME: regex::Regex = regex::Regex::new(r#".*\.tar(\.[a-z0-9]+)?"#).unwrap();
@@ -225,7 +213,7 @@ pub struct AppUsageEntry {
 
 use crate::extract::{properties::ExtractedInfo, ExtractInfo};
 impl ExtractInfo for AppUsageEntry {
-    fn extract_info(&self, event_id: String) -> Option<ExtractedInfo> {
+    fn extract_info(&self) -> Option<ExtractedInfo> {
         use crate::extract::properties::*;
         let x = &self;
         if x.act_type == crate::import::app_usage_sqlite::UseType::UseApp {
@@ -353,22 +341,21 @@ impl Importable for AppUsageImportArgs {
             let sampler_sequence_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
             for n in z {
                 let n = n?;
-                let timestamp = Timestamptz::new(unix_epoch_millis_to_date(n.act_time));
+                let timestamp = util::unix_epoch_millis_to_date(n.act_time);
                 let duration = (n.act_dur as f64) / 1000.0;
                 let id = format!("app_usage.{}_{}_{}", n.act_time, n.act_type_raw, n.act_pid);
-                let res = CapturedData::app_usage(n);
-                let (data_type, data_type_version, data) = serialize_captured(&res)?;
-                outs.push(NewActivity {
-                    timestamp,
-                    sampler: Sampler::Explicit { duration },
-                    sampler_sequence_id: sampler_sequence_id.clone(),
-                    data_type,
-                    data_type_version,
-                    // assume each app can only do one event of specific type in one ms
-                    // needed becouse the _id column in the db is not declared AUTOINCREMENT so may be reused
-                    id,
-                    data,
-                });
+                outs.push(
+                    CreateNewActivity {
+                        timestamp,
+                        sampler: Sampler::Explicit { duration },
+                        sampler_sequence_id: sampler_sequence_id.clone(),
+                        // assume each app can only do one event of specific type in one ms
+                        // needed becouse the _id column in the db is not declared AUTOINCREMENT so may be reused
+                        id,
+                        data: CapturedData::app_usage_v1(n),
+                    }
+                    .try_into()?,
+                );
             }
             println!("");
             println!("got {} acts", outs.len());

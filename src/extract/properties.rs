@@ -7,8 +7,7 @@ different property types:
 
 # pc stuff
 */
-use serde::Serialize;
-use typescript_definitions::TypeScriptify;
+use crate::prelude::*;
 
 #[derive(Default, Serialize, TypeScriptify)]
 pub struct ExtractedInfo {

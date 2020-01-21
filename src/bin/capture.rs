@@ -1,10 +1,7 @@
 use track_pc_usage_rs as trbtt;
 
 use diesel::prelude::*;
-use serde::{Deserialize, Serialize};
-use trbtt::capture::serialize_captured;
-use trbtt::sampler::Sampler;
-use trbtt::util;
+use trbtt::prelude::*;
 
 fn main() -> anyhow::Result<()> {
     let db = trbtt::database::connect()?;
@@ -23,20 +20,18 @@ fn main() -> anyhow::Result<()> {
             println!("sleeping {}s", sample);
             std::thread::sleep(std::time::Duration::from_secs_f64(sample));
 
-            let res = c.capture()?;
-
-            let (data_type, data_type_version, data) = serialize_captured(&res)?;
+            let data = c.capture()?;
+            let act = CreateNewActivity {
+                id: util::random_uuid(),
+                timestamp: Utc::now(),
+                sampler: sampler.clone(),
+                sampler_sequence_id: sampler_sequence_id.clone(),
+                data,
+            };
+            let ins: NewActivity = act.try_into()?;
 
             diesel::insert_into(activity::table)
-                .values(&NewActivity {
-                    id: util::random_uuid(),
-                    timestamp: Timestamptz::now(),
-                    sampler: sampler.clone(),
-                    sampler_sequence_id: sampler_sequence_id.clone(),
-                    data_type,
-                    data_type_version,
-                    data,
-                })
+                .values(&ins)
                 .execute(&db)?;
         }
     }
