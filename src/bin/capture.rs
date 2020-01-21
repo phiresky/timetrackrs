@@ -4,6 +4,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use trbtt::capture::serialize_captured;
 use trbtt::sampler::Sampler;
+use trbtt::util;
 
 fn main() -> anyhow::Result<()> {
     let db = trbtt::database::connect()?;
@@ -15,7 +16,7 @@ fn main() -> anyhow::Result<()> {
 
     // println!("{}", serde_json::to_string_pretty(&data)?);
     let sampler = Sampler::RandomSampler { avg_time: 30.0 };
-    let sampler_sequence_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
+    let sampler_sequence_id = util::random_uuid();
     {
         loop {
             let sample = sampler.get_sample();
@@ -28,12 +29,12 @@ fn main() -> anyhow::Result<()> {
 
             diesel::insert_into(activity::table)
                 .values(&NewActivity {
+                    id: util::random_uuid(),
                     timestamp: Timestamptz::now(),
                     sampler: sampler.clone(),
                     sampler_sequence_id: sampler_sequence_id.clone(),
                     data_type,
                     data_type_version,
-                    import_id: None,
                     data,
                 })
                 .execute(&db)?;

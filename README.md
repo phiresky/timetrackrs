@@ -85,3 +85,27 @@ Todo: look at https://arbtt.nomeata.de/doc/users_guide/effective-use.html
     add-zsh-hook precmd title_precmd
     add-zsh-hook preexec title_preexec
     ```
+
+## Compression notes
+
+Think about row-level compression.
+
+```
+for id in $(sqlite3 activity.sqlite3 "select id from activity where data_type='x11'"); do sqlite3 activity.sqlite3 "select data from activity where id='$id'" > "x11/$id.json"; done
+```
+
+Zstd test: 7400 x11 activity rows:
+
+-   202M uncompressed (27kB avg)
+-   21M compressed without dictionary (2.8kbyte avg)
+-   20M compressed with `xz -9`
+-   5.0M compressed with generated dictionary (675byte avg), 110KB dictionary-file (which is default --maxdict)
+-   12M compressed with random sample json file as dictionary (1.6kbyte avg)
+-   11M compressed with dict generated 100 random json files (20kb dict file)
+-   2.7M compressed with large dict, 1MB dict file size (--maxdict=1000000)
+-   1.9MB as single file: `zstd -19 all`
+-   1.6MB as single file: `zstd --ultra -22 --long=31 all`
+-   1.3MB as single file (ordered by date) `-19`
+-   1.3MB as single file (ordered by date) `--ultra -22 --long=31`
+
+Conclusion: zstd is awesome

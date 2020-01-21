@@ -1,16 +1,14 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-use chrono::{DateTime, Local};
 use diesel::prelude::*;
 use rocket::{get, routes};
 use rocket_contrib::json::Json;
-use rocket_cors::Responder;
 use serde_json::json;
 use serde_json::Value as J;
 use track_pc_usage_rs as trbtt;
 use track_pc_usage_rs::capture::deserialize_captured;
-use track_pc_usage_rs::capture::CapturedData;
-use trbtt::extract::properties::extract_info;
+use track_pc_usage_rs::util::iso_string_to_date;
+use trbtt::extract::ExtractInfo;
 use trbtt::models::{Activity, Timestamptz};
 #[macro_use]
 extern crate rocket_contrib;
@@ -55,15 +53,13 @@ fn fetch_info(
         let mut query = activity.into_boxed();
         // let query = activity.filter(timestamp.lt(Timestamptz::new(to)));
         if let Some(after) = after {
-            let after = DateTime::<chrono::FixedOffset>::parse_from_rfc3339(&after)?
-                .with_timezone(&chrono::Utc);
+            let after = iso_string_to_date(&after)?;
             query = query
                 .filter(timestamp.gt(Timestamptz::new(after)))
                 .order(timestamp.asc());
         }
         if let Some(before) = before {
-            let before = DateTime::<chrono::FixedOffset>::parse_from_rfc3339(&before)?
-                .with_timezone(&chrono::Utc);
+            let before = iso_string_to_date(&before)?;
             query = query
                 .filter(timestamp.lt(Timestamptz::new(before)))
                 .order(timestamp.desc());
@@ -78,7 +74,7 @@ fn fetch_info(
             let r = deserialize_captured((&a.data_type, a.data_type_version, &a.data));
             match r {
                 Ok(r) => {
-                    if let Some(data) = extract_info(a.id.to_string(), &r) {
+                    if let Some(data) = r.extract_info(a.id.to_string()) {
                         Some(json!({
                             "id": a.id,
                             "timestamp": a.timestamp,

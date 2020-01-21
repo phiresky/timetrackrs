@@ -5,8 +5,10 @@
 #![allow(non_snake_case)]
 
 use super::CapturedData;
+
 use byteorder::{LittleEndian, ReadBytesExt};
 use chrono::DateTime;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as J};
 use std::collections::{BTreeMap, HashMap};
@@ -319,5 +321,132 @@ impl X11Capturer {
             windows: windowsdata,
         };
         Ok(CapturedData::x11(data))
+    }
+}
+
+lazy_static::lazy_static! {
+    static ref FORMATTED_TITLE_MATCH: Regex = Regex::new(r#"🛤([a-z]{2,5})🠚(.*)🠘"#).unwrap();
+    static ref FORMATTED_TITLE_SPLIT: Regex = Regex::new("🙰").unwrap();
+    static ref FORMATTED_TITLE_KV: Regex = Regex::new("^([a-z0-9]+)=(.*)$").unwrap();
+    static ref SH_JSON_TITLE: Regex = Regex::new(r#"\{".*[^\\]"}"#).unwrap();
+    static ref UNINTERESTING_BINARY: Regex = Regex::new(r#"/electron\d*$"#).unwrap();
+    static ref BROWSER_BINARY: Regex = Regex::new(r#"/(firefox|google-chrome|chromium)$"#).unwrap();
+    static ref URL: Regex =
+        Regex::new(r#"(?i)https?://(-\.)?([^\s/?\.#-]+\.?)+(/[^\s]*)?"#).unwrap();
+        // Regex::new(r#"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"#).unwrap();
+}
+fn match_from_title(window: &X11WindowData, info: &mut ExtractedInfo) {
+    use crate::extract::properties::*;
+    if let Some(J::String(title)) = &window.window_properties.get("_NET_WM_NAME") {
+        if let Some(sw) = &mut info.software {
+            sw.title = title.clone();
+            if let Some(p) = &window.process {
+                sw.identifier = Identifier(p.exe.to_string());
+                sw.unique_name = p.exe.to_string();
+                if UNINTERESTING_BINARY.is_match(&p.exe) {
+                    if let Some(J::String(cls)) = window.window_properties.get("WM_CLASS") {
+                        let v = split_zero(cls);
+                        sw.identifier = Identifier(format!("WM_CLASS:{}.{}", v[0], v[1]));
+                    }
+                }
+            }
+        };
+        // match strictly formatted stuff in title:
+        // 🛤sd🠚proj=/project/name🙰file=file/name🠘
+        if let Some(cap) = FORMATTED_TITLE_MATCH.captures(title) {
+            let category = cap.get(1).unwrap().as_str();
+            let kv = {
+                let mut kv = HashMap::new();
+                let values = cap.get(2).unwrap().as_str();
+                for kvs in FORMATTED_TITLE_SPLIT.split(values) {
+                    let c = FORMATTED_TITLE_KV.captures(kvs).unwrap();
+                    let k = c.get(1).unwrap().as_str().to_string();
+                    let v = c.get(2).unwrap().as_str().to_string();
+                    kv.insert(k, v);
+                }
+                kv
+            };
+            match category {
+                "sd" => {
+                    info.software_development = Some(SoftwareDevelopment {
+                        project_path: kv.get("proj").or(kv.get("project")).map(|e| e.to_string()),
+                        file_path: kv.get("file").unwrap().to_string(),
+                    })
+                }
+                _ => {
+                    println!("unknown category in title info: {}", category);
+                }
+            }
+        }
+        if let Some(m) = SH_JSON_TITLE.find(title) {
+            if let Ok(J::Object(o)) = serde_json::from_str(m.as_str()) {
+                if let (
+                    Some(J::String(cwd)),
+                    Some(J::Number(histdb)),
+                    Some(J::String(usr)),
+                    Some(J::String(cmd)),
+                ) = (o.get("cwd"), o.get("histdb"), o.get("usr"), o.get("cmd"))
+                {
+                    info.shell = Some(Shell {
+                        cwd: cwd.to_string(),
+                        cmd: cmd.to_string(),
+                        zsh_histdb_session_id: Identifier(histdb.to_string()),
+                    })
+                }
+            }
+        }
+        if let Some(p) = &window.process {
+            if BROWSER_BINARY.is_match(&p.exe) {
+                if let Some(cap) = URL.find(&title) {
+                    if let Ok(url) = url::Url::parse(cap.as_str()) {
+                        info.web_browser = Some(WebBrowser {
+                            url: cap.as_str().to_string(),
+                            origin: url.origin().ascii_serialization(),
+                            service: url.domain().unwrap().to_string(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+use crate::extract::{properties::ExtractedInfo, ExtractInfo};
+impl ExtractInfo for X11CapturedData {
+    fn extract_info(&self, event_id: String) -> Option<ExtractedInfo> {
+        use crate::extract::properties::*;
+        let x = &self;
+        if x.ms_since_user_input > 120 * 1000 {
+            return None;
+        }
+        let window = x.windows.iter().find(|e| e.window_id == x.focused_window);
+        let mut info = ExtractedInfo {
+            event_id,
+            ..Default::default()
+        }; /* Software {
+               pub device: Text100,
+               pub device_type: SoftwareDeviceType,
+               pub device_os: Text10,
+               pub title: Text10000,
+               pub identifier: Identifier, // unique identifier for software package e.g. android:com.package.id or pc:hostname/binary
+               pub unique_name: Text100, // name of software that should be globally unique and generally recognizable (e.g. "Firefox")
+           }*/
+        info.software = Some(Software {
+            hostname: x.os_info.hostname.clone(),
+            device_type: if x.os_info.batteries > 0 {
+                SoftwareDeviceType::Laptop
+            } else {
+                SoftwareDeviceType::Desktop
+            },
+            device_os: x.os_info.os_type.to_string(),
+            identifier: Identifier("".to_string()),
+            title: "".to_string(),
+            unique_name: "".to_string(),
+        });
+        match window {
+            None => return None,
+            Some(w) => match_from_title(w, &mut info),
+        };
+        Some(info)
     }
 }

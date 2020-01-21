@@ -1,6 +1,7 @@
 use super::sampler::Sampler;
 use super::schema::*;
 use crate::capture::CapturedData;
+use crate::util::iso_string_to_date;
 use chrono::DateTime;
 use chrono::Utc;
 use diesel::deserialize::{self, FromSql};
@@ -14,13 +15,12 @@ use uuid::Uuid;
 
 #[derive(Queryable, Serialize, TypeScriptify)]
 pub struct Activity {
-    pub id: i64,
+    pub id: String,
     pub timestamp: Timestamptz,
     pub data_type: String,
     pub data_type_version: i32,
     pub sampler: Sampler,
     pub sampler_sequence_id: String,
-    pub import_id: Option<String>,
     pub data: String,
 }
 
@@ -44,9 +44,7 @@ impl FromSql<Text, Sqlite> for Timestamptz {
         bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
     ) -> deserialize::Result<Self> {
         let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
-        Ok(Timestamptz::new(
-            DateTime::<chrono::FixedOffset>::parse_from_rfc3339(&s)?.with_timezone(&Utc),
-        ))
+        Ok(Timestamptz::new(iso_string_to_date(&s)?))
     }
 }
 impl ToSql<Text, Sqlite> for Timestamptz {
@@ -78,11 +76,11 @@ impl ToSql<Text, Sqlite> for Sampler {
 #[derive(Insertable)]
 #[table_name = "activity"]
 pub struct NewActivity {
+    pub id: String,
     pub timestamp: Timestamptz,
     pub data_type: String,
     pub data_type_version: i32,
     pub sampler: Sampler,
     pub sampler_sequence_id: String,
-    pub import_id: Option<String>,
     pub data: String,
 }

@@ -46,6 +46,7 @@ tempdir = "0.3.7"
 rusqlite = "0.20.0"
 enum-utils = "0.1.2"
 num_enum = "0.4.2"
+enum_dispatch = "0.2.0"
 
 [dependencies.rocket_contrib]
 version = "0.4.2"

@@ -536,6 +536,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum_dispatch"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d187ded8d68dfce7d5fe26be489494e1d43edf15896d1df094790d77caf07b27"
+dependencies = [
+ "once_cell",
+ "proc-macro2 1.0.8",
+ "quote 1.0.2",
+ "syn 1.0.13",
+]
+
+[[package]]
 name = "failure"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1202,9 +1214,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.3.1"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c601810575c99596d4afc46f78a678c80105117c379eb3650cf99b8a21ce5b"
+checksum = "891f486f630e5c5a4916c7e16c4b24a53e78c860b646e9f8e005e4f16847bfed"
 
 [[package]]
 name = "opaque-debug"
@@ -2148,6 +2160,7 @@ dependencies = [
  "diesel_migrations",
  "dotenv",
  "enum-utils",
+ "enum_dispatch",
  "flate2",
  "hex",
  "hmac",

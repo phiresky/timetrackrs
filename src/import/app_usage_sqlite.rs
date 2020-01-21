@@ -22,6 +22,7 @@ order by time desc
 
 use crate::capture::serialize_captured;
 use crate::capture::CapturedData;
+use crate::import::Importable;
 use crate::models::{NewActivity, Timestamptz};
 use crate::sampler::Sampler;
 use crate::util::unix_epoch_millis_to_date;
@@ -52,7 +53,7 @@ lazy_static! {
 }
 
 #[derive(StructOpt)]
-pub struct AppUsageImport {
+pub struct AppUsageImportArgs {
     // ~/data/bck/TitaniumBackup/com.a0soft.gphone.uninstaller-20200114-030409.tar.bz2
     filename: String,
     device_name: String,
@@ -221,42 +222,72 @@ pub struct AppUsageEntry {
     pub pkg_ucat: Option<i64>,
     pub pkg_ver: Option<String>,
 }
-pub fn app_usage_import(conf: AppUsageImport) -> anyhow::Result<Vec<NewActivity>> {
-    if !TIBU_FNAME.is_match(&conf.filename) {
-        anyhow::bail!("Not a tibu file!");
-    }
-    let mut bytes = [0u8; 4096];
-    std::fs::File::open(&conf.filename)?.read(&mut bytes)?;
-    let cap = TIBU_ENCRYPTED.captures(&bytes);
-    if let Some(c) = cap {
-        // decrypt
-        // let password = std::env::var("TIBU_PW").expect("Set env var TIBU_PW");
-        anyhow::bail!("Encrypted!");
-    } else {
-        // anyhow::bail!("Not encrypted!");
-        let mut a = tar::Archive::new(bzip2::read::BzDecoder::new(File::open(&conf.filename)?));
-        let tmp = tempdir::TempDir::new("app_usage_extract")?;
-        for e in a.entries()? {
-            let mut e = e?;
-            let path = e.header().path().unwrap().to_str().unwrap().to_string();
-            if path.starts_with("data/data/com.a0soft.gphone.uninstaller/./databases/data.db") {
-                let pathb = PathBuf::from(path);
-                let mut out = tmp.path().to_path_buf();
-                out.push(pathb.file_name().unwrap());
-                println!("extracting to filename: {}", out.to_string_lossy());
-                let mut outf = File::create(&out)?;
-                std::io::copy(&mut e, &mut outf)?;
-            }
+
+use crate::extract::{properties::ExtractedInfo, ExtractInfo};
+impl ExtractInfo for AppUsageEntry {
+    fn extract_info(&self, event_id: String) -> Option<ExtractedInfo> {
+        use crate::extract::properties::*;
+        let x = &self;
+        if x.act_type == crate::import::app_usage_sqlite::UseType::UseApp {
+            let pkg_name = x.pkg_name.as_deref().unwrap_or("").to_string();
+            Some(ExtractedInfo {
+                software: Some(Software {
+                    hostname: x.device_name.clone(),
+                    device_type: SoftwareDeviceType::Smartphone,
+                    device_os: "Android".to_string(),
+                    title: pkg_name.clone(),
+                    identifier: Identifier(format!(
+                        "android:{}",
+                        x.pkg_pkg.as_deref().unwrap_or("??").to_string()
+                    )),
+                    unique_name: pkg_name.clone(),
+                }),
+                ..Default::default()
+            })
+        } else {
+            None
         }
-        let db_fname = {
-            let mut out = tmp.path().to_path_buf();
-            out.push("data.db");
-            out
-        };
-        let conn = rusqlite::Connection::open(db_fname)?;
-        print!("querying (each dot=10k events) ");
-        let mut query = conn.prepare(
-            "
+    }
+}
+
+impl Importable for AppUsageImportArgs {
+    fn import(&self) -> anyhow::Result<Vec<NewActivity>> {
+        let conf = self;
+        if !TIBU_FNAME.is_match(&conf.filename) {
+            anyhow::bail!("Not a tibu file!");
+        }
+        let mut bytes = [0u8; 4096];
+        std::fs::File::open(&conf.filename)?.read(&mut bytes)?;
+        let cap = TIBU_ENCRYPTED.captures(&bytes);
+        if let Some(c) = cap {
+            // decrypt
+            // let password = std::env::var("TIBU_PW").expect("Set env var TIBU_PW");
+            anyhow::bail!("Encrypted!");
+        } else {
+            // anyhow::bail!("Not encrypted!");
+            let mut a = tar::Archive::new(bzip2::read::BzDecoder::new(File::open(&conf.filename)?));
+            let tmp = tempdir::TempDir::new("app_usage_extract")?;
+            for e in a.entries()? {
+                let mut e = e?;
+                let path = e.header().path().unwrap().to_str().unwrap().to_string();
+                if path.starts_with("data/data/com.a0soft.gphone.uninstaller/./databases/data.db") {
+                    let pathb = PathBuf::from(path);
+                    let mut out = tmp.path().to_path_buf();
+                    out.push(pathb.file_name().unwrap());
+                    println!("extracting to filename: {}", out.to_string_lossy());
+                    let mut outf = File::create(&out)?;
+                    std::io::copy(&mut e, &mut outf)?;
+                }
+            }
+            let db_fname = {
+                let mut out = tmp.path().to_path_buf();
+                out.push("data.db");
+                out
+            };
+            let conn = rusqlite::Connection::open(db_fname)?;
+            print!("querying (each dot=10k events) ");
+            let mut query = conn.prepare(
+                "
             select 
             act._id as 'act__id',
             act.dur as 'act_dur',
@@ -285,62 +316,63 @@ pub fn app_usage_import(conf: AppUsageImport) -> anyhow::Result<Vec<NewActivity>
             left join cat on pkg.cat = cat.cid
             order by dur desc
         ",
-        )?;
-        let mut i = 0;
-        let z = query.query_map(params![], |row| {
-            if i % 10000 == 0 {
-                print!(".");
-                std::io::stdout().flush().ok();
+            )?;
+            let mut i = 0;
+            let z = query.query_map(params![], |row| {
+                if i % 10000 == 0 {
+                    print!(".");
+                    std::io::stdout().flush().ok();
+                }
+                i += 1;
+                Ok(AppUsageEntry {
+                    device_type: conf.device_type.clone(),
+                    device_name: conf.device_name.clone(),
+                    act_dur: row.get("act_dur")?,
+                    act_pid: row.get("act_pid")?,
+                    act_time: row.get("act_time")?,
+                    act_type: row.get("act_type")?,
+                    act_type_raw: row.get("act_type")?,
+                    cat__id: row.get("cat__id")?,
+                    cat_cid: row.get("cat_cid")?,
+                    cat_name: row.get("cat_name")?,
+                    cat_sys: row.get("cat_sys")?,
+                    pkg__id: row.get("pkg__id")?,
+                    pkg_pkg: row.get("pkg_pkg")?,
+                    pkg_aiflag: row.get("pkg_aiflag")?,
+                    pkg_ast: row.get("pkg_ast")?,
+                    pkg_cat: row.get("pkg_cat")?,
+                    pkg_name: row.get("pkg_name")?,
+                    pkg_note: row.get("pkg_note")?,
+                    pkg_time: row.get("pkg_time")?,
+                    pkg_type: row.get("pkg_type")?,
+                    pkg_ucat: row.get("pkg_ucat")?,
+                    pkg_ver: row.get("pkg_ver")?,
+                })
+            })?;
+            let mut outs = Vec::new();
+            let sampler_sequence_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
+            for n in z {
+                let n = n?;
+                let timestamp = Timestamptz::new(unix_epoch_millis_to_date(n.act_time));
+                let duration = (n.act_dur as f64) / 1000.0;
+                let id = format!("app_usage.{}_{}_{}", n.act_time, n.act_type_raw, n.act_pid);
+                let res = CapturedData::app_usage(n);
+                let (data_type, data_type_version, data) = serialize_captured(&res)?;
+                outs.push(NewActivity {
+                    timestamp,
+                    sampler: Sampler::Explicit { duration },
+                    sampler_sequence_id: sampler_sequence_id.clone(),
+                    data_type,
+                    data_type_version,
+                    // assume each app can only do one event of specific type in one ms
+                    // needed becouse the _id column in the db is not declared AUTOINCREMENT so may be reused
+                    id,
+                    data,
+                });
             }
-            i += 1;
-            Ok(AppUsageEntry {
-                device_type: conf.device_type.clone(),
-                device_name: conf.device_name.clone(),
-                act_dur: row.get("act_dur")?,
-                act_pid: row.get("act_pid")?,
-                act_time: row.get("act_time")?,
-                act_type: row.get("act_type")?,
-                act_type_raw: row.get("act_type")?,
-                cat__id: row.get("cat__id")?,
-                cat_cid: row.get("cat_cid")?,
-                cat_name: row.get("cat_name")?,
-                cat_sys: row.get("cat_sys")?,
-                pkg__id: row.get("pkg__id")?,
-                pkg_pkg: row.get("pkg_pkg")?,
-                pkg_aiflag: row.get("pkg_aiflag")?,
-                pkg_ast: row.get("pkg_ast")?,
-                pkg_cat: row.get("pkg_cat")?,
-                pkg_name: row.get("pkg_name")?,
-                pkg_note: row.get("pkg_note")?,
-                pkg_time: row.get("pkg_time")?,
-                pkg_type: row.get("pkg_type")?,
-                pkg_ucat: row.get("pkg_ucat")?,
-                pkg_ver: row.get("pkg_ver")?,
-            })
-        })?;
-        let mut outs = Vec::new();
-        let sampler_sequence_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
-        for n in z {
-            let n = n?;
-            let timestamp = Timestamptz::new(unix_epoch_millis_to_date(n.act_time));
-            let duration = (n.act_dur as f64) / 1000.0;
-            let import_id = Some(format!("{}_{}_{}", n.act_time, n.act_type_raw, n.act_pid));
-            let res = CapturedData::app_usage(n);
-            let (data_type, data_type_version, data) = serialize_captured(&res)?;
-            outs.push(NewActivity {
-                timestamp,
-                sampler: Sampler::Explicit { duration },
-                sampler_sequence_id: sampler_sequence_id.clone(),
-                data_type,
-                data_type_version,
-                // assume each app can only do one event of specific type in one ms
-                // needed becouse the _id column in the db is not declared AUTOINCREMENT so may be reused
-                import_id,
-                data,
-            });
+            println!("");
+            println!("got {} acts", outs.len());
+            Ok(outs)
         }
-        println!("");
-        println!("got {} acts", outs.len());
-        Ok(outs)
     }
 }

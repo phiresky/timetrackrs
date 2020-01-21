@@ -1,10 +1,11 @@
 pub mod x11;
 use crate::import::app_usage_sqlite::AppUsageEntry;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use typescript_definitions::TypeScriptify;
 
 #[derive(Serialize, TypeScriptify)]
 #[serde(tag = "data_type", content = "data")]
+#[allow(non_camel_case_types)]
 pub enum CapturedData {
     x11(x11::X11CapturedData),
     app_usage(AppUsageEntry),

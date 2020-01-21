@@ -8,7 +8,7 @@ use trbtt::sampler::Sampler;
 use typescript_definitions::TypeScriptify;
 use typescript_definitions::TypeScriptifyTrait;
 
-const fs: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
+const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     Activity::type_script_ify,
     Sampler::type_script_ify,
     CapturedData::type_script_ify,
@@ -39,7 +39,7 @@ fn main() -> anyhow::Result<()> {
         writeln!(ofile, "type Text{} = string;", i)?;
     }
     if cfg!(any(debug_assertions, feature = "export-typescript")) {
-        for f in fs {
+        for f in FS {
             writeln!(ofile, "{}", f())?;
         }
     } else {
