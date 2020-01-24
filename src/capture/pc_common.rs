@@ -11,6 +11,7 @@ lazy_static::lazy_static! {
     static ref SH_JSON_TITLE: Regex = Regex::new(r#"\{".*[^\\]"}"#).unwrap();
     static ref UNINTERESTING_BINARY: Regex = Regex::new(r#"/electron\d*$"#).unwrap();
     static ref BROWSER_BINARY: Regex = Regex::new(r#"/(firefox|google-chrome|chromium)$"#).unwrap();
+    static ref MEDIAPLAYER_BINARY: Regex = Regex::new(r#"/(mpv|vlc)$"#).unwrap();
     static ref URL: Regex =
         Regex::new(r#"(?i)https?://(-\.)?([^\s/?\.#-]+\.?)+(/[^\s]*)?"#).unwrap();
         // Regex::new(r#"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"#).unwrap();
@@ -89,6 +90,13 @@ pub fn match_from_title(
                     };
                 }
             }
+        }
+        if MEDIAPLAYER_BINARY.is_match(&exe) {
+            return SpecificSoftware::MediaPlayer {
+                media_filename: "".to_string(), // todo,
+                media_name: window_title.to_string(),
+                media_type: MediaType::Video,
+            };
         }
     }
     SpecificSoftware::Unknown

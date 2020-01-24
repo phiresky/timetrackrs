@@ -7810,6 +7810,11 @@ please-upgrade-node@^3.1.1, please-upgrade-node@^3.2.0:
   dependencies:
     semver-compare "^1.0.0"
 
+plotly.js-dist@^1.52.1:
+  version "1.52.1"
+  resolved "https://registry.yarnpkg.com/plotly.js-dist/-/plotly.js-dist-1.52.1.tgz#2c95c6136af1f57e0cdf533fed8b8a5b6cd45b5a"
+  integrity sha512-uPyTAWyivakq0KQCejW9DnvClZ/qsKUrEALUYzdugOEVuzbndhHjR1106N0rOr6WurTGZE9m+cw2BFIX32DaCw==
+
 plotly.js@^1.52.1:
   version "1.52.1"
   resolved "https://registry.yarnpkg.com/plotly.js/-/plotly.js-1.52.1.tgz#1f80b8fb559c542fd40741c9aee6555f41245f6f"

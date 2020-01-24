@@ -204,12 +204,12 @@ function chooseGroup(
 		return { g, count }
 	})
 	bg.sort((a, b) => a.count - b.count)
-	console.log(bg)
+	//console.log(bg)
 	const inx = Math.min(
 		bg.length - 1,
 		bg.findIndex(e => e.count >= targetCount) + targetOffset,
 	)
-	console.log(inx)
+	//console.log(inx)
 	return bg[inx].g
 }
 function RenderGroup(props: { entries: Activity[] }) {
@@ -256,7 +256,7 @@ class GUI extends React.Component {
 			)
 			// url.searchParams.set("from", today.toISOString())
 			url.searchParams.set("before", this.oldestData)
-			url.searchParams.set("limit", "300")
+			url.searchParams.set("limit", "1000")
 			const resp = await fetch(url.toString())
 			if (!resp.ok) {
 				console.error(
@@ -306,7 +306,7 @@ class GUI extends React.Component {
 					<h1>Personal Timeline</h1>
 					<h2>{this.loadState}</h2>
 				</div>
-				<Plot data={this.data.get("2020-01-20")!} />
+
 				<div className="item" onScroll={this.onScroll}>
 					<div id="timeline">
 						<div>
@@ -321,6 +321,7 @@ class GUI extends React.Component {
 						</div>
 					</div>
 				</div>
+				<Plot data={[...this.data.values()].flat()} />
 			</div>
 		)
 	}

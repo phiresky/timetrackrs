@@ -1,2 +1,2 @@
 [global.databases]
-events_database = { url = "events.sqlite3" }
+events_database = { url = "activity.sqlite3" }

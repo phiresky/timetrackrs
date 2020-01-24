@@ -13,6 +13,8 @@ track which programs is used how much and stores data in database. Inspired by [
 -   make non-crap
 -   look at similar tools, e.g. https://www.raymond.cc/blog/check-application-usage-times-personal-activity-monitor/
 
+## Structure
+
 ## philosophy
 
 Store as much information in an as raw as possible format in the capture step. Interpret / make it usable later in the analyse step. This prevents accidentally missing interesting information when saving and can allow reinterpretions in unexpected ways later. Redundancies in the data which cause large storage requirements will be solved with compression later.

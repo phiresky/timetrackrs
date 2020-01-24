@@ -12,7 +12,7 @@ type Filter = {
 	name?: string | null | undefined
 	group?(e: Activity): Filter
 }
-const agg: Filter = {
+export const agg: Filter = {
 	key: "Activity",
 	group(e: Activity) {
 		return {
@@ -52,7 +52,7 @@ const agg: Filter = {
 									key: e.specific.media_name,
 								}),
 								Unknown: e => ({
-									key: "unknown",
+									key: e.general.identifier,
 								}),
 							}
 							return o[e.specific.type](e1.data as any)
