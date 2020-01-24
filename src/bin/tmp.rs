@@ -19,7 +19,7 @@ fn main() -> anyhow::Result<()> {
     let process = s.get_process(953238);
     println!("{:?}", process);*/
 
-    let db = trbtt::database::connect()?;
+    let db = trbtt::db::connect()?;
 
     use trbtt::db::schema::events::dsl::*;
     let mdata = events.select((id, timestamp)).load::<RefreshDate>(&db)?;

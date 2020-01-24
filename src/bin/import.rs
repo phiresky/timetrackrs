@@ -8,7 +8,7 @@ fn main() -> anyhow::Result<()> {
     let data = opt.import()?;
     println!("inserting...");
     use track_pc_usage_rs::db::schema::events;
-    let db = track_pc_usage_rs::database::connect()?;
+    let db = track_pc_usage_rs::db::connect()?;
 
     let updated = diesel::insert_into(events::table)
         .values(&data)

@@ -7,7 +7,7 @@ fn main() -> anyhow::Result<()> {
     let args = CaptureArgs::from_args();
 
     let mut c = args.create_capturer()?;
-    let db = trbtt::database::connect()?;
+    let db = trbtt::db::connect()?;
 
     use trbtt::db::models::*;
     use trbtt::db::schema::events;
