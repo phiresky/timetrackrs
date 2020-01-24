@@ -1,4 +1,4 @@
-CREATE TABLE activity (
+CREATE TABLE events (
     -- for captured events, the id is generated randomly (uuidv4)
     -- for imported events, the id must be an id taken based on
     -- a combination of data_type and something from the import
@@ -12,4 +12,4 @@ CREATE TABLE activity (
     data TEXT NOT NULL -- JSON
 );
 
-CREATE INDEX activity_timestamp_idx on activity(timestamp);
+CREATE INDEX events_timestamp_idx on events(timestamp);

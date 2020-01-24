@@ -43,7 +43,7 @@ lazy_static! {
     .unwrap();
 }
 impl Importable for JournaldImportArgs {
-    fn import(&self) -> anyhow::Result<Vec<NewActivity>> {
+    fn import(&self) -> anyhow::Result<Vec<NewDbEvent>> {
         use std::io::{BufRead, BufReader};
         use std::process::{Command, Stdio};
         let os_info = util::get_os_info();
@@ -73,10 +73,10 @@ impl Importable for JournaldImportArgs {
                 Utc,
             );
             outs.push(
-                CreateNewActivity {
+                CreateNewDbEvent {
                     id: format!("{}.powerup", boot_id),
                     timestamp: start,
-                    data: CapturedData::journald(JournaldEntry {
+                    data: EventData::journald(JournaldEntry {
                         os_info: os_info.clone(),
                         event: JournaldEvent::Powerup,
                     }),
@@ -86,10 +86,10 @@ impl Importable for JournaldImportArgs {
                 .try_into()?,
             );
             outs.push(
-                CreateNewActivity {
+                CreateNewDbEvent {
                     id: format!("{}.shutdown", boot_id),
                     timestamp: end,
-                    data: CapturedData::journald(JournaldEntry {
+                    data: EventData::journald(JournaldEntry {
                         os_info: os_info.clone(),
                         event: JournaldEvent::Shutdown,
                     }),
@@ -99,12 +99,9 @@ impl Importable for JournaldImportArgs {
                 .try_into()?,
             );
         }
-        let s = Sampler::Explicit { duration: 0.0 };
 
         Ok(outs)
 
         // journalctl -t systemd-sleep --output=json --all
-
-        // journalctl --list-boots
     }
 }

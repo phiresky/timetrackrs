@@ -218,8 +218,8 @@ impl ExtractInfo for AppUsageEntry {
         let x = &self;
         if x.act_type == crate::import::app_usage_sqlite::UseType::UseApp {
             let pkg_name = x.pkg_name.as_deref().unwrap_or("").to_string();
-            Some(ExtractedInfo {
-                software: Some(Software {
+            Some(ExtractedInfo::UseDevice {
+                general: GeneralSoftware {
                     hostname: x.device_name.clone(),
                     device_type: SoftwareDeviceType::Smartphone,
                     device_os: "Android".to_string(),
@@ -229,8 +229,8 @@ impl ExtractInfo for AppUsageEntry {
                         x.pkg_pkg.as_deref().unwrap_or("??").to_string()
                     )),
                     unique_name: pkg_name.clone(),
-                }),
-                ..Default::default()
+                },
+                specific: SpecificSoftware::Unknown,
             })
         } else {
             None
@@ -239,7 +239,7 @@ impl ExtractInfo for AppUsageEntry {
 }
 
 impl Importable for AppUsageImportArgs {
-    fn import(&self) -> anyhow::Result<Vec<NewActivity>> {
+    fn import(&self) -> anyhow::Result<Vec<NewDbEvent>> {
         let conf = self;
         if !TIBU_FNAME.is_match(&conf.filename) {
             anyhow::bail!("Not a tibu file!");
@@ -345,14 +345,14 @@ impl Importable for AppUsageImportArgs {
                 let duration = (n.act_dur as f64) / 1000.0;
                 let id = format!("app_usage.{}_{}_{}", n.act_time, n.act_type_raw, n.act_pid);
                 outs.push(
-                    CreateNewActivity {
+                    CreateNewDbEvent {
                         timestamp,
                         sampler: Sampler::Explicit { duration },
                         sampler_sequence_id: sampler_sequence_id.clone(),
                         // assume each app can only do one event of specific type in one ms
                         // needed becouse the _id column in the db is not declared AUTOINCREMENT so may be reused
                         id,
-                        data: CapturedData::app_usage_v1(n),
+                        data: EventData::app_usage_v1(n),
                     }
                     .try_into()?,
                 );

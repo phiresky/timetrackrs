@@ -1,5 +1,5 @@
+use crate::db::schema::events;
 use crate::prelude::*;
-use crate::schema::activity;
 use diesel::deserialize::{self, FromSql};
 use diesel::serialize::{self, Output, ToSql};
 use diesel::sql_types::Text;
@@ -8,7 +8,7 @@ use std::io::Write;
 use uuid::Uuid;
 
 #[derive(Queryable, Serialize, TypeScriptify)]
-pub struct Activity {
+pub struct DbEvent {
     pub id: String,
     pub timestamp: Timestamptz,
     pub data_type: String,
@@ -64,8 +64,8 @@ impl ToSql<Text, Sqlite> for Sampler {
 }
 
 #[derive(Insertable)]
-#[table_name = "activity"]
-pub struct NewActivity {
+#[table_name = "events"]
+pub struct NewDbEvent {
     pub id: String,
     pub timestamp: Timestamptz,
     pub data_type: String,

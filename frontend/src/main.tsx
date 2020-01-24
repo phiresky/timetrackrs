@@ -3,6 +3,7 @@ import { observer } from "mobx-react"
 import React from "react"
 import { render } from "react-dom"
 import { SummaryFilter } from "./ftree"
+import { Plot } from "./plot"
 import { ExtractedInfo } from "./server"
 import { durationToString, totalDuration } from "./util"
 
@@ -12,32 +13,74 @@ export type Activity = {
 	duration: number
 	data: ExtractedInfo
 }
+type Keyed<
+	T extends { [k in discriminator]: string | number | symbol },
+	discriminator extends keyof T
+> = {
+	[k in T[discriminator]]: Omit<
+		Extract<T, { [z in discriminator]: k }>,
+		discriminator
+	>
+}
+export type KeyedExtractedInfo = Keyed<ExtractedInfo, "type">
 
-const entryComponents: {
-	[k in keyof ExtractedInfo]?: (
-		e: { [k2 in keyof Omit<ExtractedInfo, k>]: ExtractedInfo[k2] } &
-			{ [ki in k]: NonNullable<ExtractedInfo[ki]> },
-	) => React.ReactNode
-} = {
-	shell(e) {
-		return <div>Shell in {e.shell.cwd}</div>
+type _UseSoftware<T> = T extends { type: "UseDevice" } ? T : never
+export type UseSoftware = _UseSoftware<ExtractedInfo>
+
+type KeyedUseSpecificSoftware = Keyed<UseSoftware["specific"], "type">
+
+export type KeyedOuterUseSpecificSoftware = {
+	[k in keyof KeyedUseSpecificSoftware]: UseSoftware & {
+		specific: KeyedUseSpecificSoftware[k]
+	}
+}
+
+/*type KeyedOuter<
+	TDiscriminator extends string,
+	TInner extends string,
+	T extends { [TKey in TDiscriminator]: Record<TInner, string> }
+> = {
+	[TKey in T[TDiscriminator][TInner]]: T extends Record<
+		TDiscriminator,
+		Record<TInner, TKey>
+	>
+		? Omit<T, TDiscriminator>
+		: never
+}
+
+type KeyedUseSpecificSoftware = KeyedOuter<"specific", "type", UseSoftware>*/
+
+type KeyedReactComp<T> = { [k in keyof T]: (e: T[k]) => React.ReactNode }
+
+const useSpecificSoftwareComponents: KeyedReactComp<KeyedOuterUseSpecificSoftware> = {
+	Shell(e) {
+		return <div>Shell in {e.specific.cwd}</div>
 	},
-	web_browser(e) {
-		return <div>Browser at {e.web_browser.service} </div>
+	WebBrowser(e) {
+		return <div>Browser at {e.specific.service}</div>
 	},
-	software_development(e) {
+	SoftwareDevelopment(e) {
+		return <div>Software Development of {e.specific.project_path}</div>
+	},
+	MediaPlayer(e) {
+		return <div>Consumed Media: {e.specific.media_name}</div>
+	},
+	Unknown(e) {
 		return (
 			<div>
-				Software Development of {e.software_development.project_path}
+				Used {e.general.device_type}: {e.general.title}
 			</div>
 		)
 	},
-	software(e) {
-		return (
-			<div>
-				Used {e.software.device_type}: {e.software.title}
-			</div>
-		)
+}
+
+/*const softwareComponents: {k in keyof }*/
+const entryComponents: KeyedReactComp<KeyedExtractedInfo> = {
+	PhysicalActivity(e) {
+		return <div>*dance*</div>
+	},
+	UseDevice(e) {
+		return useSpecificSoftwareComponents[e.specific.type]
 	},
 }
 
@@ -47,9 +90,10 @@ interface Grouper {
 	component: React.ComponentType<{ entries: Activity[] }>
 }
 const groupers: Grouper[] = [
-	{
+	/*{
 		name: "specificComputerProgram",
 		shouldGroup({ data: a }, { data: b }) {
+			if(a.type === "UseDevice" && b.type === "UseDevice") {
 			if (a.shell && a.shell.cwd === b.shell?.cwd) return true
 			if (
 				a.software_development &&
@@ -73,7 +117,7 @@ const groupers: Grouper[] = [
 				</ul>
 			)
 		},
-	},
+	},*/
 	{
 		name: "UsedComputer",
 		shouldGroup(a, b) {
@@ -81,12 +125,15 @@ const groupers: Grouper[] = [
 			const d2 = new Date(b.timestamp)
 			const distanceSeconds = Math.abs(d1.getTime() - d2.getTime()) / 1000
 			if (distanceSeconds > 2 * (a.duration + b.duration)) return false
-			return a.data.software
-				? a.data.software.hostname === b.data.software?.hostname
+			return a.data.type === "UseDevice" && b.data.type === "UseDevice"
+				? a.data.general.hostname === b.data.general.hostname
 				: false
 		},
 		component(p) {
-			const type = p.entries[0].data.software?.device_type || "UNK"
+			const type =
+				p.entries[0].data.type === "UseDevice"
+					? p.entries[0].data.general?.device_type || "UNK"
+					: "UNK"
 
 			return (
 				<ul>
@@ -121,11 +168,9 @@ function group(grouper: Grouper, entries: Activity[]): Activity[][] {
 class Entry extends React.Component<Activity> {
 	render() {
 		const { data } = this.props
-		for (const k of Object.keys(data) as (keyof typeof data)[]) {
-			const E = entryComponents[k] as any
-			if (data[k] && E) return <E {...data} />
-		}
-		return "unk: " + data.software?.title
+		const E = entryComponents[data.type] as any
+		return <E {...data} />
+		//return "unk: " + data.software?.title
 	}
 }
 
@@ -261,6 +306,7 @@ class GUI extends React.Component {
 					<h1>Personal Timeline</h1>
 					<h2>{this.loadState}</h2>
 				</div>
+				<Plot data={this.data.get("2020-01-20")!} />
 				<div className="item" onScroll={this.onScroll}>
 					<div id="timeline">
 						<div>

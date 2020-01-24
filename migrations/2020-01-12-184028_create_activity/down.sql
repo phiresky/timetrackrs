@@ -1,1 +1,1 @@
-drop table activity;
+drop table events;

@@ -4,8 +4,6 @@
 
 #![allow(non_snake_case)]
 
-use super::CapturedData;
-
 use crate::prelude::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use chrono::DateTime;
@@ -27,8 +25,22 @@ use x11rb::generated::xproto::ATOM;
 use x11rb::generated::xproto::WINDOW;
 use x11rb::xcb_ffi::XCBConnection;
 
+#[derive(StructOpt)]
+pub struct X11CaptureArgs {
+    // captures from default screen, no options really
+}
+
+impl CapturerCreator for X11CaptureArgs {
+    fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
+        match X11Capturer::init() {
+            Ok(e) => Ok(Box::new(e)),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, TypeScriptify)]
-pub struct X11CapturedData {
+pub struct X11EventData {
     #[serde(default)]
     pub os_info: util::OsInfo,
     pub desktop_names: Vec<String>,
@@ -65,6 +77,26 @@ pub struct ProcessData {
     pub status: String,
     pub start_time: DateTime<chrono::Local>,
     pub cpu_usage: f32,
+}
+impl X11WindowData {
+    fn get_title(&self) -> Option<String> {
+        if let Some(J::String(title)) = &self.window_properties.get("_NET_WM_NAME") {
+            Some(title.to_string())
+        } else {
+            None
+        }
+    }
+    fn get_class(&self) -> Option<(String, String)> {
+        self.window_properties
+            .get("WM_CLASS")
+            .and_then(|e| match e {
+                J::String(cls) => {
+                    let v = split_zero(cls);
+                    Some((v[0].clone(), v[1].clone()))
+                }
+                _ => None,
+            })
+    }
 }
 fn timestamp_to_iso_string(timestamp: u64) -> String {
     timestamp_to_iso(timestamp).to_rfc3339()
@@ -151,7 +183,9 @@ impl X11Capturer {
             atom_name_map: HashMap::new(),
         })
     }
-    pub fn capture(&mut self) -> anyhow::Result<CapturedData> {
+}
+impl Capturer for X11Capturer {
+    fn capture(&mut self) -> anyhow::Result<EventData> {
         let system = sysinfo::System::new();
         let NET_CLIENT_LIST = self.atom("_NET_CLIENT_LIST")?;
         let NET_CURRENT_DESKTOP = self.atom("_NET_CURRENT_DESKTOP")?;
@@ -282,7 +316,7 @@ impl X11Capturer {
             x11rb::generated::screensaver::query_info(&self.conn, self.root_window)?.reply()?;
         // see XScreenSaverQueryInfo at https://linux.die.net/man/3/xscreensaverunsetattributes
 
-        let data = X11CapturedData {
+        let data = X11EventData {
             desktop_names: desktop_names,
             os_info: self.os_info.clone(),
             current_desktop_id: current_desktop as usize,
@@ -292,117 +326,19 @@ impl X11Capturer {
             screensaver_window: xscreensaver.saver_window,
             windows: windowsdata,
         };
-        Ok(CapturedData::x11_v2(data))
-    }
-}
-
-lazy_static::lazy_static! {
-    static ref FORMATTED_TITLE_MATCH: Regex = Regex::new(r#"🛤([a-z]{2,5})🠚(.*)🠘"#).unwrap();
-    static ref FORMATTED_TITLE_SPLIT: Regex = Regex::new("🙰").unwrap();
-    static ref FORMATTED_TITLE_KV: Regex = Regex::new("^([a-z0-9]+)=(.*)$").unwrap();
-    static ref SH_JSON_TITLE: Regex = Regex::new(r#"\{".*[^\\]"}"#).unwrap();
-    static ref UNINTERESTING_BINARY: Regex = Regex::new(r#"/electron\d*$"#).unwrap();
-    static ref BROWSER_BINARY: Regex = Regex::new(r#"/(firefox|google-chrome|chromium)$"#).unwrap();
-    static ref URL: Regex =
-        Regex::new(r#"(?i)https?://(-\.)?([^\s/?\.#-]+\.?)+(/[^\s]*)?"#).unwrap();
-        // Regex::new(r#"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"#).unwrap();
-}
-fn match_from_title(window: &X11WindowData, info: &mut ExtractedInfo) {
-    use crate::extract::properties::*;
-    if let Some(J::String(title)) = &window.window_properties.get("_NET_WM_NAME") {
-        if let Some(sw) = &mut info.software {
-            sw.title = title.clone();
-            if let Some(p) = &window.process {
-                sw.identifier = Identifier(p.exe.to_string());
-                sw.unique_name = p.exe.to_string();
-                if UNINTERESTING_BINARY.is_match(&p.exe) {
-                    if let Some(J::String(cls)) = window.window_properties.get("WM_CLASS") {
-                        let v = split_zero(cls);
-                        sw.identifier = Identifier(format!("WM_CLASS:{}.{}", v[0], v[1]));
-                    }
-                }
-            }
-        };
-        // match strictly formatted stuff in title:
-        // 🛤sd🠚proj=/project/name🙰file=file/name🠘
-        if let Some(cap) = FORMATTED_TITLE_MATCH.captures(title) {
-            let category = cap.get(1).unwrap().as_str();
-            let kv = {
-                let mut kv = HashMap::new();
-                let values = cap.get(2).unwrap().as_str();
-                for kvs in FORMATTED_TITLE_SPLIT.split(values) {
-                    let c = FORMATTED_TITLE_KV.captures(kvs).unwrap();
-                    let k = c.get(1).unwrap().as_str().to_string();
-                    let v = c.get(2).unwrap().as_str().to_string();
-                    kv.insert(k, v);
-                }
-                kv
-            };
-            match category {
-                "sd" => {
-                    info.software_development = Some(SoftwareDevelopment {
-                        project_path: kv.get("proj").or(kv.get("project")).map(|e| e.to_string()),
-                        file_path: kv.get("file").unwrap().to_string(),
-                    })
-                }
-                _ => {
-                    println!("unknown category in title info: {}", category);
-                }
-            }
-        }
-        if let Some(m) = SH_JSON_TITLE.find(title) {
-            if let Ok(J::Object(o)) = serde_json::from_str(m.as_str()) {
-                if let (
-                    Some(J::String(cwd)),
-                    Some(J::Number(histdb)),
-                    Some(J::String(usr)),
-                    Some(J::String(cmd)),
-                ) = (o.get("cwd"), o.get("histdb"), o.get("usr"), o.get("cmd"))
-                {
-                    info.shell = Some(Shell {
-                        cwd: cwd.to_string(),
-                        cmd: cmd.to_string(),
-                        zsh_histdb_session_id: Identifier(histdb.to_string()),
-                    })
-                }
-            }
-        }
-        if let Some(p) = &window.process {
-            if BROWSER_BINARY.is_match(&p.exe) {
-                if let Some(cap) = URL.find(&title) {
-                    if let Ok(url) = url::Url::parse(cap.as_str()) {
-                        info.web_browser = Some(WebBrowser {
-                            url: cap.as_str().to_string(),
-                            origin: url.origin().ascii_serialization(),
-                            service: url.domain().unwrap().to_string(),
-                        });
-                    }
-                }
-            }
-        }
+        Ok(EventData::x11_v2(data))
     }
 }
 
 use crate::extract::{properties::ExtractedInfo, ExtractInfo};
-impl ExtractInfo for X11CapturedData {
+impl ExtractInfo for X11EventData {
     fn extract_info(&self) -> Option<ExtractedInfo> {
         use crate::extract::properties::*;
         let x = &self;
         if x.ms_since_user_input > 120 * 1000 {
             return None;
         }
-        let window = x.windows.iter().find(|e| e.window_id == x.focused_window);
-        let mut info = ExtractedInfo {
-            ..Default::default()
-        }; /* Software {
-               pub device: Text100,
-               pub device_type: SoftwareDeviceType,
-               pub device_os: Text10,
-               pub title: Text10000,
-               pub identifier: Identifier, // unique identifier for software package e.g. android:com.package.id or pc:hostname/binary
-               pub unique_name: Text100, // name of software that should be globally unique and generally recognizable (e.g. "Firefox")
-           }*/
-        info.software = Some(Software {
+        let mut general = GeneralSoftware {
             hostname: x.os_info.hostname.clone(),
             device_type: if x.os_info.batteries.unwrap_or(0) > 0 {
                 SoftwareDeviceType::Laptop
@@ -413,11 +349,24 @@ impl ExtractInfo for X11CapturedData {
             identifier: Identifier("".to_string()),
             title: "".to_string(),
             unique_name: "".to_string(),
-        });
-        match window {
-            None => return None,
-            Some(w) => match_from_title(w, &mut info),
         };
-        Some(info)
+        let window = x.windows.iter().find(|e| e.window_id == x.focused_window);
+        let specific = match window {
+            None => SpecificSoftware::Unknown,
+            Some(w) => {
+                if let Some(window_title) = w.get_title() {
+                    let cls = w.get_class();
+                    super::pc_common::match_from_title(
+                        &mut general,
+                        &window_title,
+                        &cls,
+                        w.process.as_ref().map(|p| p.exe.as_ref()),
+                    )
+                } else {
+                    SpecificSoftware::Unknown
+                }
+            }
+        };
+        Some(ExtractedInfo::UseDevice { general, specific })
     }
 }

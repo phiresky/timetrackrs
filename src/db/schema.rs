@@ -1,5 +1,5 @@
 table! {
-    activity (id) {
+    events (id) {
         id -> Text,
         timestamp -> Text,
         data_type -> Text,

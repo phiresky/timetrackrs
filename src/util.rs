@@ -29,7 +29,7 @@ impl Default for OsInfo {
     fn default() -> OsInfo {
         OsInfo {
             os_type: "Arch Linux".to_string(),
-            version: "1".to_string(),
+            version: "rolling".to_string(),
             batteries: Some(0),
             hostname: "phirearch".to_string(),
             machine_id: None,

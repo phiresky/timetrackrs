@@ -6,39 +6,16 @@ use rocket_contrib::json::Json;
 use serde_json::json;
 use serde_json::Value as J;
 use track_pc_usage_rs as trbtt;
-use track_pc_usage_rs::capture::deserialize_captured;
+use track_pc_usage_rs::events::deserialize_captured;
 use track_pc_usage_rs::util::iso_string_to_date;
+use trbtt::db::models::{DbEvent, Timestamptz};
 use trbtt::extract::ExtractInfo;
-use trbtt::models::{Activity, Timestamptz};
 #[macro_use]
 extern crate rocket_contrib;
 
-#[database("activity_database")]
+#[database("events_database")]
 struct DbConn(diesel::SqliteConnection);
 
-/*#[get("/fetch-activity?<from>&<to>&<limit>")]
-fn fetch_activity(
-    db: DbConn,
-    from: Option<String>,
-    limit: Option<u32>,
-    to: String,
-) -> anyhow::Result<Json<J>> {
-    // println!("jsonifying...");
-    let v = mdata
-        .into_iter()
-        .map(|a| {
-            Ok(json!({
-                "id": a.id,
-                "timestamp": a.timestamp,
-                "data_type": a.data_type,
-                "data_type_version": a.data_type_version,
-                "sampler": a.sampler,
-                "data": serde_json::from_str::<J>(&a.data)?,
-            }))
-        })
-        .collect::<anyhow::Result<Vec<_>>>()?;
-    Ok(Json(json!({ "data": &v })))
-}*/
 #[get("/fetch-info?<after>&<before>&<limit>")]
 fn fetch_info(
     db: DbConn,
@@ -49,9 +26,8 @@ fn fetch_info(
     // println!("handling...");
     // println!("querying...");
     let mdata = {
-        use trbtt::schema::activity::dsl::*;
-        let mut query = activity.into_boxed();
-        // let query = activity.filter(timestamp.lt(Timestamptz::new(to)));
+        use trbtt::db::schema::events::dsl::*;
+        let mut query = events.into_boxed();
         if let Some(after) = after {
             let after = iso_string_to_date(&after)?;
             query = query
@@ -65,7 +41,7 @@ fn fetch_info(
                 .order(timestamp.desc());
         }
         let limit = limit.unwrap_or(100);
-        query.limit(limit as i64).load::<Activity>(&*db)?
+        query.limit(limit as i64).load::<DbEvent>(&*db)?
     };
     // println!("jsonifying...");
     let v = mdata
@@ -74,8 +50,7 @@ fn fetch_info(
             let r = deserialize_captured((&a.data_type, &a.data));
             match r {
                 Ok(r) => {
-                    if let Some(mut data) = r.extract_info() {
-                        data.event_id = a.id.to_string();
+                    if let Some(data) = r.extract_info() {
                         Some(json!({
                             "id": a.id,
                             "timestamp": a.timestamp,

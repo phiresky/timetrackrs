@@ -2,30 +2,25 @@ use std::io::prelude::*;
 use track_pc_usage_rs as trbtt;
 use trbtt::capture::*;
 use trbtt::extract;
-use trbtt::models::*;
 use trbtt::prelude::*;
 use trbtt::sampler::Sampler;
 use typescript_definitions::TypeScriptifyTrait;
 
 const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
-    Activity::type_script_ify,
+    // DbEvent::type_script_ify,
     Sampler::type_script_ify,
-    CapturedData::type_script_ify,
-    x11::X11CapturedData::type_script_ify,
+    EventData::type_script_ify,
+    x11::X11EventData::type_script_ify,
     x11::X11WindowData::type_script_ify,
     x11::X11WindowGeometry::type_script_ify,
     x11::ProcessData::type_script_ify,
     util::OsInfo::type_script_ify,
     extract::properties::ExtractedInfo::type_script_ify,
-    extract::properties::SoftwareDevelopment::type_script_ify,
-    extract::properties::Shell::type_script_ify,
-    extract::properties::WebBrowser::type_script_ify,
-    extract::properties::MediaPlayer::type_script_ify,
-    extract::properties::Software::type_script_ify,
-    extract::properties::PhysicalActivity::type_script_ify,
-    extract::properties::MediaType::type_script_ify,
     extract::properties::SoftwareDeviceType::type_script_ify,
     extract::properties::Identifier::type_script_ify,
+    GeneralSoftware::type_script_ify,
+    SpecificSoftware::type_script_ify,
+    MediaType::type_script_ify,
 ];
 
 // const all_types: Vec<

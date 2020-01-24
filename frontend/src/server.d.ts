@@ -62,43 +62,13 @@ export type OsInfo = {
 	hostname: string
 	machine_id: string | null
 }
-export type ExtractedInfo = {
-	event_id: string
-	software_development: SoftwareDevelopment | null
-	shell: Shell | null
-	web_browser: WebBrowser | null
-	media_player: MediaPlayer | null
-	software: Software | null
-	physical_activity: PhysicalActivity | null
-}
-export type SoftwareDevelopment = {
-	project_path: Text100 | null
-	file_path: Text1000
-}
-export type Shell = {
-	cwd: Text1000
-	cmd: Text10000
-	zsh_histdb_session_id: Identifier
-}
-export type WebBrowser = { url: Text10000; origin: Text1000; service: Text1000 }
-export type MediaPlayer = {
-	media_filename: Text1000
-	media_type: MediaType
-	media_name: Text1000
-}
-export type Software = {
-	hostname: Text100
-	device_type: SoftwareDeviceType
-	device_os: Text10
-	title: Text10000
-	identifier: Identifier
-	unique_name: Text100
-}
-export type PhysicalActivity = { activity_type: Text100 }
-export enum MediaType {
-	Audio = "Audio",
-	Video = "Video",
-}
+export type ExtractedInfo =
+	| {
+			type: "UseDevice"
+			general: GeneralSoftware
+			specific: SpecificSoftware
+	  }
+	| { type: "PhysicalActivity"; activity_type: Text100 }
 export enum SoftwareDeviceType {
 	Desktop = "Desktop",
 	Laptop = "Laptop",
@@ -106,3 +76,40 @@ export enum SoftwareDeviceType {
 	Tablet = "Tablet",
 }
 export type Identifier = string
+export type GeneralSoftware = {
+	hostname: Text100
+	device_type: SoftwareDeviceType
+	device_os: Text10
+	title: Text10000
+	identifier: Identifier
+	unique_name: Text100
+}
+export type SpecificSoftware =
+	| {
+			type: "WebBrowser"
+			url: Text10000
+			origin: Text1000
+			service: Text1000
+	  }
+	| {
+			type: "Shell"
+			cwd: Text1000
+			cmd: Text10000
+			zsh_histdb_session_id: Identifier
+	  }
+	| {
+			type: "MediaPlayer"
+			media_filename: Text1000
+			media_type: MediaType
+			media_name: Text1000
+	  }
+	| {
+			type: "SoftwareDevelopment"
+			project_path: Text100 | null
+			file_path: Text1000
+	  }
+	| { type: "Unknown" }
+export enum MediaType {
+	Audio = "Audio",
+	Video = "Video",
+}

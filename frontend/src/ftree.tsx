@@ -1,6 +1,10 @@
 import _ from "lodash"
 import * as React from "react"
-import { Activity } from "./main"
+import {
+	Activity,
+	KeyedExtractedInfo,
+	KeyedOuterUseSpecificSoftware,
+} from "./main"
 import { durationToString, totalDuration } from "./util"
 
 type Filter = {
@@ -8,52 +12,57 @@ type Filter = {
 	name?: string | null | undefined
 	group?(e: Activity): Filter
 }
-const Browser: Filter = {
-	key: "Browser",
-	group(e: Activity) {
-		return {
-			key: e.data.web_browser?.service,
-			group(e: Activity) {
-				return { key: e.data.web_browser?.url }
-			},
-		}
-	},
-}
-const SoftwareDev: Filter = {
-	key: "Software Develompent",
-	group(e: Activity) {
-		return {
-			key: e.data.software_development?.project_path,
-			group(e: Activity) {
-				return {
-					key: e.data.software_development?.file_path,
-				}
-			},
-		}
-	},
-}
-const Shell: Filter = {
-	key: "Shell",
-	group(e: Activity) {
-		return { key: e.data.shell?.cwd }
-	},
-}
 const agg: Filter = {
 	key: "Activity",
 	group(e: Activity) {
-		if (e.data.web_browser) return Browser
-		if (e.data.software_development) return SoftwareDev
-		if (e.data.shell) return Shell
-
 		return {
-			key: "Other",
+			key: e.data.type,
 			group(e) {
-				return {
-					key: e.data.software?.identifier,
-					name:
-						e.data.software?.unique_name ||
-						e.data.software?.identifier,
+				const o: {
+					[k in keyof KeyedExtractedInfo]: (
+						z: KeyedExtractedInfo[k],
+					) => Filter
+				} = {
+					UseDevice: e => ({
+						key: e.specific.type,
+						group(e1) {
+							const o: {
+								[k in keyof KeyedOuterUseSpecificSoftware]: (
+									z: KeyedOuterUseSpecificSoftware[k],
+								) => Filter
+							} = {
+								Shell: e => ({
+									key: e.specific.cwd,
+								}),
+								SoftwareDevelopment: e => ({
+									key: e.specific.project_path,
+									group(e1) {
+										return {
+											key: e.specific.file_path,
+										}
+									},
+								}),
+								WebBrowser: e => ({
+									key: e.specific.service,
+									group(e1) {
+										return { key: e.specific.url }
+									},
+								}),
+								MediaPlayer: e => ({
+									key: e.specific.media_name,
+								}),
+								Unknown: e => ({
+									key: "unknown",
+								}),
+							}
+							return o[e.specific.type](e1.data as any)
+						},
+					}),
+					PhysicalActivity: e => ({
+						key: "PhysicalActivity",
+					}),
 				}
+				return o[e.data.type](e.data as any)
 			},
 		}
 	},

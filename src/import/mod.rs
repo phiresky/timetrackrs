@@ -1,7 +1,7 @@
 pub mod app_usage_sqlite;
 pub mod journald;
 
-use crate::models::NewActivity;
+use crate::prelude::*;
 
 use app_usage_sqlite::AppUsageImportArgs;
 use enum_dispatch::enum_dispatch;
@@ -18,5 +18,5 @@ pub enum ImportArgs {
 
 #[enum_dispatch(ImportArgs)]
 pub trait Importable {
-    fn import(&self) -> anyhow::Result<Vec<NewActivity>>;
+    fn import(&self) -> anyhow::Result<Vec<NewDbEvent>>;
 }

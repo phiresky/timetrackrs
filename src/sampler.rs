@@ -9,7 +9,9 @@ use typescript_definitions::TypeScriptify;
 #[sql_type = "Text"]
 #[serde(tag = "type")]
 pub enum Sampler {
+    /// sample randomly, with an average interval of avg_time seconds
     RandomSampler { avg_time: f64 },
+    /// where the event duration is known exactly
     Explicit { duration: f64 },
 }
 

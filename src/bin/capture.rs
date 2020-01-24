@@ -4,12 +4,13 @@ use diesel::prelude::*;
 use trbtt::prelude::*;
 
 fn main() -> anyhow::Result<()> {
+    let args = CaptureArgs::from_args();
+
+    let mut c = args.create_capturer()?;
     let db = trbtt::database::connect()?;
 
-    let mut c = trbtt::capture::x11::X11Capturer::init()?;
-
-    use trbtt::models::*;
-    use trbtt::schema::activity;
+    use trbtt::db::models::*;
+    use trbtt::db::schema::events;
 
     // println!("{}", serde_json::to_string_pretty(&data)?);
     let sampler = Sampler::RandomSampler { avg_time: 30.0 };
@@ -21,16 +22,16 @@ fn main() -> anyhow::Result<()> {
             std::thread::sleep(std::time::Duration::from_secs_f64(sample));
 
             let data = c.capture()?;
-            let act = CreateNewActivity {
+            let act = CreateNewDbEvent {
                 id: util::random_uuid(),
                 timestamp: Utc::now(),
                 sampler: sampler.clone(),
                 sampler_sequence_id: sampler_sequence_id.clone(),
                 data,
             };
-            let ins: NewActivity = act.try_into()?;
+            let ins: NewDbEvent = act.try_into()?;
 
-            diesel::insert_into(activity::table)
+            diesel::insert_into(events::table)
                 .values(&ins)
                 .execute(&db)?;
         }

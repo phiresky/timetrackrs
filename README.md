@@ -39,7 +39,7 @@ Install https://addons.mozilla.org/en-US/firefox/addon/add-url-to-window-title/ 
 
 ### VS Code
 
-Open your user settings and set `window.title` to `${dirty}${activeEditorShort}${separator}${rootName}${separator}|project=${rootPath}|file=${activeEditorMedium}| VSCode`
+Open your user settings and set `window.title` to `${dirty}${activeEditorShort}${separator}${rootName}${separator}🛤sd🠚proj=${rootPath}🙰file=${activeEditorMedium}🠘 VSCode`
 
 ### Shell / Zsh
 
@@ -52,23 +52,8 @@ Todo: look at https://arbtt.nomeata.de/doc/users_guide/effective-use.html
     ```zsh
     # set window title for track-pc-usage-rs
     # adopted from https://github.com/ohmyzsh/ohmyzsh/blob/master/lib/termsupport.zsh
+    autoload -Uz add-zsh-hook
 
-    function title {
-        setopt prompt_subst
-        : ${2=$1}
-        case "$TERM" in
-            cygwin|xterm*|putty*|rxvt*|ansi)
-                print -Pn "\e]2;$2:q\a" # set window name
-                # print -Pn "\e]1;$1:q\a" # set tab name
-            ;;
-            screen*|tmux*)
-                print -Pn "\ek$1:q\e\\" # set screen hardstatus
-            ;;
-            *)
-                echo unsupported for setting title
-            ;;
-        esac
-    }
     function title_precmd {
         title_preexec '' ''
     }
@@ -84,6 +69,7 @@ Todo: look at https://arbtt.nomeata.de/doc/users_guide/effective-use.html
     }
     add-zsh-hook precmd title_precmd
     add-zsh-hook preexec title_preexec
+
     ```
 
 ## Compression notes
@@ -91,10 +77,10 @@ Todo: look at https://arbtt.nomeata.de/doc/users_guide/effective-use.html
 Think about row-level compression.
 
 ```
-for id in $(sqlite3 activity.sqlite3 "select id from activity where data_type='x11'"); do sqlite3 activity.sqlite3 "select data from activity where id='$id'" > "x11/$id.json"; done
+for id in $(sqlite3 activity.sqlite3 "select id from events where data_type='x11'"); do sqlite3 activity.sqlite3 "select data from events where id='$id'" > "x11/$id.json"; done
 ```
 
-Zstd test: 7400 x11 activity rows:
+Zstd test: 7400 x11 events rows:
 
 -   202M uncompressed (27kB avg)
 -   21M compressed without dictionary (2.8kbyte avg)
