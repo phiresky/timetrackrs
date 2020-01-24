@@ -6,16 +6,17 @@
 		"pages": "rm -r dist/* && yarn build && cd dist && git add -A . && git commit -m'update binaries'"
 	},
 	"dependencies": {
+		"@babel/core": "^7.8.3",
 		"@babel/plugin-proposal-class-properties": "^7.8.3",
 		"@babel/plugin-proposal-decorators": "^7.8.3",
 		"@babel/preset-react": "^7.8.3",
 		"@babel/preset-typescript": "^7.8.3",
 		"@types/lodash": "^4.14.149",
 		"@types/plotly.js": "^1.44.24",
-		"@types/react": "^16.9.17",
-		"@types/react-dom": "^16.9.4",
-		"@typescript-eslint/eslint-plugin": "^2.16.0",
-		"@typescript-eslint/parser": "^2.16.0",
+		"@types/react": "^16.9.19",
+		"@types/react-dom": "^16.9.5",
+		"@typescript-eslint/eslint-plugin": "^2.17.0",
+		"@typescript-eslint/parser": "^2.17.0",
 		"eslint": "^6.8.0",
 		"eslint-config-airbnb": "^18.0.1",
 		"eslint-config-prettier": "^6.9.0",
@@ -23,9 +24,9 @@
 		"eslint-plugin-jsx-a11y": "^6.2.3",
 		"eslint-plugin-prettier": "^3.1.2",
 		"eslint-plugin-react": "^7.18.0",
-		"eslint-plugin-react-hooks": "^1.7.0",
-		"husky": "^4.0.10",
-		"lint-staged": "^9.5.0",
+		"eslint-plugin-react-hooks": "^2.3.0",
+		"husky": "^4.2.1",
+		"lint-staged": "^10.0.2",
 		"lodash": "^4.17.15",
 		"mobx": "^5.15.2",
 		"mobx-react": "^6.1.5",
@@ -36,7 +37,7 @@
 		"prettier": "^1.19.1",
 		"react": "^16.12.0",
 		"react-dom": "^16.12.0",
-		"typescript": "^3.7.4"
+		"typescript": "^3.7.5"
 	},
 	"husky": {
 		"hooks": {
@@ -45,8 +46,7 @@
 	},
 	"lint-staged": {
 		"*.{js,json,css,less,scss,ts,tsx,md}": [
-			"prettier --write",
-			"git add"
+			"prettier --write"
 		]
 	},
 	"babel": {
@@ -76,6 +76,6 @@
 		]
 	},
 	"devDependencies": {
-		"sass": "^1.24.5"
+		"sass": "^1.25.0"
 	}
 }
