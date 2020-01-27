@@ -233,6 +233,9 @@ name = "cc"
 version = "1.0.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95e28fa049fda1c330bcf9d723be7663a899c4679724b34c81e9f5a326aab8cd"
+dependencies = [
+ "jobserver",
+]
 
 [[package]]
 name = "cfg-if"
@@ -275,6 +278,12 @@ checksum = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 dependencies = [
  "bitflags",
 ]
+
+[[package]]
+name = "concat-reader"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "230065ffb4349e6bdb6cffc8f60f22f1e92db7786efb1fa63564ddb47af7efcb"
 
 [[package]]
 name = "constant_time_eq"
@@ -703,6 +712,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
+
+[[package]]
 name = "groestl"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -848,6 +863,15 @@ name = "itoa"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "501266b7edd0174f8530248f87f99c88fbe60ca4ef3dd486835b8d8d53136f7f"
+
+[[package]]
+name = "jobserver"
+version = "0.1.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67b06c1b455f1cf4269a8cfc320ab930a810e2375a42af5075eb8a8b36405ce0"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "keccak"
@@ -2089,13 +2113,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "tempdir"
-version = "0.3.7"
+name = "tempfile"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
+checksum = "7a6e24d9338a0a5be79593e2fa15a648add6138caa803e2d5bc782c371732ca9"
 dependencies = [
- "rand 0.4.6",
+ "cfg-if",
+ "libc",
+ "rand 0.7.3",
+ "redox_syscall",
  "remove_dir_all",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -2155,6 +2183,7 @@ dependencies = [
  "byteorder",
  "bzip2",
  "chrono",
+ "concat-reader",
  "crypto-hashes",
  "diesel",
  "diesel_migrations",
@@ -2183,12 +2212,13 @@ dependencies = [
  "structopt",
  "sysinfo",
  "tar",
- "tempdir",
+ "tempfile",
  "typescript-definitions",
  "url 2.1.1",
  "uuid",
  "x11rb",
  "xcb",
+ "zstd",
 ]
 
 [[package]]
@@ -2530,4 +2560,34 @@ dependencies = [
  "quote 1.0.2",
  "syn 1.0.13",
  "synstructure",
+]
+
+[[package]]
+name = "zstd"
+version = "0.5.1+zstd.1.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c5d978b793ae64375b80baf652919b148f6a496ac8802922d9999f5a553194f"
+dependencies = [
+ "zstd-safe",
+]
+
+[[package]]
+name = "zstd-safe"
+version = "2.0.3+zstd.1.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bee25eac9753cfedd48133fa1736cbd23b774e253d89badbeac7d12b23848d3f"
+dependencies = [
+ "libc",
+ "zstd-sys",
+]
+
+[[package]]
+name = "zstd-sys"
+version = "1.4.15+zstd.1.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89719b034dc22d240d5b407fb0a3fe6d29952c181cff9a9f95c0bd40b4f8f7d8"
+dependencies = [
+ "cc",
+ "glob",
+ "libc",
 ]

@@ -254,7 +254,7 @@ impl Importable for AppUsageImportArgs {
         } else {
             // anyhow::bail!("Not encrypted!");
             let mut a = tar::Archive::new(bzip2::read::BzDecoder::new(File::open(&conf.filename)?));
-            let tmp = tempdir::TempDir::new("app_usage_extract")?;
+            let tmp = tempfile::TempDir::new()?;
             for e in a.entries()? {
                 let mut e = e?;
                 let path = e.header().path().unwrap().to_str().unwrap().to_string();

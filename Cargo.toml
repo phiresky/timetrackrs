@@ -41,11 +41,13 @@ openssl = "0.10.26"
 tar = "0.4.26"
 flate2 = "1.0.13"
 bzip2 = "0.3.3"
-tempdir = "0.3.7"
-rusqlite = "0.20.0"
+rusqlite = {version ="0.20.0", features = ["functions", "blob"]}
 enum-utils = "0.1.2"
 num_enum = "0.4.2"
 enum_dispatch = "0.2.0"
+zstd = "0.5.1"
+tempfile = "3.1.0"
+concat-reader = "0.1.0"
 
 [dependencies.rocket_contrib]
 version = "0.4.2"

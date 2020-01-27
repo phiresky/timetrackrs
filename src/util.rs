@@ -8,6 +8,10 @@ pub fn unix_epoch_millis_to_date(timestamp: i64) -> DateTime<Utc> {
     DateTime::from_utc(naive_datetime, Utc)
 }
 
+fn timestamp_to_iso_string(timestamp: i64) -> String {
+    unix_epoch_millis_to_date(timestamp).to_rfc3339()
+}
+
 pub fn iso_string_to_date(s: &str) -> anyhow::Result<DateTime<Utc>> {
     Ok(DateTime::<chrono::FixedOffset>::parse_from_rfc3339(s)?.with_timezone(&chrono::Utc))
 }

@@ -20,6 +20,8 @@ pub fn connect() -> anyhow::Result<SqliteConnection> {
         .context("setup pragma 3")?;
     db.execute("pragma journal_mode = WAL;")
         .context("setup pragma 4")?;
+    db.execute("pragma wal_autocheckpoint = 20;")
+        .context("setup pragma 4b")?;
     db.execute("pragma synchronous = normal;")
         .context("setup pragma 5")?;
     db.execute("pragma mmap_size = 30000000000;")

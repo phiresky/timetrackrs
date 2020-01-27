@@ -75,7 +75,7 @@ pub struct ProcessData {
     pub memory_kB: i64,
     pub parent: Option<i32>,
     pub status: String,
-    pub start_time: DateTime<chrono::Local>,
+    pub start_time: DateTime<Utc>,
     pub cpu_usage: f32,
 }
 impl X11WindowData {
@@ -98,13 +98,7 @@ impl X11WindowData {
             })
     }
 }
-fn timestamp_to_iso_string(timestamp: u64) -> String {
-    timestamp_to_iso(timestamp).to_rfc3339()
-}
-fn timestamp_to_iso(timestamp: u64) -> DateTime<chrono::Local> {
-    use std::time::{Duration, UNIX_EPOCH};
-    DateTime::<Local>::from(UNIX_EPOCH + Duration::from_secs(timestamp))
-}
+
 // TODO: replace with https://github.com/psychon/x11rb/issues/163
 fn to_u32s(v1: &Vec<u8>) -> Vec<u32> {
     let mut c = std::io::Cursor::new(v1);
@@ -278,7 +272,9 @@ impl Capturer for X11Capturer {
                         memory_kB: procinfo.memory() as i64,
                         parent: procinfo.parent(),
                         status: procinfo.status().to_string().to_string(),
-                        start_time: timestamp_to_iso(procinfo.start_time()),
+                        start_time: util::unix_epoch_millis_to_date(
+                            (procinfo.start_time() as i64) * 1000,
+                        ),
                         cpu_usage: procinfo.cpu_usage(),
                     })
                 } else {
