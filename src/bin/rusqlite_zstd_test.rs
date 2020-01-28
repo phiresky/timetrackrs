@@ -5,9 +5,10 @@ use rusqlite::types::ToSql;
 use rusqlite::types::ToSqlOutput;
 use rusqlite::types::{Value, ValueRef};
 use rusqlite::Error::UserFunctionError as UFE;
+use std::convert::TryInto;
+use std::fs::File;
 use std::io::Read;
 use std::io::Write;
-
 /*fn to_rusqlite<E>(e: Box<E>) -> rusqlite::Error
 where
     E: std::error::Error + std::marker::Send + std::marker::Sync,
@@ -89,7 +90,7 @@ impl rusqlite::functions::Aggregate<Option<ZstdTrainDictState>, Value> for ZstdT
     }
 }
 fn main() -> anyhow::Result<()> {
-    let db = rusqlite::Connection::open("./activity.2020-01-27b.sqlite3")?;
+    let db = rusqlite::Connection::open("./activity.2020-01-28.sqlite3")?;
     db.create_scalar_function(
         "zstd_compress",
         3,
@@ -149,7 +150,7 @@ fn main() -> anyhow::Result<()> {
     )?;
     db.create_scalar_function(
         "zstd_decompress",
-        1,
+        2,
         true,
         |ctx: &Context| -> Result<ToSqlOutput, rusqlite::Error> {
             let input_value = match ctx.get_raw(0) {
@@ -160,8 +161,21 @@ fn main() -> anyhow::Result<()> {
                 ValueRef::Null => return Ok(ToSqlOutput::Owned(Value::Null)),
             };
 
-            let mut vec = zstd::stream::decode_all(input_value)
-                .map_err(|e| rusqlite::Error::UserFunctionError(Box::new(e)))?;
+            let dict_raw = ctx.get::<Option<Vec<u8>>>(1)?;
+
+            let mut vec = {
+                let out = Vec::new();
+                let mut decoder = match dict_raw {
+                    Some(dict) => zstd::stream::write::Decoder::with_dictionary(out, &dict),
+                    None => zstd::stream::write::Decoder::new(out),
+                }
+                .map_err(|e| UFE(anyhow::anyhow!("dict load dosnt work").into()))?;
+                decoder
+                    .write_all(input_value)
+                    .map_err(|e| UFE(Box::new(e)))?;
+                decoder.flush();
+                decoder.into_inner()
+            };
 
             let is_blob = vec.pop().unwrap();
             if is_blob == b'b' {
@@ -176,15 +190,15 @@ fn main() -> anyhow::Result<()> {
     )?;
     db.create_aggregate_function("zstd_train_dict", 3, false, ZstdTrainDictAggregate)?;
 
-    let x: String = db.query_row(
+    /*let x: String = db.query_row(
         "select zstd_decompress(zstd_compress('test test test test test test test test test', 19, null))",
         params![],
         |row| row.get(0),
     )?;
 
-    println!("result = {}", &x);
+    println!("result = {}", &x);*/
 
-    db.execute_batch(
+    /*db.execute_batch(
         "
         create table if not exists _zstd_dicts (
             name text primary key not null,
@@ -194,16 +208,46 @@ fn main() -> anyhow::Result<()> {
             (select zstd_train_dict(data, 100000, (select 100000 * 100 / avg(length(data)) as sample_count from events))
                 as dict from events)
         );
-        
+        update events set data = zstd_compress(data, 3, (select dict from _zstd_dicts where name = 'data'));
+        alter table events rename to events_compressed;
         "
-    )?;
-
-    println!("result = {}", &x);
-
-    db.execute(
-        "update events set data = zstd_compress(data, 10, (select dict from _zstd_dicts where name = 'data'));",
-        params![],
-    )?;
+    )?;*/
+    db.execute("drop view if exists events", params![])?;
+    db.execute("create view if not exists events as
+    select id, timestamp, data_type, sampler, sampler_sequence_id, zstd_decompress(data, (select dict from _zstd_dicts where name='data')) as data from events_compressed", params![])?;
+    let mut stmt =
+        db.prepare("explain query plan select * from events where timestamp > '2020' limit 10")?;
+    let col_names = stmt
+        .column_names()
+        .into_iter()
+        .map(|e| e.to_string())
+        .collect::<Vec<_>>();
+    println!("cols={:?}", col_names);
+    let co = stmt.query_map(params![], |row| {
+        println!("eee");
+        let s = col_names
+            .iter()
+            .enumerate()
+            .map(|(i, e)| format!("{}={}", e, format_blob(row.get_raw(i))))
+            .collect::<Vec<String>>()
+            .join(", ");
+        println!("{}", s);
+        Ok("z")
+    })?;
+    for entry in co {
+        entry?;
+    }
 
     Ok(())
+}
+
+fn format_blob(b: ValueRef) -> String {
+    use ValueRef::*;
+    match b {
+        Null => "NULL".to_owned(),
+        Integer(i) => format!("{}", i),
+        Real(i) => format!("{}", i),
+        Text(i) => format!("'{}'", String::from_utf8_lossy(i).replace("'", "''")),
+        Blob(b) => format!("[blob {}B]", b.len()),
+    }
 }
