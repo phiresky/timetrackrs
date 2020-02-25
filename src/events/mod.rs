@@ -7,6 +7,7 @@ use crate::prelude::*;
 #[allow(non_camel_case_types)]
 pub enum EventData {
     x11_v2(X11EventData),
+    windows_v1(WindowsEventData),
     app_usage_v1(AppUsageEntry),
     journald(JournaldEntry),
 }
@@ -27,6 +28,7 @@ impl std::convert::TryFrom<CreateNewDbEvent> for NewDbEvent {
     fn try_from(value: CreateNewDbEvent) -> Result<Self, Self::Error> {
         let (data_type, data) = match &value.data {
             EventData::x11_v2(d) => ("x11_v2", serde_json::to_string(d)?),
+            EventData::windows_v1(d) => ("windows_v1", serde_json::to_string(d)?),
             EventData::app_usage_v1(d) => ("app_usage_v1", serde_json::to_string(d)?),
             EventData::journald(d) => ("journald_v1", serde_json::to_string(d)?),
         };
@@ -44,6 +46,7 @@ impl std::convert::TryFrom<CreateNewDbEvent> for NewDbEvent {
 pub fn deserialize_captured((data_type, data): (&str, &str)) -> anyhow::Result<EventData> {
     Ok(match data_type {
         "x11_v2" => serde_json::from_str::<X11EventData>(data)?.into(),
+        "windows_v1" => serde_json::from_str::<WindowsEventData>(data)?.into(),
         "app_usage_v1" => serde_json::from_str::<AppUsageEntry>(data)?.into(),
         "journald_v1" => serde_json::from_str::<JournaldEntry>(data)?.into(),
         _ => anyhow::bail!("unknown data type {}", data_type),

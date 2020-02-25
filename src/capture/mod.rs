@@ -1,5 +1,10 @@
 pub mod pc_common;
+#[cfg(windows)]
+pub mod winwins;
+pub mod winwins_types;
+#[cfg(linux)]
 pub mod x11;
+pub mod x11_types;
 use crate::prelude::*;
 
 #[enum_dispatch]
@@ -8,6 +13,7 @@ use crate::prelude::*;
 pub enum CaptureArgs {
     /// Capture open window information from a (linux) X11 server
     X11(X11CaptureArgs),
+    Windows(WindowsCaptureArgs),
 }
 
 #[enum_dispatch(CaptureArgs)]

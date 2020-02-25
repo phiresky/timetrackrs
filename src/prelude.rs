@@ -1,6 +1,6 @@
 // just lots of imports cause i'm lazy
-pub use crate::capture::x11::X11CaptureArgs;
-pub use crate::capture::x11::X11EventData;
+pub use crate::capture::winwins_types::{WindowsCaptureArgs, WindowsEventData};
+pub use crate::capture::x11_types::{X11CaptureArgs, X11EventData};
 pub use crate::capture::*;
 pub use crate::db::models::*;
 pub use crate::events::*;
