@@ -248,12 +248,10 @@ class GUI extends React.Component {
 			this.loading = true
 			this.loadState = `loading from ${this.oldestData}`
 			const now = new Date()
-			const url = new URL(
-				location.protocol +
-					"//" +
-					location.hostname +
-					":8000/fetch-info",
-			)
+			const backend =
+				new URLSearchParams(location.search).get("server") ||
+				location.protocol + "//" + location.hostname + ":8000"
+			const url = new URL(backend + "/fetch-info")
 			// url.searchParams.set("from", today.toISOString())
 			url.searchParams.set("before", this.oldestData)
 			url.searchParams.set("limit", "1000")
