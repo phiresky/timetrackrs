@@ -50,9 +50,10 @@ pub fn get_window_title(hwnd: HWND) -> String {
 }
 
 pub fn get_window_id(hwnd: HWND) -> i64 {
-    // is this unique across windows? not sure
-    use winapi::um::winuser::{GetWindowLongPtrW, GWLP_ID};
-    unsafe { GetWindowLongPtrW(hwnd, GWLP_ID) as i64 }
+    // is this unique across windows? nope
+    //use winapi::um::winuser::{GetWindowLongPtrW, GWLP_ID};
+    //unsafe { GetWindowLongPtrW(hwnd, GWLP_ID) as i64 }
+    hwnd as i64
 }
 
 // only at-tab able windows:
