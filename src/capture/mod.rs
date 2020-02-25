@@ -2,7 +2,7 @@ pub mod pc_common;
 #[cfg(windows)]
 pub mod winwins;
 pub mod winwins_types;
-#[cfg(linux)]
+#[cfg(target_os="linux")]
 pub mod x11;
 pub mod x11_types;
 use crate::prelude::*;

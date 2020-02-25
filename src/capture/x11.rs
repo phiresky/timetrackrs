@@ -6,6 +6,7 @@
 
 use crate::prelude::*;
 use byteorder::{LittleEndian, ReadBytesExt};
+use super::x11_types::*;
 use chrono::DateTime;
 use regex::Regex;
 use serde::{Deserialize, Serialize};

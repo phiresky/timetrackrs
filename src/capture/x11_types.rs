@@ -16,17 +16,17 @@ pub struct X11CaptureArgs {
     // captures from default screen, no options really
 }
 
-#[cfg(linux)]
+#[cfg(target_os="linux")]
 impl CapturerCreator for X11CaptureArgs {
     fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
-        match X11Capturer::init() {
+        match super::x11::X11Capturer::init() {
             Ok(e) => Ok(Box::new(e)),
             Err(e) => Err(e),
         }
     }
 }
 
-#[cfg(not(linux))]
+#[cfg(not(target_os="linux"))]
 impl CapturerCreator for X11CaptureArgs {
     fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
         anyhow::bail!("Not on Linux!")
