@@ -6,6 +6,7 @@ use trbtt::prelude::*;
 use trbtt::sampler::Sampler;
 use typescript_definitions::TypeScriptifyTrait;
 
+#[cfg(build = "debug")]
 const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     // DbEvent::type_script_ify,
     Sampler::type_script_ify,
@@ -22,6 +23,9 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     SpecificSoftware::type_script_ify,
     MediaType::type_script_ify,
 ];
+
+#[cfg(not(build = "debug"))]
+const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[];
 
 // const all_types: Vec<
 fn main() -> anyhow::Result<()> {

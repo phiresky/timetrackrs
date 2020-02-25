@@ -169,11 +169,11 @@ fn main() -> anyhow::Result<()> {
                     Some(dict) => zstd::stream::write::Decoder::with_dictionary(out, &dict),
                     None => zstd::stream::write::Decoder::new(out),
                 }
-                .map_err(|e| UFE(anyhow::anyhow!("dict load dosnt work").into()))?;
+                .map_err(|_e| UFE(anyhow::anyhow!("dict load dosnt work").into()))?;
                 decoder
                     .write_all(input_value)
                     .map_err(|e| UFE(Box::new(e)))?;
-                decoder.flush();
+                decoder.flush().map_err(|e| UFE(Box::new(e)))?;
                 decoder.into_inner()
             };
 
