@@ -13,6 +13,47 @@ track which programs is used how much and stores data in database. Inspired by [
 -   make non-crap
 -   look at similar tools, e.g. https://www.raymond.cc/blog/check-application-usage-times-personal-activity-monitor/
 
+## Ideas for getting program metadata
+
+We currently get this metadata:
+
+-   window title. can sometimes be configured within the program to be more expressive (e.g. browser plugin, or vscode etc. see Data Sources Setup)
+-   binary name. For example /usr/bin/vlc.
+-   cwd of the program
+
+Metadata we could potentially get:
+
+-   which files the program has open. e.g. a pdf viewer has a specific file open and that file can be used to identify what the user is working on.
+
+    sadly only works sometimes because many programs just read the file to ram and close it.
+
+    Tests:
+
+    -   archive manager (file-roller): works (keeps the archive open)
+    -   image viewer eog (eye-of-gnome): doesn't work. probably reads file to ram and closes
+    -   video viewer vlc and mpv: works
+    -   audio player: probably works
+    -   pdf viewer evince: works
+    -   text editor gedit: doesn't work
+    -   libreoffice: works
+    -   gimp: doesn't work
+
+### External APIs
+
+This program name can be mapped to a software package using the system package manager, example: `pacman -Qo /usr/bin/vlc`. Then that package name can be used to get metadata, for example the software homepage, tags etc.
+
+Also, Wikidata can be used to get the software category etc: https://www.wikidata.org/wiki/Q171477
+
+(in pseudocode):
+
+select ?software where archlinux_package = "vlc" (returns Q171477)
+
+select ?category where ?software is_in ?category and ?category subclass_of\* software_category (should return media_player and multimedia_software etc)
+
+### Manual Entry
+
+Alternatively there could be a UI where user's can categorize their software themselves (boring).
+
 ## Structure
 
 ## philosophy
@@ -38,6 +79,10 @@ time sampling. decide between random sampling, stratified sampling or grid (?) s
 ### Firefox
 
 Install https://addons.mozilla.org/en-US/firefox/addon/add-url-to-window-title/ and enable "Show the full URL"
+
+### Google Chrome / Chromium
+
+Install https://chrome.google.com/webstore/detail/url-in-title/ignpacbgnbnkaiooknalneoeladjnfgb?hl=en
 
 ### VS Code
 
