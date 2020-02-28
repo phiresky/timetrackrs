@@ -4,9 +4,9 @@
 
 #![allow(non_snake_case)]
 
+use super::x11_types::*;
 use crate::prelude::*;
 use byteorder::{LittleEndian, ReadBytesExt};
-use super::x11_types::*;
 use chrono::DateTime;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -98,7 +98,7 @@ impl X11Capturer {
 }
 impl Capturer for X11Capturer {
     fn capture(&mut self) -> anyhow::Result<EventData> {
-        let system = sysinfo::System::new();
+        let mut system = sysinfo::System::new();
         let NET_CLIENT_LIST = self.atom("_NET_CLIENT_LIST")?;
         let NET_CURRENT_DESKTOP = self.atom("_NET_CURRENT_DESKTOP")?;
         let NET_DESKTOP_NAMES = self.atom("_NET_DESKTOP_NAMES")?;
@@ -180,6 +180,7 @@ impl Capturer for X11Capturer {
             }
 
             let process = if let Some(pid) = pid {
+                system.refresh_process(pid as i32);
                 if let Some(procinfo) = system.get_process(pid as i32) {
                     Some(ProcessData {
                         pid: procinfo.pid(),
