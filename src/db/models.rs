@@ -5,7 +5,6 @@ use diesel::serialize::{self, Output, ToSql};
 use diesel::sql_types::Text;
 use diesel::sqlite::Sqlite;
 use std::io::Write;
-use uuid::Uuid;
 
 #[derive(Queryable, Serialize, TypeScriptify)]
 pub struct DbEvent {

@@ -1,14 +1,9 @@
 // x11 capture types (must be cross-platform)
 use crate::prelude::*;
-use byteorder::{LittleEndian, ReadBytesExt};
 use chrono::DateTime;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value as J};
-use std::collections::{BTreeMap, HashMap};
-use std::convert::TryInto;
-use sysinfo::ProcessExt;
-use sysinfo::SystemExt;
+use serde_json::Value as J;
+use std::collections::BTreeMap;
 use typescript_definitions::TypeScriptify;
 
 #[derive(StructOpt)]

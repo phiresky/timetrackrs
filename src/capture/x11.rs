@@ -6,19 +6,13 @@
 
 use super::x11_types::*;
 use crate::prelude::*;
-use byteorder::{LittleEndian, ReadBytesExt};
-use chrono::DateTime;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
+
 use serde_json::{json, Value as J};
 use std::collections::{BTreeMap, HashMap};
-use std::convert::TryInto;
 use sysinfo::ProcessExt;
 use sysinfo::SystemExt;
-use typescript_definitions::TypeScriptify;
 use x11rb::connection::Connection;
 use x11rb::connection::RequestConnection;
-use x11rb::errors::ConnectionErrorOrX11Error;
 use x11rb::generated::xproto::get_property;
 use x11rb::generated::xproto::intern_atom;
 use x11rb::generated::xproto::ConnectionExt;
@@ -26,30 +20,20 @@ use x11rb::generated::xproto::ATOM;
 use x11rb::generated::xproto::WINDOW;
 use x11rb::xcb_ffi::XCBConnection;
 
-// TODO: replace with https://github.com/psychon/x11rb/issues/163
-fn to_u32s(v1: &Vec<u8>) -> Vec<u32> {
-    let mut c = std::io::Cursor::new(v1);
-    let mut v2 = Vec::new();
-    while c.position() < v1.len().try_into().unwrap() {
-        v2.push(c.read_u32::<LittleEndian>().unwrap());
-    }
-    return v2;
-}
 fn get_property32<Conn: ?Sized + RequestConnection>(
     conn: &Conn,
     window: WINDOW,
     property: ATOM,
-) -> Result<Vec<u32>, ConnectionErrorOrX11Error> {
+) -> anyhow::Result<Vec<u32>> {
     // TODO: use helper from https://github.com/psychon/x11rb/pull/172/files
     let reply = get_property(conn, false, window, property, 0, 0, std::u32::MAX)?.reply()?;
-
-    Ok(to_u32s(&reply.value))
+    Ok(reply.value32().unwrap().collect())
 }
 fn get_property_text<Conn: ?Sized + RequestConnection>(
     conn: &Conn,
     window: WINDOW,
     property: ATOM,
-) -> Result<String, ConnectionErrorOrX11Error> {
+) -> anyhow::Result<String> {
     let reply = get_property(conn, false, window, property, 0, 0, std::u32::MAX)?.reply()?;
 
     Ok(String::from_utf8(reply.value).unwrap())
@@ -140,8 +124,11 @@ impl Capturer for X11Capturer {
                 assert!(val.bytes_after == 0);
                 let prop_name = self.atom_name(prop)?;
                 let prop_type = self.atom_name(val.type_)?;
-                if prop_name == "_NET_WM_PID" && prop_type == "CARDINAL" && val.format == 32 {
-                    pid = Some(single(&to_u32s(&val.value)));
+                if prop_name == "_NET_WM_PID" && prop_type == "CARDINAL" {
+                    pid = val
+                        .value32()
+                        .map(|e| e.collect::<Vec<_>>())
+                        .map(|e| single(&e));
                 }
                 let pval = match (prop_name.as_str(), prop_type.as_str(), val.format) {
                     (_, "UTF8_STRING", _) | (_, "STRING", _) => {
@@ -154,8 +141,7 @@ impl Capturer for X11Capturer {
                         J::String(s)
                     }
                     (_, "ATOM", _) => {
-                        assert!(val.format == 32);
-                        let vec = to_u32s(&val.value);
+                        let vec = val.value32().expect("atom value not 32 bit");
                         //let vec = to_u32s(&val.value).into_iter().map(|e| J::Number(e)).collect();
                         json!({
                             "type": format!("{}/{}", prop_type, val.format),
@@ -163,8 +149,7 @@ impl Capturer for X11Capturer {
                         })
                     }
                     (_, "CARDINAL", 32) | (_, "WINDOW", _) => {
-                        assert!(val.format == 32);
-                        let vec = to_u32s(&val.value);
+                        let vec: Vec<_> = val.value32().expect("atom value not 32 bit").collect();
                         //let vec = to_u32s(&val.value).into_iter().map(|e| J::Number(e)).collect();
                         json!({
                             "type": format!("{}/{}", prop_type, val.format),

@@ -102,9 +102,9 @@ dependencies = [
 
 [[package]]
 name = "base64"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
+checksum = "7d5ca2cd0adc3f48f9e9ea5a6bbdf9ccc0bfade884847e484d452414c7ccffb3"
 
 [[package]]
 name = "battery"
@@ -539,9 +539,9 @@ dependencies = [
 
 [[package]]
 name = "enum_dispatch"
-version = "0.2.4"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "733967190e01b0dcb64f2f42687a78af0e418e064489e993e16445643d088560"
+checksum = "362f2fdb0b2cbc7a1926a6fb32281ee854a23a3d5c77e5291a2ffa8159dcc48e"
 dependencies = [
  "once_cell",
  "proc-macro2 1.0.10",
@@ -691,6 +691,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c68f0274ae0e023facc3c97b2e00f076be70e254bc851d972503b328db79b2ec"
 dependencies = [
  "typenum",
+]
+
+[[package]]
+name = "gethostname"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e692e296bfac1d2533ef168d0b60ff5897b8b70a4009276834014dd8924cc028"
+dependencies = [
+ "libc",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -917,9 +927,9 @@ checksum = "c7d73b3f436185384286bd8098d17ec07c9a7d2388a6599f824d8502b529702a"
 
 [[package]]
 name = "libsqlite3-sys"
-version = "0.16.0"
+version = "0.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e5b95e89c330291768dc840238db7f9e204fd208511ab6319b56193a7f2ae25"
+checksum = "56d90181c2904c287e5390186be820e5ef311a3c62edebb7d6ca3d6a48ce041d"
 dependencies = [
  "cc",
  "pkg-config",
@@ -1760,9 +1770,9 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.20.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a194373ef527035645a1bc21b10dc2125f73497e6e155771233eb187aedd051"
+checksum = "57edf4c4cea4d7e0fab069acb5da9e8e8e5403c78abc81b1f37d83af02148ea5"
 dependencies = [
  "bitflags",
  "fallible-iterator",
@@ -2036,9 +2046,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.11.7"
+version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e15d793f059727ad34a9245503c13b38262bb32e9906d8122ca64d6ca54b0858"
+checksum = "5a0338198966bde7feb14b011a33d404a62a6e03b843352c71512a2a002634b7"
 dependencies = [
  "cfg-if",
  "doc-comment",
@@ -2127,7 +2137,7 @@ name = "track-pc-usage-rs"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64 0.11.0",
+ "base64 0.12.0",
  "battery",
  "byteorder",
  "bzip2",
@@ -2452,10 +2462,11 @@ dependencies = [
 
 [[package]]
 name = "x11rb"
-version = "0.3.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fed890f0ec506c0fe851c5f0c3aac295c356ca4ede478cff9cd9dc6ffe8f955a"
+checksum = "ca6dd4c5e6edd84edeaddb13be025c1992870220e892424b845121ff40b8d553"
 dependencies = [
+ "gethostname",
  "libc",
  "pkg-config",
 ]
