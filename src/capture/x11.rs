@@ -194,7 +194,7 @@ impl Capturer for X11Capturer {
                         start_time: util::unix_epoch_millis_to_date(
                             (procinfo.start_time() as i64) * 1000,
                         ),
-                        cpu_usage: procinfo.cpu_usage(),
+                        cpu_usage: Some(procinfo.cpu_usage()),
                     })
                 } else {
                     println!(

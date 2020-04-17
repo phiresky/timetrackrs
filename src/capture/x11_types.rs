@@ -16,7 +16,7 @@ pub struct X11CaptureArgs {
     // captures from default screen, no options really
 }
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 impl CapturerCreator for X11CaptureArgs {
     fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
         match super::x11::X11Capturer::init() {
@@ -26,7 +26,7 @@ impl CapturerCreator for X11CaptureArgs {
     }
 }
 
-#[cfg(not(target_os="linux"))]
+#[cfg(not(target_os = "linux"))]
 impl CapturerCreator for X11CaptureArgs {
     fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
         anyhow::bail!("Not on Linux!")
@@ -70,7 +70,7 @@ pub struct ProcessData {
     pub parent: Option<i32>,
     pub status: String,
     pub start_time: DateTime<Utc>,
-    pub cpu_usage: f32,
+    pub cpu_usage: Option<f32>, // can be NaN -> null
 }
 impl X11WindowData {
     fn get_title(&self) -> Option<String> {

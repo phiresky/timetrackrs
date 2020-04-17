@@ -63,6 +63,7 @@ fn fetch_info(
                 }
                 Err(e) => {
                     println!("deser of {} error: {:?}", a.id, e);
+                    // println!("data=||{}", a.data);
                     None
                 }
             }
