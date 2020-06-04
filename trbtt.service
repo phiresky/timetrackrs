@@ -1,11 +1,11 @@
 # cp trbtt.service ~/.config/systemd/user/
-# systemctl --user enable --nowtrbtt
+# systemctl --user enable --now trbtt
 [Unit]
 Description=track pc usage rs
 
 [Service]
-Environment=DATABASE_URL=/home/tehdog/.config/trbtt/activity.sqlite3
-ExecStart=/home/tehdog/.cargo/bin/trbtt-capture x11
+Environment=DATABASE_URL=%h/.config/trbtt/activity.sqlite3
+ExecStart=%h/.cargo/bin/trbtt-capture x11
 Restart=on-failure
 RestartSec=20
 
