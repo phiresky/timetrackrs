@@ -13,28 +13,46 @@ use sysinfo::ProcessExt;
 use sysinfo::SystemExt;
 use x11rb::connection::Connection;
 use x11rb::connection::RequestConnection;
-use x11rb::generated::xproto::get_property;
-use x11rb::generated::xproto::intern_atom;
-use x11rb::generated::xproto::ConnectionExt;
-use x11rb::generated::xproto::ATOM;
-use x11rb::generated::xproto::WINDOW;
-use x11rb::xcb_ffi::XCBConnection;
+use x11rb::protocol::xproto::get_property;
+use x11rb::protocol::xproto::intern_atom;
+use x11rb::protocol::xproto::Atom;
+use x11rb::protocol::xproto::AtomEnum;
+use x11rb::protocol::xproto::ConnectionExt;
+use x11rb::protocol::xproto::Window;
 
 fn get_property32<Conn: ?Sized + RequestConnection>(
     conn: &Conn,
-    window: WINDOW,
-    property: ATOM,
+    window: Window,
+    property: Atom,
 ) -> anyhow::Result<Vec<u32>> {
     // TODO: use helper from https://github.com/psychon/x11rb/pull/172/files
-    let reply = get_property(conn, false, window, property, 0, 0, std::u32::MAX)?.reply()?;
+    let reply = get_property(
+        conn,
+        false,
+        window,
+        property,
+        AtomEnum::Any,
+        0,
+        std::u32::MAX,
+    )?
+    .reply()?;
     Ok(reply.value32().unwrap().collect())
 }
 fn get_property_text<Conn: ?Sized + RequestConnection>(
     conn: &Conn,
-    window: WINDOW,
-    property: ATOM,
+    window: Window,
+    property: Atom,
 ) -> anyhow::Result<String> {
-    let reply = get_property(conn, false, window, property, 0, 0, std::u32::MAX)?.reply()?;
+    let reply = get_property(
+        conn,
+        false,
+        window,
+        property,
+        AtomEnum::Any,
+        0,
+        std::u32::MAX,
+    )?
+    .reply()?;
 
     Ok(String::from_utf8(reply.value).unwrap())
 }
@@ -45,13 +63,13 @@ fn single<T: Copy>(v: &Vec<T>) -> T {
     v[0]
 }
 
-pub struct X11Capturer {
-    conn: XCBConnection,
+pub struct X11Capturer<C: Connection> {
+    conn: C,
     root_window: u32,
     atom_name_map: HashMap<u32, anyhow::Result<String>>,
     os_info: util::OsInfo,
 }
-impl X11Capturer {
+impl<C: Connection> X11Capturer<C> {
     fn atom(&self, e: &str) -> anyhow::Result<u32> {
         Ok(intern_atom(&self.conn, true, e.as_bytes())?.reply()?.atom)
     }
@@ -68,19 +86,20 @@ impl X11Capturer {
             Ok(ok) => Ok(ok.clone()),
         }
     }
-    pub fn init() -> anyhow::Result<X11Capturer> {
-        let (conn, screen_num) = XCBConnection::connect(None)?;
-        let screen = &conn.setup().roots[screen_num];
-        let root_window = screen.root;
-        Ok(X11Capturer {
-            conn,
-            root_window,
-            os_info: util::get_os_info(),
-            atom_name_map: HashMap::new(),
-        })
-    }
 }
-impl Capturer for X11Capturer {
+pub fn init() -> anyhow::Result<X11Capturer<impl Connection>> {
+    let (conn, screen_num) = x11rb::connect(None)?;
+    let screen = &conn.setup().roots[screen_num];
+    let root_window = screen.root;
+    Ok(X11Capturer {
+        conn,
+        root_window,
+        os_info: util::get_os_info(),
+        atom_name_map: HashMap::new(),
+    })
+}
+
+impl<C: Connection> Capturer for X11Capturer<C> {
     fn capture(&mut self) -> anyhow::Result<EventData> {
         let mut system = sysinfo::System::new();
         let NET_CLIENT_LIST = self.atom("_NET_CLIENT_LIST")?;
@@ -119,8 +138,16 @@ impl Capturer for X11Capturer {
                 if blacklist.contains(&prop) {
                     continue;
                 }
-                let val =
-                    get_property(&self.conn, false, window, prop, 0, 0, std::u32::MAX)?.reply()?;
+                let val = get_property(
+                    &self.conn,
+                    false,
+                    window,
+                    prop,
+                    AtomEnum::Any,
+                    0,
+                    std::u32::MAX,
+                )?
+                .reply()?;
                 assert!(val.bytes_after == 0);
                 let prop_name = self.atom_name(prop)?;
                 let prop_type = self.atom_name(val.type_)?;
@@ -213,7 +240,7 @@ impl Capturer for X11Capturer {
             });
         }
         let xscreensaver =
-            x11rb::generated::screensaver::query_info(&self.conn, self.root_window)?.reply()?;
+            x11rb::protocol::screensaver::query_info(&self.conn, self.root_window)?.reply()?;
         // see XScreenSaverQueryInfo at https://linux.die.net/man/3/xscreensaverunsetattributes
 
         let data = X11EventData {

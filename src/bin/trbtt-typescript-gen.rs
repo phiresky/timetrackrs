@@ -6,7 +6,7 @@ use trbtt::prelude::*;
 use trbtt::sampler::Sampler;
 use typescript_definitions::TypeScriptifyTrait;
 
-#[cfg(build = "debug")]
+#[cfg(debug_assertions)]
 const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     // DbEvent::type_script_ify,
     Sampler::type_script_ify,
@@ -17,6 +17,7 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     x11_types::ProcessData::type_script_ify,
     util::OsInfo::type_script_ify,
     extract::properties::ExtractedInfo::type_script_ify,
+    extract::properties::EnrichedExtractedInfo::type_script_ify,
     extract::properties::SoftwareDeviceType::type_script_ify,
     extract::properties::Identifier::type_script_ify,
     GeneralSoftware::type_script_ify,
@@ -24,7 +25,7 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     MediaType::type_script_ify,
 ];
 
-#[cfg(not(build = "debug"))]
+#[cfg(not(debug_assertions))]
 const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[];
 
 // const all_types: Vec<
@@ -37,6 +38,9 @@ fn main() -> anyhow::Result<()> {
         writeln!(ofile, "type Text{} = string;", i)?;
     }
     if cfg!(any(debug_assertions, feature = "export-typescript")) {
+        if FS.len() == 0 {
+            println!("Not in debug mode??");
+        }
         for f in FS {
             writeln!(ofile, "{}", f())?;
         }

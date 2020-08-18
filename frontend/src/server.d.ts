@@ -6,22 +6,15 @@ type Text100 = string
 type Text1000 = string
 type Text10000 = string
 type Text100000 = string
-export type Activity = {
-	id: string
-	timestamp: Timestamptz
-	data_type: string
-	sampler: Sampler
-	sampler_sequence_id: string
-	data: string
-}
 export type Sampler =
 	| { type: "RandomSampler"; avg_time: number }
 	| { type: "Explicit"; duration: number }
-export type CapturedData =
-	| { data_type: "x11_v2"; data: X11CapturedData }
+export type EventData =
+	| { data_type: "x11_v2"; data: X11EventData }
+	| { data_type: "windows_v1"; data: WindowsEventData }
 	| { data_type: "app_usage_v1"; data: AppUsageEntry }
 	| { data_type: "journald"; data: JournaldEntry }
-export type X11CapturedData = {
+export type X11EventData = {
 	os_info: OsInfo
 	desktop_names: string[]
 	current_desktop_id: number
@@ -52,8 +45,8 @@ export type ProcessData = {
 	memory_kB: number
 	parent: number | null
 	status: string
-	start_time: DateTime<Local>
-	cpu_usage: number
+	start_time: DateTime<Utc>
+	cpu_usage: number | null
 }
 export type OsInfo = {
 	os_type: string
@@ -68,45 +61,48 @@ export type ExtractedInfo =
 			general: GeneralSoftware
 			specific: SpecificSoftware
 	  }
-	| { type: "PhysicalActivity"; activity_type: Text100 }
+	| { type: "PhysicalActivity"; activity_type: Text100Choices }
+export type EnrichedExtractedInfo = { uri: string | null; info: ExtractedInfo }
 export enum SoftwareDeviceType {
 	Desktop = "Desktop",
 	Laptop = "Laptop",
 	Smartphone = "Smartphone",
 	Tablet = "Tablet",
 }
+// - some generic identifier that can be looked up elsewhere. i.e. something that should be unique within the corresponding scope of the surrounding object
 export type Identifier = string
 export type GeneralSoftware = {
-	hostname: Text100
+	hostname: Text100Choices
 	device_type: SoftwareDeviceType
-	device_os: Text10
-	title: Text10000
+	device_os: Text10Choices
+	title: Text10000Choices
 	identifier: Identifier
-	unique_name: Text100
+	unique_name: Text100Choices
+	opened_filepath: Text10000Choices | null
 }
 export type SpecificSoftware =
 	| {
 			type: "WebBrowser"
-			url: Text10000
-			origin: Text1000
-			service: Text1000
+			url: Text10000Choices
+			origin: Text1000Choices
+			service: Text1000Choices
 	  }
 	| {
 			type: "Shell"
-			cwd: Text1000
-			cmd: Text10000
+			cwd: Text1000Choices
+			cmd: Text10000Choices
 			zsh_histdb_session_id: Identifier
 	  }
 	| {
 			type: "MediaPlayer"
-			media_filename: Text1000
+			media_filename: Text1000Choices
 			media_type: MediaType
-			media_name: Text1000
+			media_name: Text1000Choices
 	  }
 	| {
 			type: "SoftwareDevelopment"
-			project_path: Text100 | null
-			file_path: Text1000
+			project_path: Text100Choices | null
+			file_path: Text1000Choices
 	  }
 	| { type: "Unknown" }
 export enum MediaType {

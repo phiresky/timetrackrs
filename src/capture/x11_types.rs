@@ -14,7 +14,7 @@ pub struct X11CaptureArgs {
 #[cfg(target_os = "linux")]
 impl CapturerCreator for X11CaptureArgs {
     fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
-        match super::x11::X11Capturer::init() {
+        match super::x11::init() {
             Ok(e) => Ok(Box::new(e)),
             Err(e) => Err(e),
         }
@@ -116,6 +116,7 @@ impl ExtractInfo for X11EventData {
             identifier: Identifier("".to_string()),
             title: "".to_string(),
             unique_name: "".to_string(),
+            opened_filepath: None,
         };
         let window = x.windows.iter().find(|e| e.window_id == x.focused_window);
         let specific = match window {
@@ -123,11 +124,13 @@ impl ExtractInfo for X11EventData {
             Some(w) => {
                 if let Some(window_title) = w.get_title() {
                     let cls = w.get_class();
-                    super::pc_common::match_from_title(
+                    super::pc_common::match_software(
                         &mut general,
                         &window_title,
                         &cls,
                         w.process.as_ref().map(|p| p.exe.as_ref()),
+                        w.process.as_ref().map(|p| p.cwd.as_ref()),
+                        w.process.as_ref().map(|p| p.cmd.as_ref()),
                     )
                 } else {
                     SpecificSoftware::Unknown

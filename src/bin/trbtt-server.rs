@@ -9,6 +9,7 @@ use track_pc_usage_rs as trbtt;
 use track_pc_usage_rs::events::deserialize_captured;
 use track_pc_usage_rs::util::iso_string_to_date;
 use trbtt::db::models::{DbEvent, Timestamptz};
+use trbtt::extract::properties::EnrichedExtractedInfo;
 use trbtt::extract::ExtractInfo;
 #[macro_use]
 extern crate rocket_contrib;
@@ -55,7 +56,7 @@ fn fetch_info(
                             "id": a.id,
                             "timestamp": a.timestamp,
                             "duration": a.sampler.get_duration(),
-                            "data": data,
+                            "data": EnrichedExtractedInfo::from(data),
                         }))
                     } else {
                         None

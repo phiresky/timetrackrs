@@ -17,11 +17,36 @@ lazy_static::lazy_static! {
         // Regex::new(r#"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"#).unwrap();
 }
 
-pub fn match_from_title(
+fn match_cmdline_to_filepath(cwd: &str, cmdline: &[String]) -> anyhow::Result<String> {
+    if cmdline.len() == 2 {
+        // TODO: windows??
+        // on windows all paths should be converted to sane unix paths (e.g. C:\foo -> /c:/foo)
+        if cmdline[1].starts_with("/") {
+            return Ok(cmdline[1].clone());
+        }
+        if !cmdline[1].starts_with("-") {
+            // path joining shouldn't be os-specific
+            return Ok(std::path::PathBuf::from(cwd)
+                .join(&cmdline[1])
+                .to_string_lossy()
+                .to_string());
+        }
+        anyhow::bail!("only cmd arg '{}' starts with -", cmdline[1]);
+    } else {
+        anyhow::bail!("found {} cmd args not 1", cmdline.len())
+    }
+}
+
+/**
+try to get structured info about a program from title etc
+*/
+pub fn match_software(
     sw: &mut GeneralSoftware,
     window_title: &str,
     window_class: &Option<(String, String)>, // "class" of the window which usually identifies the software
     executable_path: Option<&str>,
+    cwd: Option<&str>,
+    cmdline: Option<&[String]>,
 ) -> SpecificSoftware {
     use crate::extract::properties::*;
 
@@ -35,6 +60,14 @@ pub fn match_from_title(
             }
         }
     }
+    if let Some(cwd) = cwd {
+        if let Some(cmdline) = cmdline {
+            if let Ok(path) = match_cmdline_to_filepath(cwd, cmdline) {
+                sw.opened_filepath = Some(path);
+            }
+        }
+    }
+
     // match strictly formatted data in title:
     // 🛤sd🠚proj=/project/name🙰file=file/name🠘
     if let Some(cap) = FORMATTED_TITLE_MATCH.captures(window_title) {

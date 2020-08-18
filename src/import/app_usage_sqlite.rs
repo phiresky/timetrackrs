@@ -229,6 +229,7 @@ impl ExtractInfo for AppUsageEntry {
                         x.pkg_pkg.as_deref().unwrap_or("??").to_string()
                     )),
                     unique_name: pkg_name.clone(),
+                    opened_filepath: None,
                 },
                 specific: SpecificSoftware::Unknown,
             })

@@ -2,7 +2,7 @@ import _ from "lodash"
 import * as PlotlyT from "plotly.js"
 import * as PlotlyI from "plotly.js-dist"
 import React from "react"
-import { agg } from "./ftree"
+import { categoryAggregate } from "./ftree"
 import { Activity } from "./main"
 
 const Plotly = PlotlyI as typeof PlotlyT
@@ -21,9 +21,9 @@ export class Plot extends React.Component<{ data: Activity[] }> {
 	async componentDidUpdate() {
 		if (this.r.current) {
 			// if(this.plot) Plotly.plot
-			if (!agg.group) throw Error("a")
-			const g = agg.group
-			const _gs = _.groupBy(this.props.data, e => {
+			if (!categoryAggregate.group) throw Error("a")
+			const g = categoryAggregate.group
+			const _gs = _.groupBy(this.props.data, (e) => {
 				const g1 = g(e)
 				const g2 = g1.group?.(e)
 				if (g2) return g2.key
@@ -32,8 +32,8 @@ export class Plot extends React.Component<{ data: Activity[] }> {
 
 			const data: Plotly.Data[] = Object.entries(_gs).map(([key, es]) => {
 				return {
-					x: es.map(x => new Date(x.timestamp)),
-					y: es.map(x => x.duration / 60),
+					x: es.map((x) => new Date(x.timestamp)),
+					y: es.map((x) => x.duration / 60),
 					type: "histogram",
 					nbinsx: 100,
 					histfunc: "sum",

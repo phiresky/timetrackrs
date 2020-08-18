@@ -54,6 +54,7 @@ impl ExtractInfo for WindowsEventData {
             identifier: Identifier("".to_string()),
             title: "".to_string(),
             unique_name: "".to_string(),
+            opened_filepath: None,
         };
         let window = x
             .windows
@@ -63,11 +64,13 @@ impl ExtractInfo for WindowsEventData {
             None => SpecificSoftware::Unknown,
             Some(w) => {
                 let cls = Some((w.wclass.clone(), "".to_string()));
-                super::pc_common::match_from_title(
+                super::pc_common::match_software(
                     &mut general,
                     &w.title,
                     &cls,
                     w.exe.as_ref().map(|e| e.as_ref()),
+                    None, // TODO
+                    None, // TODO
                 )
             }
         };

@@ -7,23 +7,23 @@ import {
 } from "./main"
 import { durationToString, totalDuration } from "./util"
 
-type Filter = {
+export type Filter = {
 	key: string | null | undefined
 	name?: string | null | undefined
 	group?(e: Activity): Filter
 }
-export const agg: Filter = {
+export const categoryAggregate: Filter = {
 	key: "Activity",
 	group(e: Activity) {
 		return {
-			key: e.data.type,
+			key: e.data.info.type,
 			group(e) {
 				const o: {
 					[k in keyof KeyedExtractedInfo]: (
 						z: KeyedExtractedInfo[k],
 					) => Filter
 				} = {
-					UseDevice: e => ({
+					UseDevice: (e) => ({
 						key: e.specific.type,
 						group(e1) {
 							const o: {
@@ -31,10 +31,10 @@ export const agg: Filter = {
 									z: KeyedOuterUseSpecificSoftware[k],
 								) => Filter
 							} = {
-								Shell: e => ({
+								Shell: (e) => ({
 									key: e.specific.cwd,
 								}),
-								SoftwareDevelopment: e => ({
+								SoftwareDevelopment: (e) => ({
 									key: e.specific.project_path,
 									group(e1) {
 										return {
@@ -42,29 +42,51 @@ export const agg: Filter = {
 										}
 									},
 								}),
-								WebBrowser: e => ({
+								WebBrowser: (e) => ({
 									key: e.specific.service,
 									group(e1) {
 										return { key: e.specific.url }
 									},
 								}),
-								MediaPlayer: e => ({
+								MediaPlayer: (e) => ({
 									key: e.specific.media_name,
 								}),
-								Unknown: e => ({
+								Unknown: (e) => ({
 									key: e.general.identifier,
 								}),
 							}
-							return o[e.specific.type](e1.data as any)
+							return o[e.specific.type](e1.data.info as any)
 						},
 					}),
-					PhysicalActivity: e => ({
+					PhysicalActivity: (e) => ({
 						key: "PhysicalActivity",
 					}),
 				}
-				return o[e.data.type](e.data as any)
+				return o[e.data.info.type](e.data.info as any)
 			},
 		}
+	},
+}
+
+function Parec(e: Activity, position: number): Filter {
+	const path = (e.data.uri || "Unknown").replace(/\/+/, "/").slice(position)
+	const inx = path.indexOf("/")
+	if (inx === -1)
+		return {
+			key: path,
+		}
+	else {
+		return {
+			key: path.slice(0, inx),
+			group: (e) => Parec(e, position + inx + 1),
+		}
+	}
+}
+
+export const pathRecursiveFilter = {
+	key: "Path",
+	group(e: Activity) {
+		return Parec(e, 0)
 	},
 }
 
@@ -73,19 +95,19 @@ export function SummaryFilter(p: {
 	filter?: Filter
 	header?: boolean
 }) {
-	const { entries, filter = agg, header = true } = p
+	const { entries, filter = categoryAggregate, header = true } = p
 	const [expanded, setExpanded] = React.useState(!header)
 	const durString = durationToString(totalDuration(p.entries))
 	const h = header ? (
-		<div className="clickable" onClick={e => setExpanded(!expanded)}>
-			{filter.name || filter.key}: {durString}
+		<div className="clickable" onClick={(e) => setExpanded(!expanded)}>
+			{durString} {filter.name || filter.key}
 		</div>
 	) : (
 		<></>
 	)
 	if (!filter.group || !expanded) return <div>{h}</div>
 	const g = filter.group
-	const _gs = _.groupBy(entries, e => g(e).key)
+	const _gs = _.groupBy(entries, (e) => g(e).key)
 	const gs = Object.entries(_gs).sort((a, b) => b[1].length - a[1].length)
 	return (
 		<div>

@@ -2,16 +2,22 @@ import { observable, runInAction } from "mobx"
 import { observer } from "mobx-react"
 import React from "react"
 import { render } from "react-dom"
-import { SummaryFilter } from "./ftree"
+import {
+	categoryAggregate,
+	Filter,
+	pathRecursiveFilter,
+	SummaryFilter,
+} from "./ftree"
 import { Plot } from "./plot"
-import { ExtractedInfo } from "./server"
+import { EnrichedExtractedInfo, ExtractedInfo } from "./server"
+import "./style.scss"
 import { durationToString, totalDuration } from "./util"
 
 export type Activity = {
 	id: string
 	timestamp: string
 	duration: number
-	data: ExtractedInfo
+	data: EnrichedExtractedInfo
 }
 type Keyed<
 	T extends { [k in discriminator]: string | number | symbol },
@@ -87,7 +93,7 @@ const entryComponents: KeyedReactComp<KeyedExtractedInfo> = {
 interface Grouper {
 	name: string
 	shouldGroup(a: Activity, b: Activity): boolean
-	component: React.ComponentType<{ entries: Activity[] }>
+	component: React.ComponentType<{ entries: Activity[]; filter: Filter }>
 }
 const groupers: Grouper[] = [
 	/*{
@@ -125,22 +131,52 @@ const groupers: Grouper[] = [
 			const d2 = new Date(b.timestamp)
 			const distanceSeconds = Math.abs(d1.getTime() - d2.getTime()) / 1000
 			if (distanceSeconds > 2 * (a.duration + b.duration)) return false
-			return a.data.type === "UseDevice" && b.data.type === "UseDevice"
-				? a.data.general.hostname === b.data.general.hostname
+			return a.data.info.type === "UseDevice" &&
+				b.data.info.type === "UseDevice"
+				? a.data.info.general.hostname === b.data.info.general.hostname
 				: false
 		},
 		component(p) {
 			const type =
-				p.entries[0].data.type === "UseDevice"
-					? p.entries[0].data.general?.device_type || "UNK"
+				p.entries[0].data.info.type === "UseDevice"
+					? p.entries[0].data.info.general?.device_type || "UNK"
 					: "UNK"
 
 			return (
 				<ul>
 					<li>
 						Used {type} for{" "}
-						{durationToString(totalDuration(p.entries))}:
-						<SummaryFilter entries={p.entries} header={false} />
+						{durationToString(totalDuration(p.entries))}: By{" "}
+						<SummaryFilter
+							entries={p.entries}
+							header={false}
+							filter={p.filter}
+						/>
+					</li>
+				</ul>
+			)
+		},
+	},
+	{
+		name: "Daily",
+		shouldGroup(a, b) {
+			const d1 = new Date(a.timestamp)
+			const d2 = new Date(b.timestamp)
+			return (
+				d1.toISOString().slice(0, 10) === d2.toISOString().slice(0, 10)
+			)
+		},
+		component(p) {
+			return (
+				<ul>
+					<li>
+						Total tracked time:{" "}
+						{durationToString(totalDuration(p.entries))}: By{" "}
+						<SummaryFilter
+							entries={p.entries}
+							header={false}
+							filter={p.filter}
+						/>
 					</li>
 				</ul>
 			)
@@ -168,7 +204,7 @@ function group(grouper: Grouper, entries: Activity[]): Activity[][] {
 class Entry extends React.Component<Activity> {
 	render() {
 		const { data } = this.props
-		const E = entryComponents[data.type] as any
+		const E = entryComponents[data.info.type] as any
 		return <E {...data} />
 		//return "unk: " + data.software?.title
 	}
@@ -194,12 +230,12 @@ function EntriesTime({ entries }: { entries: Activity[] }) {
 	)
 }
 
-function chooseGroup(
+/*function chooseGrouper(
 	entries: Activity[],
 	targetCount: number,
 	targetOffset: number,
 ) {
-	const bg = groupers.map(g => {
+	const bg = groupers.map((g) => {
 		const count = group(g, entries).length
 		return { g, count }
 	})
@@ -207,26 +243,60 @@ function chooseGroup(
 	//console.log(bg)
 	const inx = Math.min(
 		bg.length - 1,
-		bg.findIndex(e => e.count >= targetCount) + targetOffset,
+		bg.findIndex((e) => e.count >= targetCount) + targetOffset,
 	)
 	//console.log(inx)
 	return bg[inx].g
-}
-function RenderGroup(props: { entries: Activity[] }) {
-	const grouper = chooseGroup(props.entries, 1, 0)
+}*/
+function RenderGroup(props: {
+	entries: Activity[]
+	filter: Filter
+	grouper: Grouper
+}) {
+	const grouper = props.grouper //chooseGrouper(props.entries, 1, 0)
 	const C = grouper.component
 	const groups = group(grouper, props.entries)
 	return (
 		<>
-			{groups.map(entries => (
+			{groups.map((entries) => (
 				<section key={entries[0].timestamp}>
 					<h4>
 						<EntriesTime entries={entries} /> [{grouper.name}]
 					</h4>
-					<C entries={entries} />
+					<C entries={entries} filter={props.filter} />
 				</section>
 			))}
 		</>
+	)
+}
+
+function Choices<T>(choices: T[], def?: T) {
+	return {
+		choices,
+		value: def || choices[0],
+	}
+}
+function Select<T>(props: {
+	target: { choices: T[]; value: T }
+	getValue: (t: T) => string
+	getName: (t: T) => string
+}) {
+	const { target, getValue, getName } = props
+	return (
+		<select
+			value={getValue(target.value)}
+			onChange={(e) =>
+				(target.value = target.choices.find(
+					(c) => getValue(c) === e.currentTarget.value,
+				)!)
+			}
+		>
+			{target.choices.map((choice) => (
+				<option value={getValue(choice)} key={getValue(choice)}>
+					{getName(choice)}
+				</option>
+			))}
+		</select>
 	)
 }
 
@@ -236,6 +306,12 @@ class GUI extends React.Component {
 	@observable loading = false
 	@observable loadState = "unloaded"
 	@observable oldestData = new Date().toISOString()
+	@observable readonly detailBy = Choices([
+		categoryAggregate,
+		pathRecursiveFilter,
+	])
+	@observable readonly aggBy = Choices(groupers)
+
 	constructor(p: {}) {
 		super(p)
 		Object.assign(window, { gui: this })
@@ -303,8 +379,23 @@ class GUI extends React.Component {
 				<div className="header">
 					<h1>Personal Timeline</h1>
 					<h2>{this.loadState}</h2>
+					<div>
+						Aggregate by{" "}
+						<Select
+							target={this.aggBy}
+							getValue={(e) => e.name}
+							getName={(e) => e.name}
+						/>
+					</div>
+					<div>
+						Detail by{" "}
+						<Select
+							target={this.detailBy}
+							getValue={(e) => e.key || "OO"}
+							getName={(e) => e.key || "OO"}
+						/>
+					</div>
 				</div>
-
 				<div className="item" onScroll={this.onScroll}>
 					<div id="timeline">
 						<div>
@@ -312,7 +403,11 @@ class GUI extends React.Component {
 								return (
 									<section className="year" key={day}>
 										<h3>{day}</h3>
-										<RenderGroup entries={entries} />
+										<RenderGroup
+											entries={entries}
+											filter={this.detailBy.value}
+											grouper={this.aggBy.value}
+										/>
 									</section>
 								)
 							})}
