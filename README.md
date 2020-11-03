@@ -121,7 +121,10 @@ Todo: look at https://arbtt.nomeata.de/doc/users_guide/effective-use.html
 
 ## Compression notes
 
-Think about row-level compression.
+Finish and make use of https://github.com/phiresky/sqlite-zstd. Then redundancy in the stored raw events should become basically irrelevant.
+
+
+Compression benchmark:
 
 ```
 for id in $(sqlite3 activity.sqlite3 "select id from events where data_type='x11'"); do sqlite3 activity.sqlite3 "select data from events where id='$id'" > "x11/$id.json"; done
