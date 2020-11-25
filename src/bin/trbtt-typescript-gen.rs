@@ -20,6 +20,7 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     extract::properties::EnrichedExtractedInfo::type_script_ify,
     extract::properties::SoftwareDeviceType::type_script_ify,
     extract::properties::Identifier::type_script_ify,
+    extract::properties::DeviceStateChange::type_script_ify,
     GeneralSoftware::type_script_ify,
     SpecificSoftware::type_script_ify,
     MediaType::type_script_ify,
@@ -35,7 +36,7 @@ fn main() -> anyhow::Result<()> {
     writeln!(ofile, "type Local = unknown;")?;
     writeln!(ofile, "type Timestamptz = string;")?;
     for i in &[10, 100, 1000, 10000, 100000] {
-        writeln!(ofile, "type Text{} = string;", i)?;
+        writeln!(ofile, "type Text{}Choices = string;", i)?;
     }
     if cfg!(any(debug_assertions, feature = "export-typescript")) {
         if FS.len() == 0 {
@@ -44,6 +45,7 @@ fn main() -> anyhow::Result<()> {
         for f in FS {
             writeln!(ofile, "{}", f())?;
         }
+        println!("output {} types", FS.len());
     } else {
         println!("NOT IN DEBUG MODE, will not work!")
     }

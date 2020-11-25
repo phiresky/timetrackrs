@@ -117,11 +117,16 @@ pub fn match_software(
             if let Some(cap) = URL.find(&window_title) {
                 if let Ok(url) = url::Url::parse(cap.as_str()) {
                     return SpecificSoftware::WebBrowser {
-                        url: cap.as_str().to_string(),
-                        origin: url.origin().ascii_serialization(),
-                        service: url.domain().unwrap().to_string(),
+                        url: Some(cap.as_str().to_string()),
+                        origin: Some(url.origin().ascii_serialization()),
+                        service: url.host_str().map(|e| e.to_string()),
                     };
                 }
+                return SpecificSoftware::WebBrowser {
+                    url: None,
+                    origin: None,
+                    service: None,
+                };
             }
         }
         if MEDIAPLAYER_BINARY.is_match(&exe) {

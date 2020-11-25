@@ -23,7 +23,7 @@ export const categoryAggregate: Filter = {
 						z: KeyedExtractedInfo[k],
 					) => Filter
 				} = {
-					UseDevice: (e) => ({
+					InteractWithDevice: (e) => ({
 						key: e.specific.type,
 						group(e1) {
 							const o: {
@@ -50,6 +50,9 @@ export const categoryAggregate: Filter = {
 								}),
 								MediaPlayer: (e) => ({
 									key: e.specific.media_name,
+								}),
+								DeviceStateChange: (e) => ({
+									key: e.specific.change,
 								}),
 								Unknown: (e) => ({
 									key: e.general.identifier,
@@ -83,20 +86,27 @@ function Parec(e: Activity, position: number): Filter {
 	}
 }
 
-export const pathRecursiveFilter = {
+export const pathRecursiveFilter: Filter = {
 	key: "Path",
 	group(e: Activity) {
 		return Parec(e, 0)
 	},
 }
+export const aggregates = [categoryAggregate, pathRecursiveFilter]
 
 export function SummaryFilter(p: {
 	entries: Activity[]
 	filter?: Filter
 	header?: boolean
-}) {
-	const { entries, filter = categoryAggregate, header = true } = p
-	const [expanded, setExpanded] = React.useState(!header)
+	initialExpanded?: boolean
+}): JSX.Element {
+	const {
+		entries,
+		filter = categoryAggregate,
+		header = true,
+		initialExpanded = false,
+	} = p
+	const [expanded, setExpanded] = React.useState(!header || initialExpanded)
 	const durString = durationToString(totalDuration(p.entries))
 	const h = header ? (
 		<div className="clickable" onClick={(e) => setExpanded(!expanded)}>
@@ -118,6 +128,7 @@ export function SummaryFilter(p: {
 						<SummaryFilter
 							entries={entries}
 							filter={g(entries[0])}
+							initialExpanded={initialExpanded}
 						/>
 					</li>
 				))}

@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Serialize, TypeScriptify)]
 #[serde(tag = "type")]
 pub enum ExtractedInfo {
-    UseDevice {
+    InteractWithDevice {
         general: GeneralSoftware,
         specific: SpecificSoftware,
     },
@@ -14,12 +14,15 @@ pub enum ExtractedInfo {
 #[derive(Serialize, TypeScriptify)]
 #[serde(tag = "type")]
 pub enum SpecificSoftware {
+    DeviceStateChange {
+        change: DeviceStateChange,
+    },
     WebBrowser {
-        url: Text10000Choices,
+        url: Option<Text10000Choices>,
         // TODO: needs public suffix list
         // pub main_domain: Text1000, // main domain name (e.g. old.reddit.com -> reddit.com)
-        origin: Text1000Choices, // full origin (https://example.com) of browsed url
-        service: Text1000Choices, // name of the webservice being used, based on url. e.g. "Reddit" or "GMail"
+        origin: Option<Text1000Choices>, // full origin (https://example.com) of browsed url
+        service: Option<Text1000Choices>, // name of the webservice being used, based on url. e.g. "Reddit" or "GMail"
     },
     Shell {
         cwd: Text1000Choices,
@@ -105,8 +108,8 @@ pub struct GeneralSoftware {
 
 pub fn get_uri(e: &ExtractedInfo) -> Option<String> {
     match e {
-        ExtractedInfo::UseDevice { general, specific } => match specific {
-            SpecificSoftware::WebBrowser { url, .. } => Some(url.to_string()),
+        ExtractedInfo::InteractWithDevice { general, specific } => match specific {
+            SpecificSoftware::WebBrowser { url: Some(url), .. } => Some(url.to_string()),
             _ => general
                 .opened_filepath
                 .as_ref()
@@ -114,6 +117,14 @@ pub fn get_uri(e: &ExtractedInfo) -> Option<String> {
         },
         _ => None,
     }
+}
+
+#[derive(Serialize, TypeScriptify)]
+pub enum DeviceStateChange {
+    PowerOn,
+    PowerOff,
+    Sleep,
+    Wakeup,
 }
 
 #[derive(Serialize, TypeScriptify)]

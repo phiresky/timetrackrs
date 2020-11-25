@@ -218,7 +218,7 @@ impl ExtractInfo for AppUsageEntry {
         let x = &self;
         if x.act_type == crate::import::app_usage_sqlite::UseType::UseApp {
             let pkg_name = x.pkg_name.as_deref().unwrap_or("").to_string();
-            Some(ExtractedInfo::UseDevice {
+            Some(ExtractedInfo::InteractWithDevice {
                 general: GeneralSoftware {
                     hostname: x.device_name.clone(),
                     device_type: SoftwareDeviceType::Smartphone,
@@ -248,7 +248,7 @@ impl Importable for AppUsageImportArgs {
         let mut bytes = [0u8; 4096];
         std::fs::File::open(&conf.filename)?.read(&mut bytes)?;
         let cap = TIBU_ENCRYPTED.captures(&bytes);
-        if let Some(c) = cap {
+        if let Some(_c) = cap {
             // decrypt
             // let password = std::env::var("TIBU_PW").expect("Set env var TIBU_PW");
             anyhow::bail!("Encrypted!");

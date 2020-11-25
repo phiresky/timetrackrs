@@ -2,12 +2,7 @@ import { observable, runInAction } from "mobx"
 import { observer } from "mobx-react"
 import React from "react"
 import { render } from "react-dom"
-import {
-	categoryAggregate,
-	Filter,
-	pathRecursiveFilter,
-	SummaryFilter,
-} from "./ftree"
+import { aggregates as detailers, Filter, SummaryFilter } from "./ftree"
 import { Plot } from "./plot"
 import { EnrichedExtractedInfo, ExtractedInfo } from "./server"
 import "./style.scss"
@@ -30,7 +25,7 @@ type Keyed<
 }
 export type KeyedExtractedInfo = Keyed<ExtractedInfo, "type">
 
-type _UseSoftware<T> = T extends { type: "UseDevice" } ? T : never
+type _UseSoftware<T> = T extends { type: "InteractWithDevice" } ? T : never
 export type UseSoftware = _UseSoftware<ExtractedInfo>
 
 type KeyedUseSpecificSoftware = Keyed<UseSoftware["specific"], "type">
@@ -56,7 +51,7 @@ export type KeyedOuterUseSpecificSoftware = {
 
 type KeyedUseSpecificSoftware = KeyedOuter<"specific", "type", UseSoftware>*/
 
-type KeyedReactComp<T> = { [k in keyof T]: (e: T[k]) => React.ReactNode }
+type KeyedReactComp<T> = { [k in keyof T]: React.ComponentType<T[k]> }
 
 const useSpecificSoftwareComponents: KeyedReactComp<KeyedOuterUseSpecificSoftware> = {
 	Shell(e) {
@@ -70,6 +65,13 @@ const useSpecificSoftwareComponents: KeyedReactComp<KeyedOuterUseSpecificSoftwar
 	},
 	MediaPlayer(e) {
 		return <div>Consumed Media: {e.specific.media_name}</div>
+	},
+	DeviceStateChange(e) {
+		return (
+			<div>
+				{e.specific.change} device {e.general.hostname}
+			</div>
+		)
 	},
 	Unknown(e) {
 		return (
@@ -85,8 +87,9 @@ const entryComponents: KeyedReactComp<KeyedExtractedInfo> = {
 	PhysicalActivity(e) {
 		return <div>*dance*</div>
 	},
-	UseDevice(e) {
-		return useSpecificSoftwareComponents[e.specific.type]
+	InteractWithDevice(e) {
+		const Comp = useSpecificSoftwareComponents[e.specific.type]
+		return <Comp {...(e as any)} />
 	},
 }
 
@@ -99,7 +102,7 @@ const groupers: Grouper[] = [
 	/*{
 		name: "specificComputerProgram",
 		shouldGroup({ data: a }, { data: b }) {
-			if(a.type === "UseDevice" && b.type === "UseDevice") {
+			if(a.type === "InteractWithDevice" && b.type === "InteractWithDevice") {
 			if (a.shell && a.shell.cwd === b.shell?.cwd) return true
 			if (
 				a.software_development &&
@@ -131,14 +134,14 @@ const groupers: Grouper[] = [
 			const d2 = new Date(b.timestamp)
 			const distanceSeconds = Math.abs(d1.getTime() - d2.getTime()) / 1000
 			if (distanceSeconds > 2 * (a.duration + b.duration)) return false
-			return a.data.info.type === "UseDevice" &&
-				b.data.info.type === "UseDevice"
+			return a.data.info.type === "InteractWithDevice" &&
+				b.data.info.type === "InteractWithDevice"
 				? a.data.info.general.hostname === b.data.info.general.hostname
 				: false
 		},
 		component(p) {
 			const type =
-				p.entries[0].data.info.type === "UseDevice"
+				p.entries[0].data.info.type === "InteractWithDevice"
 					? p.entries[0].data.info.general?.device_type || "UNK"
 					: "UNK"
 
@@ -182,6 +185,24 @@ const groupers: Grouper[] = [
 			)
 		},
 	},
+	{
+		name: "None",
+		shouldGroup(a, b) {
+			return true
+		},
+		component(p) {
+			return (
+				<ul>
+					{p.entries.map((e) => (
+						<li key={e.id}>
+							<EntriesTime entries={[e]} />
+							<Entry {...e} />
+						</li>
+					))}
+				</ul>
+			)
+		},
+	},
 ]
 
 function group(grouper: Grouper, entries: Activity[]): Activity[][] {
@@ -205,7 +226,8 @@ class Entry extends React.Component<Activity> {
 	render() {
 		const { data } = this.props
 		const E = entryComponents[data.info.type] as any
-		return <E {...data} />
+		console.log(E)
+		return <E {...data.info} />
 		//return "unk: " + data.software?.title
 	}
 }
@@ -306,13 +328,10 @@ class GUI extends React.Component {
 	@observable loading = false
 	@observable loadState = "unloaded"
 	@observable oldestData = new Date().toISOString()
-	@observable readonly detailBy = Choices([
-		categoryAggregate,
-		pathRecursiveFilter,
-	])
+	@observable readonly detailBy = Choices(detailers)
 	@observable readonly aggBy = Choices(groupers)
 
-	constructor(p: {}) {
+	constructor(p: Record<string, unknown>) {
 		super(p)
 		Object.assign(window, { gui: this })
 		this.fetchData()

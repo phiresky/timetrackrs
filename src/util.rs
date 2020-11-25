@@ -21,6 +21,7 @@ pub fn random_uuid() -> String {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct OsInfo {
+    // e.g. "Arch Linux" or "Windows"
     pub os_type: String,
     pub version: String,
     pub batteries: Option<i32>, // useful for determining pc vs laptop
@@ -36,6 +37,23 @@ impl Default for OsInfo {
             batteries: Some(0),
             hostname: "phirearch".to_string(),
             machine_id: None,
+        }
+    }
+}
+impl OsInfo {
+    pub fn to_partial_general_software(&self) -> GeneralSoftware {
+        GeneralSoftware {
+            hostname: self.hostname.clone(),
+            device_type: if self.batteries.unwrap_or(0) > 0 {
+                SoftwareDeviceType::Laptop
+            } else {
+                SoftwareDeviceType::Desktop
+            },
+            device_os: self.os_type.to_string(),
+            identifier: Identifier("".to_string()),
+            title: "".to_string(),
+            unique_name: "".to_string(),
+            opened_filepath: None,
         }
     }
 }

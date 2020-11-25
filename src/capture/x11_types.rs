@@ -105,19 +105,7 @@ impl ExtractInfo for X11EventData {
         if x.ms_since_user_input > 120 * 1000 {
             return None;
         }
-        let mut general = GeneralSoftware {
-            hostname: x.os_info.hostname.clone(),
-            device_type: if x.os_info.batteries.unwrap_or(0) > 0 {
-                SoftwareDeviceType::Laptop
-            } else {
-                SoftwareDeviceType::Desktop
-            },
-            device_os: x.os_info.os_type.to_string(),
-            identifier: Identifier("".to_string()),
-            title: "".to_string(),
-            unique_name: "".to_string(),
-            opened_filepath: None,
-        };
+        let mut general = x.os_info.to_partial_general_software();
         let window = x.windows.iter().find(|e| e.window_id == x.focused_window);
         let specific = match window {
             None => SpecificSoftware::Unknown,
@@ -137,6 +125,6 @@ impl ExtractInfo for X11EventData {
                 }
             }
         };
-        Some(ExtractedInfo::UseDevice { general, specific })
+        Some(ExtractedInfo::InteractWithDevice { general, specific })
     }
 }

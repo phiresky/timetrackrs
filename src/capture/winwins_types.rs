@@ -74,6 +74,6 @@ impl ExtractInfo for WindowsEventData {
                 )
             }
         };
-        Some(ExtractedInfo::UseDevice { general, specific })
+        Some(ExtractedInfo::InteractWithDevice { general, specific })
     }
 }

@@ -1,4 +1,5 @@
 pub mod app_usage_sqlite;
+pub mod google_fitness;
 pub mod journald;
 
 use crate::prelude::*;

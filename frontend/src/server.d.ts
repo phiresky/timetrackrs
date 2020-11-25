@@ -1,19 +1,7 @@
 type DateTime<T> = string
 type Local = unknown
 type Timestamptz = string
-type Text10 = string
-type Text100 = string
-type Text1000 = string
-type Text10000 = string
-type Text100000 = string
-export type Sampler =
-	| { type: "RandomSampler"; avg_time: number }
-	| { type: "Explicit"; duration: number }
-export type EventData =
-	| { data_type: "x11_v2"; data: X11EventData }
-	| { data_type: "windows_v1"; data: WindowsEventData }
-	| { data_type: "app_usage_v1"; data: AppUsageEntry }
-	| { data_type: "journald"; data: JournaldEntry }
+
 export type X11EventData = {
 	os_info: OsInfo
 	desktop_names: string[]
@@ -57,54 +45,63 @@ export type OsInfo = {
 }
 export type ExtractedInfo =
 	| {
-			type: "UseDevice"
+			type: "InteractWithDevice"
 			general: GeneralSoftware
 			specific: SpecificSoftware
 	  }
-	| { type: "PhysicalActivity"; activity_type: Text100Choices }
-export type EnrichedExtractedInfo = { uri: string | null; info: ExtractedInfo }
+	| {
+			type: "PhysicalActivity"
+			activity_type: string
+	  }
 export enum SoftwareDeviceType {
 	Desktop = "Desktop",
 	Laptop = "Laptop",
 	Smartphone = "Smartphone",
 	Tablet = "Tablet",
 }
-// - some generic identifier that can be looked up elsewhere. i.e. something that should be unique within the corresponding scope of the surrounding object
-export type Identifier = string
-export type GeneralSoftware = {
-	hostname: Text100Choices
-	device_type: SoftwareDeviceType
-	device_os: Text10Choices
-	title: Text10000Choices
-	identifier: Identifier
-	unique_name: Text100Choices
-	opened_filepath: Text10000Choices | null
-}
+
 export type SpecificSoftware =
+	| { type: "DeviceStateChange"; change: DeviceStateChange }
 	| {
 			type: "WebBrowser"
-			url: Text10000Choices
-			origin: Text1000Choices
-			service: Text1000Choices
+			url: string | null
+			origin: string | null
+			service: string | null
 	  }
 	| {
 			type: "Shell"
-			cwd: Text1000Choices
-			cmd: Text10000Choices
-			zsh_histdb_session_id: Identifier
+			cwd: string
+			cmd: string
+			zsh_histdb_session_id: string
 	  }
 	| {
 			type: "MediaPlayer"
-			media_filename: Text1000Choices
+			media_filename: string
 			media_type: MediaType
-			media_name: Text1000Choices
+			media_name: string
 	  }
 	| {
 			type: "SoftwareDevelopment"
-			project_path: Text100Choices | null
-			file_path: Text1000Choices
+			project_path: string | null
+			file_path: string
 	  }
 	| { type: "Unknown" }
+export enum DeviceStateChange {
+	PowerOn = "PowerOn",
+	PowerOff = "PowerOff",
+	Sleep = "Sleep",
+	Wakeup = "Wakeup",
+}
+export type GeneralSoftware = {
+	hostname: string
+	device_type: SoftwareDeviceType
+	device_os: string
+	title: string
+	identifier: string
+	unique_name: string
+	opened_filepath: string | null
+}
+
 export enum MediaType {
 	Audio = "Audio",
 	Video = "Video",

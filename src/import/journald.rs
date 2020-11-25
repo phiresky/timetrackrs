@@ -22,7 +22,21 @@ enum JournaldEvent {
 
 impl ExtractInfo for JournaldEntry {
     fn extract_info(&self) -> Option<ExtractedInfo> {
-        None
+        let mut general = self.os_info.to_partial_general_software();
+        general.identifier = Identifier("exe:/usr/bin/journalctl".to_string());
+        general.title = "journalctl".to_string();
+        general.unique_name = "systemd".to_string();
+        general.opened_filepath = None;
+        Some(ExtractedInfo::InteractWithDevice {
+            general,
+            specific: SpecificSoftware::DeviceStateChange {
+                change: match self.event {
+                    JournaldEvent::Powerup => DeviceStateChange::PowerOn,
+                    JournaldEvent::Shutdown => DeviceStateChange::PowerOff,
+                    _ => return None,
+                },
+            },
+        })
     }
 }
 lazy_static! {
@@ -32,7 +46,7 @@ lazy_static! {
     static ref JOURNALD_LIST_BOOTS: regex::Regex = regex::Regex::new(
         r#"(?x)
         ^ # start line
-        \s*-?\d+\  # relative boot number
+        \s*(?P<relative_boot_number>-?\d+)\  # relative boot number
         (?P<boot_id>[0-9a-f]+)\ 
         ...\ # week day
         (?P<start>\d\d\d\d-\d\d-\d\d\ \d\d:\d\d:\d\d)\ UTC
@@ -61,6 +75,7 @@ impl Importable for JournaldImportArgs {
             let cap = JOURNALD_LIST_BOOTS
                 .captures(&line)
                 .ok_or(anyhow::anyhow!("could no match output '{}'", line))?;
+            let relative_boot_number = cap.name("relative_boot_number").unwrap().as_str();
             let boot_id = cap.name("boot_id").unwrap().as_str();
             let start = cap.name("start").unwrap().as_str();
             let end = cap.name("end").unwrap().as_str();
@@ -85,19 +100,22 @@ impl Importable for JournaldImportArgs {
                 }
                 .try_into()?,
             );
-            outs.push(
-                CreateNewDbEvent {
-                    id: format!("{}.shutdown", boot_id),
-                    timestamp: end,
-                    data: EventData::journald(JournaldEntry {
-                        os_info: os_info.clone(),
-                        event: JournaldEvent::Shutdown,
-                    }),
-                    sampler: Sampler::Explicit { duration: 0.0 },
-                    sampler_sequence_id: "".to_string(),
-                }
-                .try_into()?,
-            );
+            // current boot has not shut down, so don't add shutdown event
+            if relative_boot_number != "0" {
+                outs.push(
+                    CreateNewDbEvent {
+                        id: format!("{}.shutdown", boot_id),
+                        timestamp: end,
+                        data: EventData::journald(JournaldEntry {
+                            os_info: os_info.clone(),
+                            event: JournaldEvent::Shutdown,
+                        }),
+                        sampler: Sampler::Explicit { duration: 0.0 },
+                        sampler_sequence_id: "".to_string(),
+                    }
+                    .try_into()?,
+                );
+            }
         }
 
         Ok(outs)
