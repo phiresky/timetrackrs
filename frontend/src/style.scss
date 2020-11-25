@@ -50,7 +50,7 @@ div.header {
 	color: ghostwhite;
 	padding: 2.3rem 1rem 2.3rem 1rem;
 	position: relative;
-	&:after {
+	&.fade-in:after {
 		content: "";
 		position: absolute;
 		bottom: -5rem;

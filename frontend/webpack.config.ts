@@ -1,3 +1,4 @@
+// @ts-nocheck
 import MiniCssExtractPlugin from "mini-css-extract-plugin"
 import * as path from "path"
 import * as webpack from "webpack"
@@ -30,6 +31,9 @@ const config: webpack.Configuration = {
 				loader: "babel-loader",
 			},
 		],
+	},
+	devServer: {
+		historyApiFallback: { index: "index.html" },
 	},
 }
 

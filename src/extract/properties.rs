@@ -106,17 +106,28 @@ pub struct GeneralSoftware {
 //
 // activity:biking
 
-pub fn get_uri(e: &ExtractedInfo) -> Option<String> {
-    match e {
-        ExtractedInfo::InteractWithDevice { general, specific } => match specific {
-            SpecificSoftware::WebBrowser { url: Some(url), .. } => Some(url.to_string()),
-            _ => general
-                .opened_filepath
-                .as_ref()
-                .map(|of| format!("file://{}{}", general.hostname, of)),
-        },
-        _ => None,
+pub fn get_tags(e: &ExtractedInfo) -> Vec<String> {
+    let mut tags = Vec::new();
+    if let ExtractedInfo::InteractWithDevice {
+        specific: SpecificSoftware::WebBrowser { url: Some(url), .. },
+        ..
+    } = e
+    {
+        tags.push(format!("url:/{}", url.to_string()));
     }
+    if let ExtractedInfo::InteractWithDevice {
+        general:
+            GeneralSoftware {
+                opened_filepath: Some(path),
+                hostname,
+                ..
+            },
+        ..
+    } = e
+    {
+        tags.push(format!("file://{}{}", hostname, path));
+    }
+    tags
 }
 
 #[derive(Serialize, TypeScriptify)]
@@ -129,14 +140,14 @@ pub enum DeviceStateChange {
 
 #[derive(Serialize, TypeScriptify)]
 pub struct EnrichedExtractedInfo {
-    uri: Option<String>,
+    tags: Vec<String>,
     info: ExtractedInfo,
 }
 
 impl From<ExtractedInfo> for EnrichedExtractedInfo {
     fn from(o: ExtractedInfo) -> EnrichedExtractedInfo {
         EnrichedExtractedInfo {
-            uri: get_uri(&o),
+            tags: get_tags(&o),
             info: o,
         }
     }

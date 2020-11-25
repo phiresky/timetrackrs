@@ -102,6 +102,7 @@ impl ExtractInfo for X11EventData {
     fn extract_info(&self) -> Option<ExtractedInfo> {
         use crate::extract::properties::*;
         let x = &self;
+        // unused for 2 minutes, assume AFK
         if x.ms_since_user_input > 120 * 1000 {
             return None;
         }
