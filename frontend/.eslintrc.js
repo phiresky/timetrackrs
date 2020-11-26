@@ -15,10 +15,10 @@ module.exports = {
 	rules: {
 		"prettier/prettier": ["warn"],
 		"no-console": "off",
-		"@typescript-eslint/explicit-function-return-type": "off",
 		"react/jsx-filename-extension": "off",
 		"react/jsx-indent": "off",
 		"import/extensions": "off",
 		"@typescript-eslint/camelcase": "off",
+		"react/prop-types": "off",
 	},
 }

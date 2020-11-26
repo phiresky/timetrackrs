@@ -52,6 +52,9 @@ hyper = "0.13.7"
 hyper-rustls = "0.21.0"
 hyper-tls = "0.4.3"
 futures = "0.3.5"
+publicsuffix = "1.5.4"
+csv = "1.1.4"
+chrono-tz = "0.5.3"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["winuser", "processthreadsapi","handleapi", "psapi"] }

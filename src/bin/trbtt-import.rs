@@ -14,6 +14,11 @@ fn main() -> anyhow::Result<()> {
         .values(&data)
         .execute(&db)?;
 
-    println!("successfully inserted {}/{} entries", updated, data.len());
+    println!(
+        "successfully inserted {}/{} entries ({} already existed)",
+        updated,
+        data.len(),
+        data.len() - updated
+    );
     Ok(())
 }

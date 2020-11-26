@@ -3,90 +3,12 @@ import { observer } from "mobx-react"
 import React from "react"
 import { aggregates as detailers, Filter, SummaryFilter } from "./ftree"
 import { Plot } from "./plot"
-import { EnrichedExtractedInfo, ExtractedInfo } from "./server"
 import "./style.scss"
 import * as api from "./api"
 import { durationToString, totalDuration } from "./util"
 import { Activity } from "./api"
-
-type Keyed<
-	T extends { [k in discriminator]: string | number | symbol },
-	discriminator extends keyof T
-> = {
-	[k in T[discriminator]]: Omit<
-		Extract<T, { [z in discriminator]: k }>,
-		discriminator
-	>
-}
-export type KeyedExtractedInfo = Keyed<ExtractedInfo, "type">
-
-type _UseSoftware<T> = T extends { type: "InteractWithDevice" } ? T : never
-export type UseSoftware = _UseSoftware<ExtractedInfo>
-
-type KeyedUseSpecificSoftware = Keyed<UseSoftware["specific"], "type">
-
-export type KeyedOuterUseSpecificSoftware = {
-	[k in keyof KeyedUseSpecificSoftware]: UseSoftware & {
-		specific: KeyedUseSpecificSoftware[k]
-	}
-}
-
-/*type KeyedOuter<
-	TDiscriminator extends string,
-	TInner extends string,
-	T extends { [TKey in TDiscriminator]: Record<TInner, string> }
-> = {
-	[TKey in T[TDiscriminator][TInner]]: T extends Record<
-		TDiscriminator,
-		Record<TInner, TKey>
-	>
-		? Omit<T, TDiscriminator>
-		: never
-}
-
-type KeyedUseSpecificSoftware = KeyedOuter<"specific", "type", UseSoftware>*/
-
-type KeyedReactComp<T> = { [k in keyof T]: React.ComponentType<T[k]> }
-
-const useSpecificSoftwareComponents: KeyedReactComp<KeyedOuterUseSpecificSoftware> = {
-	Shell(e) {
-		return <div>Shell in {e.specific.cwd}</div>
-	},
-	WebBrowser(e) {
-		return <div>Browser at {e.specific.service}</div>
-	},
-	SoftwareDevelopment(e) {
-		return <div>Software Development of {e.specific.project_path}</div>
-	},
-	MediaPlayer(e) {
-		return <div>Consumed Media: {e.specific.media_name}</div>
-	},
-	DeviceStateChange(e) {
-		return (
-			<div>
-				{e.specific.change} device {e.general.hostname}
-			</div>
-		)
-	},
-	Unknown(e) {
-		return (
-			<div>
-				Used {e.general.device_type}: {e.general.title}
-			</div>
-		)
-	},
-}
-
-/*const softwareComponents: {k in keyof }*/
-const entryComponents: KeyedReactComp<KeyedExtractedInfo> = {
-	PhysicalActivity(e) {
-		return <div>*dance*</div>
-	},
-	InteractWithDevice(e) {
-		const Comp = useSpecificSoftwareComponents[e.specific.type]
-		return <Comp {...(e as any)} />
-	},
-}
+import { EntriesTime } from "./EntriesTime"
+import { Entry } from "./components/Entry"
 
 interface Grouper {
 	name: string
@@ -217,35 +139,11 @@ function group(grouper: Grouper, entries: Activity[]): Activity[][] {
 	return res
 }
 
-class Entry extends React.Component<Activity> {
-	render() {
-		const { data } = this.props
-		const E = entryComponents[data.info.type] as any
-		console.log(E)
-		return <E {...data.info} />
-		//return "unk: " + data.software?.title
-	}
-}
-
-const timeFmt = new Intl.DateTimeFormat("en-US", {
+export const timeFmt = new Intl.DateTimeFormat("en-US", {
 	hour12: false,
 	hour: "numeric",
 	minute: "numeric",
 })
-
-function EntriesTime({ entries }: { entries: Activity[] }) {
-	const duration = totalDuration(entries)
-	const from = timeFmt.format(new Date(entries[entries.length - 1].timestamp))
-	const _to = new Date(entries[0].timestamp)
-	_to.setSeconds(_to.getSeconds() + entries[0].duration)
-	const to = timeFmt.format(_to)
-	const range = from === to ? from : `${from} - ${to}`
-	return (
-		<>
-			{durationToString(duration)} ({range})
-		</>
-	)
-}
 
 /*function chooseGrouper(
 	entries: Activity[],
@@ -329,7 +227,7 @@ export class Timeline extends React.Component {
 	constructor(p: Record<string, unknown>) {
 		super(p)
 		Object.assign(window, { gui: this })
-		this.fetchData()
+		void this.fetchData()
 	}
 
 	async fetchData() {

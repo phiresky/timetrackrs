@@ -1,35 +1,20 @@
-import { observable, runInAction } from "mobx"
-import { observer } from "mobx-react"
 import React from "react"
 import { render } from "react-dom"
-import { aggregates as detailers, Filter, SummaryFilter } from "./ftree"
-import { Plot } from "./plot"
-import { EnrichedExtractedInfo, ExtractedInfo } from "./server"
+import { BrowserRouter } from "react-router-dom"
+import { MaybeModal } from "./components/ModalLink"
+import { Routes } from "./components/Routes"
 import "./style.scss"
-import { Timeline } from "./timeline"
-import { durationToString, totalDuration } from "./util"
-import {
-	BrowserRouter as Router,
-	Switch,
-	Route,
-	Link,
-	Redirect,
-} from "react-router-dom"
-import { TagTree } from "./tag-tree"
+
+const appElement = document.getElementById("root")
 
 function Main() {
+	if (!appElement) throw Error("could not find app container")
 	return (
-		<Router>
-			<Switch>
-				<Route path="/timeline">
-					<Timeline />
-				</Route>
-				<Route path="/tag-tree">
-					<TagTree />
-				</Route>
-				<Redirect to="/timeline"></Redirect>
-			</Switch>
-		</Router>
+		<BrowserRouter>
+			<MaybeModal appElement={appElement}>
+				<Routes />
+			</MaybeModal>
+		</BrowserRouter>
 	)
 }
-render(<Main />, document.getElementById("root"))
+render(<Main />, appElement)

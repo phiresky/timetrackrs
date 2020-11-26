@@ -13,7 +13,7 @@ lazy_static::lazy_static! {
     static ref BROWSER_BINARY: Regex = Regex::new(r#"/(firefox|google-chrome|chromium)$"#).unwrap();
     static ref MEDIAPLAYER_BINARY: Regex = Regex::new(r#"/(mpv|vlc)$"#).unwrap();
     static ref URL: Regex =
-        Regex::new(r#"(?i)https?://(-\.)?([^\s/?\.#-]+\.?)+(/[^\s]*)?"#).unwrap();
+        Regex::new(r#"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"#).unwrap();
         // Regex::new(r#"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"#).unwrap();
 }
 
@@ -114,18 +114,16 @@ pub fn match_software(
     }
     if let Some(exe) = &executable_path {
         if BROWSER_BINARY.is_match(&exe) {
-            if let Some(cap) = URL.find(&window_title) {
+            if let Some(cap) = URL.find_iter(&window_title).last() {
                 if let Ok(url) = url::Url::parse(cap.as_str()) {
                     return SpecificSoftware::WebBrowser {
                         url: Some(cap.as_str().to_string()),
-                        origin: Some(url.origin().ascii_serialization()),
-                        service: url.host_str().map(|e| e.to_string()),
+                        domain: url.domain().map(|e| e.to_string()),
                     };
                 }
                 return SpecificSoftware::WebBrowser {
                     url: None,
-                    origin: None,
-                    service: None,
+                    domain: None,
                 };
             }
         }

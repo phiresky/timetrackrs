@@ -15,25 +15,25 @@ fn main() -> anyhow::Result<()> {
     // println!("{}", serde_json::to_string_pretty(&data)?);
     let sampler = Sampler::RandomSampler { avg_time: 30.0 };
     let sampler_sequence_id = util::random_uuid();
-    {
-        loop {
-            let sample = sampler.get_sample();
-            println!("sleeping {}s", sample);
-            std::thread::sleep(std::time::Duration::from_secs_f64(sample));
 
-            let data = c.capture()?;
-            let act = CreateNewDbEvent {
-                id: util::random_uuid(),
-                timestamp: Utc::now(),
-                sampler: sampler.clone(),
-                sampler_sequence_id: sampler_sequence_id.clone(),
-                data,
-            };
-            let ins: NewDbEvent = act.try_into()?;
+    loop {
+        // let sample = sampler.get_sample();
+        let sample = 30.0;
+        println!("sleeping {}s", sample);
+        std::thread::sleep(std::time::Duration::from_secs_f64(sample));
 
-            diesel::insert_into(events::table)
-                .values(&ins)
-                .execute(&db)?;
-        }
+        let data = c.capture()?;
+        let act = CreateNewDbEvent {
+            id: util::random_uuid(),
+            timestamp: Utc::now(),
+            sampler: sampler.clone(),
+            sampler_sequence_id: sampler_sequence_id.clone(),
+            data,
+        };
+        let ins: NewDbEvent = act.try_into()?;
+
+        diesel::insert_into(events::table)
+            .values(&ins)
+            .execute(&db)?;
     }
 }

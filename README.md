@@ -44,9 +44,20 @@ This program name can be mapped to a software package using the system package m
 
 Also, Wikidata can be used to get the software category etc: https://www.wikidata.org/wiki/Q171477
 
-(in pseudocode):
+SELECT ?software ?package WHERE {
+?software wdt:P3454 ?package.
+VALUES ?package { "vlc" }
+}
 
-select ?software where archlinux_package = "vlc" (returns Q171477)
+SELECT ?software ?package ?category ?categoryLabel WHERE {
+?software wdt:P856 ?package.
+?software wdt:P31+ ?category.
+?category wdt:P279 wd:Q1668024
+VALUES ?package { <https://www.reddit.com> }
+SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
+}
+
+(returns Q171477)
 
 select ?category where ?software is_in ?category and ?category subclass_of\* software_category (should return media_player and multimedia_software etc)
 

@@ -21,8 +21,7 @@ pub enum SpecificSoftware {
         url: Option<Text10000Choices>,
         // TODO: needs public suffix list
         // pub main_domain: Text1000, // main domain name (e.g. old.reddit.com -> reddit.com)
-        origin: Option<Text1000Choices>, // full origin (https://example.com) of browsed url
-        service: Option<Text1000Choices>, // name of the webservice being used, based on url. e.g. "Reddit" or "GMail"
+        domain: Option<Text1000Choices>, // domain (e.g. web.telegram.org) of browsed url
     },
     Shell {
         cwd: Text1000Choices,
@@ -65,7 +64,7 @@ pub enum MediaType {
     Audio,
     Video,
 }
-#[derive(Serialize, TypeScriptify)]
+#[derive(Debug, Serialize, TypeScriptify)]
 pub enum SoftwareDeviceType {
     Desktop,
     Laptop,
@@ -78,7 +77,9 @@ pub struct GeneralSoftware {
     pub device_type: SoftwareDeviceType,
     pub device_os: Text10Choices,
     pub title: Text10000Choices,
-    pub identifier: Identifier, // unique identifier for software package e.g. android:com.package.id or exe:/binary/path
+    // unique identifier for software package e.g. android:com.package.id or exe:/binary/path
+    // not directly using exe path since some platforms (android) don't really have that
+    pub identifier: Identifier,
     pub unique_name: Text100Choices, // name of software that should be globally unique and generally recognizable (e.g. "Firefox")
     pub opened_filepath: Option<Text10000Choices>,
 }
@@ -106,30 +107,6 @@ pub struct GeneralSoftware {
 //
 // activity:biking
 
-pub fn get_tags(e: &ExtractedInfo) -> Vec<String> {
-    let mut tags = Vec::new();
-    if let ExtractedInfo::InteractWithDevice {
-        specific: SpecificSoftware::WebBrowser { url: Some(url), .. },
-        ..
-    } = e
-    {
-        tags.push(format!("url:/{}", url.to_string()));
-    }
-    if let ExtractedInfo::InteractWithDevice {
-        general:
-            GeneralSoftware {
-                opened_filepath: Some(path),
-                hostname,
-                ..
-            },
-        ..
-    } = e
-    {
-        tags.push(format!("file://{}{}", hostname, path));
-    }
-    tags
-}
-
 #[derive(Serialize, TypeScriptify)]
 pub enum DeviceStateChange {
     PowerOn,
@@ -147,7 +124,7 @@ pub struct EnrichedExtractedInfo {
 impl From<ExtractedInfo> for EnrichedExtractedInfo {
     fn from(o: ExtractedInfo) -> EnrichedExtractedInfo {
         EnrichedExtractedInfo {
-            tags: get_tags(&o),
+            tags: tags::get_tags(&o).into_iter().collect(),
             info: o,
         }
     }

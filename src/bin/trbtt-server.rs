@@ -17,8 +17,8 @@ extern crate rocket_contrib;
 #[database("events_database")]
 struct DbConn(diesel::SqliteConnection);
 
-#[get("/fetch-info?<after>&<before>&<limit>")]
-fn fetch_info(
+#[get("/time-range?<after>&<before>&<limit>")]
+fn time_range(
     db: DbConn,
     after: Option<String>,
     limit: Option<u32>,
@@ -73,6 +73,44 @@ fn fetch_info(
     Ok(Json(json!({ "data": &v })))
 }
 
+#[get("/single-event?<id>")]
+fn single_event(db: DbConn, id: String) -> anyhow::Result<Json<J>> {
+    // println!("handling...");
+    // println!("querying...");
+    let a = {
+        use trbtt::db::schema::events::dsl;
+        dsl::events
+            .into_boxed()
+            .filter(dsl::id.eq(id))
+            .first::<DbEvent>(&*db)?
+    };
+    // println!("jsonifying...");
+
+    let r = deserialize_captured((&a.data_type, &a.data));
+    let v = match r {
+        Ok(r) => {
+            if let Some(data) = r.extract_info() {
+                Some(json!({
+                    "id": a.id,
+                    "timestamp": a.timestamp,
+                    "duration": a.sampler.get_duration(),
+                    "data": EnrichedExtractedInfo::from(data),
+                    "raw": r
+                }))
+            } else {
+                None
+            }
+        }
+        Err(e) => {
+            println!("deser of {} error: {:?}", a.id, e);
+            // println!("data=||{}", a.data);
+            None
+        }
+    };
+
+    Ok(Json(json!({ "data": &v })))
+}
+
 fn main() -> anyhow::Result<()> {
     let cors = rocket_cors::CorsOptions {
         allowed_origins: rocket_cors::AllowedOrigins::all(),
@@ -80,7 +118,7 @@ fn main() -> anyhow::Result<()> {
     }
     .to_cors()?;
     rocket::ignite()
-        .mount("/", routes![fetch_info])
+        .mount("/", routes![time_range, single_event])
         .attach(cors)
         .attach(DbConn::fairing())
         .launch();

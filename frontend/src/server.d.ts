@@ -91,8 +91,7 @@ export type SpecificSoftware =
 	| {
 			type: "WebBrowser"
 			url: Text10000Choices | null
-			origin: Text1000Choices | null
-			service: Text1000Choices | null
+			domain: Text1000Choices | null
 	  }
 	| {
 			type: "Shell"

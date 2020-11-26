@@ -2,6 +2,7 @@ use crate::prelude::*;
 use enum_dispatch::enum_dispatch;
 
 pub mod properties;
+pub mod tags;
 
 #[enum_dispatch(EventData)]
 pub trait ExtractInfo {

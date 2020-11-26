@@ -91,6 +91,10 @@ div.header {
 		margin: auto;
 	}
 }
+.raw-json {
+	max-height: 50ex;
+	overflow: scroll;
+}
 
 $year-width: 100px;
 // https://codepen.io/mathiesjanssen/pen/ggeBKm

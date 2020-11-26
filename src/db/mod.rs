@@ -7,11 +7,8 @@ use dotenv::dotenv;
 use std::env;
 embed_migrations!();
 
-pub fn connect() -> anyhow::Result<SqliteConnection> {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let db = SqliteConnection::establish(&database_url).context("Establishing connection")?;
+pub fn connect_file(filename: &str) -> anyhow::Result<SqliteConnection> {
+    let db = SqliteConnection::establish(&filename).context("Establishing connection")?;
     db.execute("pragma page_size = 32768;")
         .context("setup pragma 1")?;
     db.execute("pragma foreign_keys = on;")
@@ -32,4 +29,11 @@ pub fn connect() -> anyhow::Result<SqliteConnection> {
 
     embedded_migrations::run_with_output(&db, &mut std::io::stdout()).context("migrations")?;
     Ok(db)
+}
+
+pub fn connect() -> anyhow::Result<SqliteConnection> {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    connect_file(&database_url)
 }
