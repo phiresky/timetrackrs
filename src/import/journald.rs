@@ -91,7 +91,7 @@ impl Importable for JournaldImportArgs {
                 CreateNewDbEvent {
                     id: format!("{}.powerup", boot_id),
                     timestamp: start,
-                    data: EventData::journald(JournaldEntry {
+                    data: EventData::journald_v1(JournaldEntry {
                         os_info: os_info.clone(),
                         event: JournaldEvent::Powerup,
                     }),
@@ -106,7 +106,7 @@ impl Importable for JournaldImportArgs {
                     CreateNewDbEvent {
                         id: format!("{}.shutdown", boot_id),
                         timestamp: end,
-                        data: EventData::journald(JournaldEntry {
+                        data: EventData::journald_v1(JournaldEntry {
                             os_info: os_info.clone(),
                             event: JournaldEvent::Shutdown,
                         }),

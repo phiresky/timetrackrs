@@ -31,7 +31,14 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 					Date: {new Date(e.timestamp).toLocaleString()} (
 					{formatRelative(new Date(e.timestamp), new Date())})
 				</p>
-				<p>Duration: {formatDuration({ seconds: e.duration })}</p>
+				<p>
+					Duration:{" "}
+					{formatDuration({
+						seconds: e.duration % 60,
+						minutes: ((e.duration / 60) | 0) % 60,
+						hours: (e.duration / 60 / 60) | 0,
+					})}
+				</p>
 				<div>
 					Tags:{" "}
 					<ul>

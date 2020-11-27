@@ -77,3 +77,10 @@ pub fn get_os_info() -> OsInfo {
         batteries: batteries,
     }
 }
+
+pub fn init_logging() {
+    if let Err(_) = std::env::var("RUST_LOG") {
+        std::env::set_var("RUST_LOG", "info");
+    }
+    pretty_env_logger::init();
+}

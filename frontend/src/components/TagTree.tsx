@@ -91,6 +91,8 @@ function ShowTree({
 			<span onClick={() => setOpen(!open)}>
 				{title} (<TotalDuration tree={tree} />)
 			</span>
+
+			{open && <ShowTreeChildren tree={tree} />}
 			{open && tree.leaves.length > 0 && (
 				<ul>
 					{tree.leaves.map((l) => (
@@ -102,7 +104,6 @@ function ShowTree({
 					))}
 				</ul>
 			)}
-			{open && <ShowTreeChildren tree={tree} />}
 		</li>
 	)
 }

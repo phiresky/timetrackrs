@@ -4,12 +4,13 @@ CREATE TABLE events (
     -- a combination of data_type and something from the import
     -- such that it is unique but repeated imports will not cause
     -- duplicate entries
-    id TEXT NOT NULL PRIMARY KEY,
-    timestamp TEXT NOT NULL, -- ISO8601
-    data_type TEXT NOT NULL, -- "{name}_v{version}"
-    sampler TEXT NOT NULL, -- JSON
-    sampler_sequence_id TEXT NOT NULL, -- UUID
-    data TEXT NOT NULL -- JSON
+    id text NOT NULL PRIMARY KEY,
+    timestamp text NOT NULL, -- ISO8601
+    data_type text NOT NULL, -- "{name}_v{version}"
+    sampler text NOT NULL, -- JSON
+    sampler_sequence_id text NOT NULL, -- UUID
+    data text NOT NULL -- JSON
 );
 
-CREATE INDEX events_timestamp_idx on events(timestamp);
+CREATE INDEX events_timestamp_idx ON events (timestamp);
+

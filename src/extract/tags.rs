@@ -107,6 +107,6 @@ pub fn apply_tag_rules(tags: &mut Tags) {
         iterations += 1;
     }
     if !settled {
-        eprintln!("warning: tags did not settle");
+        log::warn!("warning: tags did not settle");
     }
 }

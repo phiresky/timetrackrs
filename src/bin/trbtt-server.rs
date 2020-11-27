@@ -11,6 +11,7 @@ use track_pc_usage_rs::util::iso_string_to_date;
 use trbtt::db::models::{DbEvent, Timestamptz};
 use trbtt::extract::properties::EnrichedExtractedInfo;
 use trbtt::extract::ExtractInfo;
+use trbtt::prelude::*;
 #[macro_use]
 extern crate rocket_contrib;
 
@@ -112,6 +113,8 @@ fn single_event(db: DbConn, id: String) -> anyhow::Result<Json<J>> {
 }
 
 fn main() -> anyhow::Result<()> {
+    util::init_logging();
+
     let cors = rocket_cors::CorsOptions {
         allowed_origins: rocket_cors::AllowedOrigins::all(),
         ..Default::default()

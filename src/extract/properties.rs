@@ -64,7 +64,7 @@ pub enum MediaType {
     Audio,
     Video,
 }
-#[derive(Debug, Serialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub enum SoftwareDeviceType {
     Desktop,
     Laptop,

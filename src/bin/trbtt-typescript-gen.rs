@@ -31,6 +31,8 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[];
 
 // const all_types: Vec<
 fn main() -> anyhow::Result<()> {
+    util::init_logging();
+
     let mut ofile = std::fs::File::create("frontend/src/server.d.ts")?;
     writeln!(ofile, "type DateTime<T> = string;")?;
     writeln!(ofile, "type Local = unknown;")?;

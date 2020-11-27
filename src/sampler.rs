@@ -23,7 +23,7 @@ impl Sampler {
                 let mut rng = rand::thread_rng();
                 return rng.sample(distribution);
             }
-            Sampler::Explicit { duration: _ } => panic!("cant sample explicit"),
+            Sampler::Explicit { duration } => *duration,
         }
     }
     /// get the (approximate duration value for each entry that used this sampler
