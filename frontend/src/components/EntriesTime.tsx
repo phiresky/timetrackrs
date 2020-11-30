@@ -1,7 +1,7 @@
 import React from "react"
-import { durationToString, totalDuration } from "./util"
-import { Activity } from "./api"
-import { timeFmt } from "./timeline"
+import { durationToString, totalDuration } from "../util"
+import { Activity } from "../api"
+import { timeFmt } from "../timeline"
 
 export function EntriesTime({ entries }: { entries: Activity[] }) {
 	const duration = totalDuration(entries)

@@ -10,7 +10,7 @@ import { durationToString, totalDuration } from "./util"
 export type Filter = {
 	key: string | null | undefined
 	name?: string | null | undefined
-	group?(e: Activity): Filter
+	group?: (e: Activity) => Filter
 }
 export const categoryAggregate: Filter = {
 	key: "Activity",

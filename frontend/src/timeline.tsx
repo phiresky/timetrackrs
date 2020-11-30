@@ -7,7 +7,7 @@ import "./style.scss"
 import * as api from "./api"
 import { durationToString, totalDuration } from "./util"
 import { Activity } from "./api"
-import { EntriesTime } from "./EntriesTime"
+import { EntriesTime } from "./components/EntriesTime"
 import { Entry } from "./components/Entry"
 
 interface Grouper {

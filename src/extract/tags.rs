@@ -1,15 +1,33 @@
 use crate::prelude::*;
 
 use regex::Regex;
-
-lazy_static::lazy_static! {
-    static ref tag_rules: Vec<TagRule> = vec![
+lazy_static! {
+    static ref public_suffixes: publicsuffix::List =
+        publicsuffix::List::from_str(include_str!("../../data/public_suffix_list.dat")).unwrap();
+}
+fn get_tag_rules() -> Vec<TagRule> {
+    return vec![
         TagRule::TagRegex {
             regex: Regex::new(r#"^browse-domain:telegram.org$"#).unwrap(),
-            new_tag: "use-service:Telegram".to_string()
-        }
+            new_tag: "use-service:Telegram".to_string(),
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^use-executable:.*/telegram-desktop$"#).unwrap(),
+            new_tag: "use-service:Telegram".to_string(),
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^browse-domain:gmail.com$"#).unwrap(),
+            new_tag: "use-service:Gmail".to_string(),
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^browse-domain:(.*\.)?youtube.com$"#).unwrap(),
+            new_tag: "use-service:YouTube".to_string(),
+        },
+        TagRule::ExternalFetcher {
+            regex: Regex::new(r#"^browse-domain:(.*\.)?youtube.com$"#).unwrap(),
+            fetcher: Box::new(fetchers::YoutubeFetcher),
+        },
     ];
-    static ref public_suffixes: publicsuffix::List = publicsuffix::List::from_str(include_str!("../../data/public_suffix_list.dat")).unwrap();
 }
 
 enum TagRule {
@@ -17,8 +35,12 @@ enum TagRule {
         regex: regex::Regex,
         new_tag: String,
     },
+    ExternalFetcher {
+        regex: regex::Regex,
+        fetcher: Box<dyn fetchers::Fetcher>,
+    },
 }
-type Tags = std::collections::BTreeSet<String>;
+pub type Tags = std::collections::BTreeSet<String>;
 
 impl TagRule {
     fn apply(&self, tags: &mut Tags) {
@@ -29,6 +51,16 @@ impl TagRule {
                     let new = regex.replace(tag, new_tag.as_str());
                     if &new != tag {
                         new_tags.push(new.to_string());
+                    }
+                }
+            }
+            TagRule::ExternalFetcher { regex, fetcher } => {
+                for tag in tags.iter() {
+                    if regex.is_match(tag) {
+                        let id = fetcher.get_id();
+                        let cache_key = fetcher.get_cache_key(tags);
+                        log::debug!("matcher {} matched, cache key = {:?}", id, cache_key);
+                        break;
                     }
                 }
             }
@@ -98,8 +130,9 @@ pub fn apply_tag_rules(tags: &mut Tags) {
     let mut last_length = tags.len();
     let mut settled = false;
     let mut iterations = 0;
+    let rules = get_tag_rules();
     while !settled && iterations < 50 {
-        for rule in tag_rules.iter() {
+        for rule in rules.iter() {
             rule.apply(tags);
         }
         settled = tags.len() == last_length;

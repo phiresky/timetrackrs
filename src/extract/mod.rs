@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use enum_dispatch::enum_dispatch;
 
+pub mod fetchers;
 pub mod properties;
 pub mod tags;
 

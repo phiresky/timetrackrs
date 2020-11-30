@@ -1,3 +1,4 @@
+pub mod fetcher_cache;
 pub mod models;
 pub mod schema;
 use anyhow::Context;

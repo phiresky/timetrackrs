@@ -28,8 +28,8 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 					Unique ID: <code>{e.id}</code>
 				</p>
 				<p>
-					Date: {new Date(e.timestamp).toLocaleString()} (
-					{formatRelative(new Date(e.timestamp), new Date())})
+					Date: {formatRelative(new Date(e.timestamp), new Date())}{" "}
+					<small>({new Date(e.timestamp).toLocaleString()})</small>
 				</p>
 				<p>
 					Duration:{" "}

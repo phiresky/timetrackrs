@@ -1,19 +1,14 @@
+import { addMinutes } from "date-fns"
+import { addSeconds } from "date-fns/esm"
 import _ from "lodash"
+import { action } from "mobx"
 import * as PlotlyT from "plotly.js"
 import * as PlotlyI from "plotly.js-dist"
 import React from "react"
+import { Activity } from "./api"
 import { categoryAggregate } from "./ftree"
-import { Activity } from "./main"
 
 const Plotly = PlotlyI as typeof PlotlyT
-
-const data: Plotly.Data[] = [
-	{
-		x: ["giraffes", "orangutans", "monkeys"],
-		y: [20, 14, 23],
-		type: "histogram",
-	},
-]
 
 export class Plot extends React.Component<{ data: Activity[] }> {
 	r = React.createRef<HTMLDivElement>()
@@ -31,9 +26,29 @@ export class Plot extends React.Component<{ data: Activity[] }> {
 			})
 
 			const data: Plotly.Data[] = Object.entries(_gs).map(([key, es]) => {
+				const es2 = es.flatMap((e) => {
+					if (e.duration > 600) {
+						return Array(Math.ceil(e.duration / 600))
+							.fill(0)
+							.map(
+								(_, i) =>
+									({
+										...e,
+										timestamp: addSeconds(
+											new Date(e.timestamp),
+											600 * i,
+										).toISOString(),
+										duration: Math.min(
+											600,
+											e.duration - 600 * i,
+										),
+									} as Activity),
+							)
+					} else return e
+				})
 				return {
-					x: es.map((x) => new Date(x.timestamp)),
-					y: es.map((x) => x.duration / 60),
+					x: es2.map((x) => new Date(x.timestamp)),
+					y: es2.map((x) => x.duration / 60),
 					type: "histogram",
 					nbinsx: 100,
 					histfunc: "sum",
