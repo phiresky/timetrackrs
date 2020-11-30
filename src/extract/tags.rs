@@ -1,5 +1,8 @@
-use crate::prelude::*;
+use std::fmt::Display;
 
+use crate::{db::fetcher_cache, prelude::*};
+
+use diesel::SqliteConnection;
 use regex::Regex;
 lazy_static! {
     static ref public_suffixes: publicsuffix::List =
@@ -16,7 +19,7 @@ fn get_tag_rules() -> Vec<TagRule> {
             new_tag: "use-service:Telegram".to_string(),
         },
         TagRule::TagRegex {
-            regex: Regex::new(r#"^browse-domain:gmail.com$"#).unwrap(),
+            regex: Regex::new(r#"^browse-domain:mail.google.com$"#).unwrap(),
             new_tag: "use-service:Gmail".to_string(),
         },
         TagRule::TagRegex {
@@ -27,9 +30,14 @@ fn get_tag_rules() -> Vec<TagRule> {
             regex: Regex::new(r#"^browse-domain:(.*\.)?youtube.com$"#).unwrap(),
             fetcher: Box::new(fetchers::YoutubeFetcher),
         },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^software-development-project:.*/(.*)$"#).unwrap(),
+            new_tag: "software-development-project-name:$1".to_string(),
+        },
     ];
 }
 
+#[derive(Debug)]
 enum TagRule {
     TagRegex {
         regex: regex::Regex,
@@ -43,7 +51,7 @@ enum TagRule {
 pub type Tags = std::collections::BTreeSet<String>;
 
 impl TagRule {
-    fn apply(&self, tags: &mut Tags) {
+    fn apply(&self, db: &mut SqliteConnection, tags: &mut Tags) -> anyhow::Result<()> {
         let mut new_tags = Vec::new();
         match self {
             TagRule::TagRegex { regex, new_tag } => {
@@ -58,18 +66,44 @@ impl TagRule {
                 for tag in tags.iter() {
                     if regex.is_match(tag) {
                         let id = fetcher.get_id();
-                        let cache_key = fetcher.get_cache_key(tags);
-                        log::debug!("matcher {} matched, cache key = {:?}", id, cache_key);
-                        break;
+                        if let Some(inner_cache_key) = fetcher.get_cache_key(tags) {
+                            let global_cache_key = &format!("{}:{}", id, inner_cache_key);
+                            log::trace!(
+                                "matcher {} matched, cache key = {:?}",
+                                id,
+                                global_cache_key
+                            );
+                            let cached_data = fetcher_cache::get_cache_entry(db, global_cache_key)
+                                .context("get cache entry")?;
+                            let data = match cached_data {
+                                Some(data) => data,
+                                None => {
+                                    let data = fetcher
+                                        .fetch_data(&inner_cache_key)
+                                        .context("fetching data")?;
+                                    fetcher_cache::set_cache_entry(db, &global_cache_key, &data)
+                                        .context("saving to cache")?;
+                                    data
+                                }
+                            };
+                            new_tags.extend(
+                                fetcher
+                                    .process_data(&tags, &inner_cache_key, &data)
+                                    .context("processing data")?
+                                    .into_iter(),
+                            );
+                            break;
+                        }
                     }
                 }
             }
         }
         tags.extend(new_tags);
+        Ok(())
     }
 }
 
-pub fn get_tags(e: &ExtractedInfo) -> Tags {
+pub fn get_tags(db: &mut SqliteConnection, e: &ExtractedInfo) -> Tags {
     let mut tags = Tags::new();
     if let ExtractedInfo::InteractWithDevice {
         specific:
@@ -107,6 +141,18 @@ pub fn get_tags(e: &ExtractedInfo) -> Tags {
         tags.insert(format!("open-file:{}{}", hostname, path));
     }
     if let ExtractedInfo::InteractWithDevice {
+        general: GeneralSoftware { hostname, .. },
+        specific:
+            SpecificSoftware::SoftwareDevelopment {
+                project_path: Some(path),
+                ..
+            },
+        ..
+    } = e
+    {
+        tags.insert(format!("software-development-project:{}{}", hostname, path));
+    }
+    if let ExtractedInfo::InteractWithDevice {
         general:
             GeneralSoftware {
                 device_type,
@@ -122,18 +168,21 @@ pub fn get_tags(e: &ExtractedInfo) -> Tags {
         tags.insert(format!("use-device-type:{:?}", device_type));
     }
 
-    apply_tag_rules(&mut tags);
+    apply_tag_rules(db, &mut tags);
     tags
 }
 
-pub fn apply_tag_rules(tags: &mut Tags) {
+pub fn apply_tag_rules(db: &mut SqliteConnection, tags: &mut Tags) {
     let mut last_length = tags.len();
     let mut settled = false;
     let mut iterations = 0;
     let rules = get_tag_rules();
     while !settled && iterations < 50 {
         for rule in rules.iter() {
-            rule.apply(tags);
+            if let Err(e) = rule
+                .apply(db, tags)
+                .with_context(|| format!("applying rule {:?}", rule))
+            {}
         }
         settled = tags.len() == last_length;
         last_length = tags.len();

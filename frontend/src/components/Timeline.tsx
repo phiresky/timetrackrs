@@ -1,14 +1,14 @@
 import { observable, runInAction } from "mobx"
 import { observer } from "mobx-react"
-import React from "react"
-import { aggregates as detailers, Filter, SummaryFilter } from "./ftree"
-import { Plot } from "./plot"
-import "./style.scss"
-import * as api from "./api"
-import { durationToString, totalDuration } from "./util"
-import { Activity } from "./api"
-import { EntriesTime } from "./components/EntriesTime"
-import { Entry } from "./components/Entry"
+import React, { ReactElement } from "react"
+import { aggregates as detailers, Filter, SummaryFilter } from "../ftree"
+import { Plot } from "../plot"
+import * as api from "../api"
+import { durationToString, totalDuration } from "../util"
+import { Activity } from "../api"
+import { EntriesTime } from "./EntriesTime"
+import { Entry } from "./Entry"
+import { Page } from "./Page"
 
 interface Grouper {
 	name: string
@@ -215,6 +215,13 @@ function Select<T>(props: {
 	)
 }
 
+export function TimelinePage(): ReactElement {
+	return (
+		<Page title="Timeline">
+			<Timeline />
+		</Page>
+	)
+}
 @observer
 export class Timeline extends React.Component {
 	@observable data = new Map<string, Activity[]>()
@@ -273,9 +280,8 @@ export class Timeline extends React.Component {
 	render() {
 		//const da = groupBy(this.data.data);
 		return (
-			<div className="container">
-				<div className="header fade-in">
-					<h1>Personal Timeline</h1>
+			<div className="timeline">
+				<div className="timeline-config">
 					<h2>{this.loadState}</h2>
 					<div>
 						Aggregate by{" "}
@@ -295,7 +301,7 @@ export class Timeline extends React.Component {
 					</div>
 				</div>
 				<div className="item" onScroll={this.onScroll}>
-					<div id="timeline">
+					<div className="timeline-inner">
 						<div>
 							{[...this.data.entries()].map(([day, entries]) => {
 								return (

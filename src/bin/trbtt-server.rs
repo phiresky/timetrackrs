@@ -20,7 +20,7 @@ struct DbConn(diesel::SqliteConnection);
 
 #[get("/time-range?<after>&<before>&<limit>")]
 fn time_range(
-    db: DbConn,
+    mut db: DbConn,
     after: Option<String>,
     limit: Option<u32>,
     before: Option<String>,
@@ -57,7 +57,7 @@ fn time_range(
                             "id": a.id,
                             "timestamp": a.timestamp,
                             "duration": a.sampler.get_duration(),
-                            "data": EnrichedExtractedInfo::from(data),
+                            "data": enrich_extracted_info(&mut *db, data),
                         }))
                     } else {
                         None
@@ -75,7 +75,7 @@ fn time_range(
 }
 
 #[get("/single-event?<id>")]
-fn single_event(db: DbConn, id: String) -> anyhow::Result<Json<J>> {
+fn single_event(mut db: DbConn, id: String) -> anyhow::Result<Json<J>> {
     // println!("handling...");
     // println!("querying...");
     let a = {
@@ -95,7 +95,7 @@ fn single_event(db: DbConn, id: String) -> anyhow::Result<Json<J>> {
                     "id": a.id,
                     "timestamp": a.timestamp,
                     "duration": a.sampler.get_duration(),
-                    "data": EnrichedExtractedInfo::from(data),
+                    "data": enrich_extracted_info(&mut *db, data),
                     "raw": r
                 }))
             } else {

@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as dfn from "date-fns"
-import { computed, observable } from "mobx"
+import { autorun, computed, observable } from "mobx"
 import { fromPromise, IPromiseBasedObservable } from "mobx-utils"
 import * as api from "../api"
 import { observer } from "mobx-react"
@@ -9,6 +9,11 @@ import { ModalLink } from "./ModalLink"
 import { Entry } from "./Entry"
 import { durationToString, totalDuration } from "../util"
 import { map } from "lodash"
+import { TimeRangeSelector } from "./TimeRangeSelector"
+import _ from "lodash"
+import { CategoryChart } from "./CategoryChart"
+import { Page } from "./Page"
+import { ChooserWithChild } from "./ChooserWithChild"
 
 interface Tree<T> {
 	leaves: T[]
@@ -43,6 +48,22 @@ function shortenTree<T>(t: Tree<T>) {
 		}
 		shortenTree(tree)
 	}
+}
+
+function sortTree(t: ATree, cache?: WeakMap<ATree, number>) {
+	if (!cache) cache = new WeakMap()
+
+	const sortKey = ([_, t]: [string, ATree]) => {
+		let v = cache?.get(t)
+		if (!v) {
+			v = -totalDuration(collect(t))
+			cache?.set(t, v)
+		}
+		return v
+	}
+
+	t.children = new Map(_.sortBy([...t.children], sortKey))
+	for (const c of t.children) sortTree(c[1], cache)
 }
 /*
 
@@ -83,25 +104,36 @@ function ShowTree({
 	noSlash?: boolean
 }) {
 	const [open, setOpen] = React.useState(false)
+	const [children, setChildren] = React.useState(5)
 
 	const title = (noSlash ? "" : "/") + tag || "[empty]"
 
 	return (
 		<li key={tag}>
-			<span onClick={() => setOpen(!open)}>
+			<span className="clickable" onClick={() => setOpen(!open)}>
 				{title} (<TotalDuration tree={tree} />)
 			</span>
 
 			{open && <ShowTreeChildren tree={tree} />}
 			{open && tree.leaves.length > 0 && (
 				<ul>
-					{tree.leaves.map((l) => (
+					{tree.leaves.slice(0, children).map((l) => (
 						<li key={l.id}>
 							<ModalLink to={`/single-event/${l.id}`}>
 								<Entry {...l} />
 							</ModalLink>
 						</li>
 					))}
+					{tree.leaves.length > children && (
+						<li key="more" className="clickable">
+							<a
+								className="clickable"
+								onClick={() => setChildren(children * 2)}
+							>
+								...{tree.leaves.length - children} more
+							</a>
+						</li>
+					)}
 				</ul>
 			)}
 		</li>
@@ -114,33 +146,45 @@ function ShowTreeChildren({
 	tree: ATree
 	noSlash?: boolean
 }) {
+	const [children, setChildren] = React.useState(5)
 	return (
 		<ul>
-			{[...tree.children.entries()].map(([tag, tree]) => (
-				<ShowTree key={tag} tag={tag} tree={tree} noSlash={noSlash} />
-			))}
+			{[...tree.children.entries()]
+				.slice(0, children)
+				.map(([tag, tree]) => (
+					<ShowTree
+						key={tag}
+						tag={tag}
+						tree={tree}
+						noSlash={noSlash}
+					/>
+				))}
+			{tree.children.size > children && (
+				<li key="more" className="clickable">
+					<a onClick={() => setChildren(children * 2)}>
+						...{tree.children.size - children} more
+					</a>
+				</li>
+			)}
 		</ul>
 	)
 }
 
+export function TagTreePage(): React.ReactElement {
+	return (
+		<Page title="Category Trees">
+			<ChooserWithChild child={TagTree} />
+		</Page>
+	)
+}
 @observer
-export class TagTree extends React.Component {
-	@observable
-	startTime: Date = dfn.subDays(new Date(), 10)
-	@observable
-	endTime: Date = new Date()
-
-	@computed get data(): IPromiseBasedObservable<api.Activity[]> {
-		return fromPromise(
-			api.getTimeRange({ before: new Date(), limit: 10000 }),
-		)
+export class TagTree extends React.Component<{ events: api.Activity[] }> {
+	constructor(props: TagTree["props"]) {
+		super(props)
 	}
-
-	@computed get tagTree(): null | ATree {
-		if (this.data.state !== "fulfilled") return null
-		const events = this.data.value
+	@computed get tagTree(): ATree {
 		const tree = rootTree<api.Activity>()
-		for (const event of events) {
+		for (const event of this.props.events) {
 			for (const tag of event.data.tags) {
 				const inx = tag.indexOf(":")
 				addToTree(
@@ -151,38 +195,26 @@ export class TagTree extends React.Component {
 			}
 		}
 		for (const c of tree.children) shortenTree(c[1])
+		sortTree(tree)
 		console.log(tree)
 		return tree
 	}
 
 	render(): React.ReactNode {
-		console.log(this.data.value)
 		return (
-			<div className="container">
-				<div className="header">Tag Tree</div>
-
-				<div>
-					Events:{" "}
-					{this.data.case({
-						fulfilled: (v) => v.length.toString(),
-						pending: () => "loading",
-						rejected: (e) => {
-							console.error("o", e)
-							return String(e)
-						},
-					})}
-				</div>
-				{this.tagTree && (
-					<>
-						<h2>Category Trees</h2>
-						{[...this.tagTree.children].map(([kind, tree]) => (
-							<div key={kind}>
-								<h3>{kind}</h3>
-								<ShowTreeChildren tree={tree} noSlash />
-							</div>
-						))}
-					</>
-				)}
+			<div>
+				<h2>Category Trees</h2>
+				{[...this.tagTree.children].map(([kind, tree]) => (
+					<div key={kind}>
+						<h3>{kind}</h3>
+						<CategoryChart
+							events={collect(tree)}
+							deep={false}
+							tagPrefix={kind + ":"}
+						/>
+						<ShowTreeChildren tree={tree} noSlash />
+					</div>
+				))}
 			</div>
 		)
 	}

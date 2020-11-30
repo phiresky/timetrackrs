@@ -1,12 +1,21 @@
+use std::{collections::BTreeSet, fmt::Debug};
+
 use super::tags::Tags;
 use crate::prelude::*;
 use lazy_static::lazy_static;
 use regex::Regex;
+
 pub trait Fetcher {
     fn get_id(&self) -> &'static str;
     fn get_cache_key(&self, tags: &Tags) -> Option<String>;
-    fn get_data(&self, cache_key: &str) -> Option<String>;
-    fn process_data(&self, tags: &Tags, cache_key: &str, data: &str) -> Tags
+    fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String>;
+    fn process_data(&self, tags: &Tags, cache_key: &str, data: &str) -> anyhow::Result<Tags>;
+}
+
+impl Debug for dyn Fetcher {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Fetcher({})", self.get_id())
+    }
 }
 
 pub struct YoutubeFetcher;
@@ -86,11 +95,53 @@ impl Fetcher for YoutubeFetcher {
                 let url = &tag["browse-url:".len()..];
                 if let Some(matches) = watch_regex.captures(url) {
                     let id = matches.name("id").unwrap().as_str();
-                    log::debug!("url={}, id={}", url, id);
+                    log::trace!("url={}, id={}", url, id);
                     return Some(id.to_string());
                 }
             }
         }
         None
+    }
+
+    fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
+        log::debug!("querying youtube for {}", cache_key);
+        let data = youtube_dl::YoutubeDl::new(cache_key)
+            .run()
+            .context("youtube-dl")?;
+        Ok(serde_json::to_string(&data).context("serializing ytdl output")?)
+    }
+
+    fn process_data(&self, tags: &Tags, cache_key: &str, data: &str) -> anyhow::Result<Tags> {
+        use youtube_dl::*;
+        let d: YoutubeDlOutput = serde_json::from_str(data).context("serde")?;
+        let mut tags = Tags::new();
+        if let YoutubeDlOutput::SingleVideo(sv) = d {
+            tags.insert(format!("video-title:{}", sv.title));
+            sv.uploader_id
+                .map(|u| tags.insert(format!("youtube-uploader:{}", u)));
+            sv.uploader
+                .map(|u| tags.insert(format!("youtube-uploader-name:{}", u)));
+            sv.channel_id
+                .map(|u| tags.insert(format!("youtube-channel:{}", u)));
+            sv.channel
+                .map(|u| tags.insert(format!("youtube-channel-name:{}", u)));
+            if let Some(tg) = sv.tags {
+                for tag in tg {
+                    if let Some(tag) = tag {
+                        tags.insert(format!("youtube-tag:{}", tag.to_string()));
+                    }
+                }
+            }
+            if let Some(tg) = sv.categories {
+                for tag in tg {
+                    if let Some(tag) = tag {
+                        tags.insert(format!("youtube-category:{}", tag.to_string()));
+                    }
+                }
+            }
+        } else {
+            anyhow::bail!("got playlist??");
+        }
+        Ok(tags)
     }
 }

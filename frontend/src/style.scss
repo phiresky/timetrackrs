@@ -28,12 +28,23 @@ a {
 		color: #383e44;
 	}
 }
+.header {
+	.nav-bar {
+		a {
+			color: #bfbfbf;
+			&:hover {
+				color: #fff;
+			}
+			&.active {
+				color: #fff;
+				text-decoration: underline;
+			}
+		}
+	}
+}
 
-div.container {
-	display: flex;
-	flex: auto;
-	flex-direction: column;
-	max-height: 100%;
+.clickable {
+	cursor: pointer;
 }
 
 div.item {
@@ -96,109 +107,122 @@ div.header {
 	overflow: scroll;
 }
 
-$year-width: 100px;
-// https://codepen.io/mathiesjanssen/pen/ggeBKm
-#timeline {
-	position: relative;
-	display: table; //*For Firefox
-	height: 100%;
-	margin: {
-		left: auto;
-		right: auto;
-		top: 5rem;
+.container {
+	max-height: 100%;
+}
+.timeline {
+	display: flex;
+	flex: auto;
+	flex-direction: column;
+	max-height: 100%;
+	.timeline-config {
+		position: absolute;
+		margin-top: 200px;
 	}
-	div {
-		&:after {
-			content: "";
-			width: 2px;
-			position: absolute;
-			top: 0.5rem;
-			bottom: 0rem;
-			left: $year-width;
-			z-index: 1;
-			background: #c5c5c5;
-		}
-	}
-	h3 {
-		position: -webkit-sticky;
-		position: sticky;
-		top: 5rem;
-		color: #888;
-		margin: 0;
-		font: {
-			size: 1em;
-			weight: 400;
-		}
-		@media (min-width: 62em) {
-			font-size: 1.1em;
-		}
-	}
-	section.year {
+	$year-width: 100px;
+	// https://codepen.io/mathiesjanssen/pen/ggeBKm
+	.timeline-inner {
 		position: relative;
-		&:first-child section {
-			margin-top: -1.3em;
+		display: table; //*For Firefox
+		height: 100%;
+		margin: {
+			left: auto;
+			right: auto;
+			top: 5rem;
 		}
-		section {
-			position: relative;
-			padding-bottom: 1.25em;
-			margin-bottom: 2.2em;
-			> h4 {
+		div {
+			&:after {
+				content: "";
+				width: 2px;
 				position: absolute;
-				bottom: 0;
-				font: {
-					size: 0.9em;
-					weight: 400;
-				}
-				line-height: 1.2em;
-				margin: 0;
-				padding: 0 0 0 ($year-width + 29px);
-				color: #c5c5c5;
-				@media (min-width: 62em) {
-					font-size: 1em;
-				}
+				top: 0.5rem;
+				bottom: 0rem;
+				left: $year-width;
+				z-index: 1;
+				background: #c5c5c5;
 			}
-			> ul {
-				list-style-type: none;
-				padding: 0 0 0 0;
-				padding-left: ($year-width + 15px);
-				margin: -1.35rem 0 1em;
-				max-width: 32rem;
-				font-size: 1em;
-				min-width: 500px;
-				@media (min-width: 62em) {
-					font-size: 1.1em;
-					padding: 0 0 0 ($year-width + 21px);
-				}
-				&:last-child {
-					margin: {
-						bottom: 0;
-					}
-				}
-				&:first-of-type:after {
-					content: "";
-					width: 10px;
-					height: 10px;
-					background: #c5c5c5;
-					border: 2px solid #ffffff;
-					border-radius: 50%;
+		}
+		h3 {
+			position: -webkit-sticky;
+			position: sticky;
+			top: 5rem;
+			color: #888;
+			margin: 0;
+			font: {
+				size: 1em;
+				weight: 400;
+			}
+			@media (min-width: 62em) {
+				font-size: 1.1em;
+			}
+		}
+		section.year {
+			position: relative;
+			&:first-child section {
+				margin-top: -1.3em;
+			}
+			section {
+				position: relative;
+				padding-bottom: 1.25em;
+				margin-bottom: 2.2em;
+				> h4 {
 					position: absolute;
-					left: $year-width - 6px;
-					top: 3px;
-					z-index: 2;
+					bottom: 0;
+					font: {
+						size: 0.9em;
+						weight: 400;
+					}
+					line-height: 1.2em;
+					margin: 0;
+					padding: 0 0 0 ($year-width + 29px);
+					color: #c5c5c5;
+					@media (min-width: 62em) {
+						font-size: 1em;
+					}
 				}
-				> li {
-					margin-left: 0.5rem;
-					&:before {
-						content: "·";
-						margin-left: -0.5rem;
-						padding-right: 0.3rem;
+				> ul {
+					list-style-type: none;
+					padding: 0 0 0 0;
+					padding-left: ($year-width + 15px);
+					margin: -1.35rem 0 1em;
+					max-width: 32rem;
+					font-size: 1em;
+					min-width: 500px;
+					@media (min-width: 62em) {
+						font-size: 1.1em;
+						padding: 0 0 0 ($year-width + 21px);
 					}
-					&:not(:first-child) {
-						margin-top: 0.5rem;
+					&:last-child {
+						margin: {
+							bottom: 0;
+						}
 					}
-					/*> div {
+					&:first-of-type:after {
+						content: "";
+						width: 10px;
+						height: 10px;
+						background: #c5c5c5;
+						border: 2px solid #ffffff;
+						border-radius: 50%;
+						position: absolute;
+						left: $year-width - 6px;
+						top: 3px;
+						z-index: 2;
+					}
+					> li {
+						margin-left: 0.5rem;
+						&:before {
+							content: "·";
+							margin-left: -0.5rem;
+							padding-right: 0.3rem;
+						}
+						&:not(:first-child) {
+							margin-top: 0.5rem;
+						}
+						/*> div {
 						display: inline;
 					}*/
+					}
 				}
 			}
 		}

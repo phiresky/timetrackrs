@@ -1,3 +1,5 @@
+use diesel::SqliteConnection;
+
 use crate::prelude::*;
 
 #[derive(Serialize, TypeScriptify)]
@@ -121,11 +123,9 @@ pub struct EnrichedExtractedInfo {
     info: ExtractedInfo,
 }
 
-impl From<ExtractedInfo> for EnrichedExtractedInfo {
-    fn from(o: ExtractedInfo) -> EnrichedExtractedInfo {
-        EnrichedExtractedInfo {
-            tags: tags::get_tags(&o).into_iter().collect(),
-            info: o,
-        }
+pub fn enrich_extracted_info(db: &mut SqliteConnection, o: ExtractedInfo) -> EnrichedExtractedInfo {
+    EnrichedExtractedInfo {
+        tags: tags::get_tags(db, &o).into_iter().collect(),
+        info: o,
     }
 }
