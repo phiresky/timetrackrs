@@ -1,9 +1,9 @@
-import { EnrichedExtractedInfo, EventData } from "./server"
+import { EventData } from "./server"
 export type Activity = {
 	id: string
 	timestamp: string
 	duration: number
-	data: EnrichedExtractedInfo
+	tags: string[]
 	raw?: EventData
 }
 

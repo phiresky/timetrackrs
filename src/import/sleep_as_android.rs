@@ -98,9 +98,9 @@ impl Importable for SleepAsAndroidImportArgs {
 }
 
 impl ExtractInfo for SleepAsAndroidEntry {
-    fn extract_info(&self) -> Option<ExtractedInfo> {
-        Some(ExtractedInfo::PhysicalActivity {
-            activity_type: "sleeping".to_string(),
-        })
+    fn extract_info(&self) -> Option<Tags> {
+        let mut tags = Tags::new();
+        tags.insert("physical-activity:sleeping".to_string());
+        Some(tags)
     }
 }

@@ -217,7 +217,7 @@ function Select<T>(props: {
 
 export function TimelinePage(): ReactElement {
 	return (
-		<Page title="Timeline">
+		<Page title="Timeline" headerClass="fade-in">
 			<Timeline />
 		</Page>
 	)

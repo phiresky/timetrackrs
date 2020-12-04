@@ -33,7 +33,7 @@ const config: webpack.Configuration = {
 		],
 	},
 	devServer: {
-		historyApiFallback: { index: "index.html" },
+		historyApiFallback: { index: "index.html", disableDotRule: true },
 	},
 }
 

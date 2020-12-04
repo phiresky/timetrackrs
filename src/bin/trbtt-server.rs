@@ -9,7 +9,6 @@ use track_pc_usage_rs as trbtt;
 use track_pc_usage_rs::events::deserialize_captured;
 use track_pc_usage_rs::util::iso_string_to_date;
 use trbtt::db::models::{DbEvent, Timestamptz};
-use trbtt::extract::properties::EnrichedExtractedInfo;
 use trbtt::extract::ExtractInfo;
 use trbtt::prelude::*;
 #[macro_use]
@@ -18,13 +17,14 @@ extern crate rocket_contrib;
 #[database("events_database")]
 struct DbConn(diesel::SqliteConnection);
 
+type DebugRes<T> = Result<T, rocket::response::Debug<anyhow::Error>>;
 #[get("/time-range?<after>&<before>&<limit>")]
 fn time_range(
     mut db: DbConn,
     after: Option<String>,
     limit: Option<u32>,
     before: Option<String>,
-) -> anyhow::Result<Json<J>> {
+) -> DebugRes<Json<J>> {
     // println!("handling...");
     // println!("querying...");
     let mdata = {
@@ -43,7 +43,10 @@ fn time_range(
                 .order(timestamp.desc());
         }
         let limit = limit.unwrap_or(100);
-        query.limit(limit as i64).load::<DbEvent>(&*db)?
+        query
+            .limit(limit as i64)
+            .load::<DbEvent>(&*db)
+            .context("fetching from db")?
     };
     // println!("jsonifying...");
     let v = mdata
@@ -57,7 +60,7 @@ fn time_range(
                             "id": a.id,
                             "timestamp": a.timestamp,
                             "duration": a.sampler.get_duration(),
-                            "data": enrich_extracted_info(&mut *db, data),
+                            "tags": tags::get_tags(&mut *db, data),
                         }))
                     } else {
                         None
@@ -75,7 +78,7 @@ fn time_range(
 }
 
 #[get("/single-event?<id>")]
-fn single_event(mut db: DbConn, id: String) -> anyhow::Result<Json<J>> {
+fn single_event(mut db: DbConn, id: String) -> DebugRes<Json<J>> {
     // println!("handling...");
     // println!("querying...");
     let a = {
@@ -83,7 +86,8 @@ fn single_event(mut db: DbConn, id: String) -> anyhow::Result<Json<J>> {
         dsl::events
             .into_boxed()
             .filter(dsl::id.eq(id))
-            .first::<DbEvent>(&*db)?
+            .first::<DbEvent>(&*db)
+            .context("fetching from db")?
     };
     // println!("jsonifying...");
 
@@ -95,7 +99,7 @@ fn single_event(mut db: DbConn, id: String) -> anyhow::Result<Json<J>> {
                     "id": a.id,
                     "timestamp": a.timestamp,
                     "duration": a.sampler.get_duration(),
-                    "data": enrich_extracted_info(&mut *db, data),
+                    "tags": get_tags(&mut *db, data),
                     "raw": r
                 }))
             } else {

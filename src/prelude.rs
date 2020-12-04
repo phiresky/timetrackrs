@@ -4,7 +4,7 @@ pub use crate::capture::x11_types::{X11CaptureArgs, X11EventData};
 pub use crate::capture::*;
 pub use crate::db::models::*;
 pub use crate::events::*;
-pub use crate::extract::properties::*;
+pub use crate::extract::tags::*;
 pub use crate::extract::*;
 pub use crate::import::app_usage_sqlite::*;
 pub use crate::import::journald::*;

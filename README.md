@@ -77,13 +77,10 @@ remove Defaults from deserializing in x11.rs
 
 ## notes
 
-db rows:
+alternatives:
 
--   timestamp
--   sampling method used
--   data
-
-time sampling. decide between random sampling, stratified sampling or grid (?) sampling
+-   activitywatch
+-   https://www.software.com/code-time
 
 ## Data Sources Setup
 
@@ -123,7 +120,7 @@ Todo: look at https://arbtt.nomeata.de/doc/users_guide/effective-use.html
         local LINE="$2"
         local cmd="$(print -P '%100>...>$LINE%<<')"
 
-        title '' '{"cwd":${(qqq)cwd},"histdb":$HISTDB_SESSION,"usr":${(qqq)user},"cmd":${(qqq)cmd}}'
+        title '' '{"t":"shell","cwd":${(qqq)cwd},"histdb":$HISTDB_SESSION,"usr":${(qqq)user},"cmd":${(qqq)cmd}}'
     }
     add-zsh-hook precmd title_precmd
     add-zsh-hook preexec title_preexec
@@ -133,7 +130,6 @@ Todo: look at https://arbtt.nomeata.de/doc/users_guide/effective-use.html
 ## Compression notes
 
 Finish and make use of https://github.com/phiresky/sqlite-zstd. Then redundancy in the stored raw events should become basically irrelevant.
-
 
 Compression benchmark:
 

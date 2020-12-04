@@ -5,27 +5,71 @@ use crate::prelude::*;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-pub trait Fetcher {
+pub trait ExternalFetcher {
     fn get_id(&self) -> &'static str;
-    fn get_cache_key(&self, tags: &Tags) -> Option<String>;
+    fn get_cache_key(&self, found: &regex::Captures, tags: &Tags) -> Option<String>;
     fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String>;
     fn process_data(&self, tags: &Tags, cache_key: &str, data: &str) -> anyhow::Result<Tags>;
 }
 
-impl Debug for dyn Fetcher {
+impl Debug for dyn ExternalFetcher {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Fetcher({})", self.get_id())
     }
 }
 
+pub trait SimpleFetcher {
+    fn get_id(&self) -> &'static str;
+    fn process(&self, found: &regex::Captures, tags: &Tags) -> anyhow::Result<Tags>;
+}
+
+impl Debug for dyn SimpleFetcher {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Fetcher({})", self.get_id())
+    }
+}
+
+pub struct URLDomainMatcher;
+impl SimpleFetcher for URLDomainMatcher {
+    fn get_id(&self) -> &'static str {
+        "URLDomainMatcher"
+    }
+    fn process(&self, found: &regex::Captures, tags: &Tags) -> anyhow::Result<Tags> {
+        lazy_static! {
+            static ref public_suffixes: publicsuffix::List =
+                publicsuffix::List::from_str(include_str!("../../data/public_suffix_list.dat"))
+                    .unwrap();
+        }
+        let tag = found.name("url").context("Url match invalid?")?;
+        let mut tags = Tags::new();
+
+        let url = tag.as_str();
+        let host = public_suffixes
+            .parse_url(url)
+            .map_err(|e| anyhow::anyhow!("{}", e))
+            .with_context(|| format!("parsing url '{}'", url))?;
+
+        if let publicsuffix::Host::Domain(domain) = host {
+            tags.insert(format!("browse-full-domain:{}", domain.to_string()));
+            if let Some(root) = domain.root() {
+                tags.insert(format!("browse-domain:{}", root));
+            }
+            if !domain.has_known_suffix() {
+                tags.insert(format!("error-unknown-domain:{}", domain));
+            }
+        };
+        Ok(tags)
+    }
+}
+
 pub struct YoutubeFetcher;
 
-impl Fetcher for YoutubeFetcher {
+impl ExternalFetcher for YoutubeFetcher {
     fn get_id(&self) -> &'static str {
         "youtube-meta-json"
     }
 
-    fn get_cache_key(&self, tags: &Tags) -> Option<String> {
+    fn get_cache_key(&self, found: &regex::Captures, tags: &Tags) -> Option<String> {
         // https://github.com/ytdl-org/youtube-dl/blob/1fb034d029c8b7feafe45f64e6a0808663ad315e/youtube_dl/extractor/youtube.py
         lazy_static! {
             static ref watch_regex: Regex = Regex::new(

@@ -68,7 +68,7 @@ export class CategoryChart extends React.Component<{
 			() => new KeyedSet((e) => e.id),
 		)
 		for (const event of this.props.events) {
-			for (const tag of event.data.tags) {
+			for (const tag of event.tags) {
 				if (tag.startsWith(prefix)) {
 					let cat = tag.slice(prefix.length)
 					if (!this.props.deep) cat = cat.split("/")[0]

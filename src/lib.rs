@@ -7,6 +7,7 @@ extern crate diesel_migrations;
 pub mod capture;
 pub mod db;
 pub mod events;
+pub mod expand;
 pub mod extract;
 pub mod import;
 pub mod prelude;

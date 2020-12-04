@@ -21,7 +21,11 @@ enum JournaldEvent {
 }
 
 impl ExtractInfo for JournaldEntry {
-    fn extract_info(&self) -> Option<ExtractedInfo> {
+    fn extract_info(&self) -> Option<Tags> {
+        let mut tags = Tags::new();
+        tags.insert("todo:journald info".to_string());
+        Some(tags)
+        /*
         let mut general = self.os_info.to_partial_general_software();
         general.identifier = Identifier("exe:/usr/bin/journalctl".to_string());
         general.title = "journalctl".to_string();
@@ -36,7 +40,7 @@ impl ExtractInfo for JournaldEntry {
                     _ => return None,
                 },
             },
-        })
+        })*/
     }
 }
 lazy_static! {

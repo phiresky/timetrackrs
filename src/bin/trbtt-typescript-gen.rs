@@ -16,14 +16,6 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     x11_types::X11WindowGeometry::type_script_ify,
     x11_types::ProcessData::type_script_ify,
     util::OsInfo::type_script_ify,
-    extract::properties::ExtractedInfo::type_script_ify,
-    extract::properties::EnrichedExtractedInfo::type_script_ify,
-    extract::properties::SoftwareDeviceType::type_script_ify,
-    extract::properties::Identifier::type_script_ify,
-    extract::properties::DeviceStateChange::type_script_ify,
-    GeneralSoftware::type_script_ify,
-    SpecificSoftware::type_script_ify,
-    MediaType::type_script_ify,
 ];
 
 #[cfg(not(debug_assertions))]

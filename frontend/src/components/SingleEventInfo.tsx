@@ -42,21 +42,11 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 				<div>
 					Tags:{" "}
 					<ul>
-						{e.data.tags.map((tag) => (
+						{e.tags.map((tag) => (
 							<li key={tag}>{tag}</li>
 						))}
 					</ul>
 				</div>
-				{e.raw && (
-					<div>
-						<div>
-							Extracted Data:{" "}
-							<pre className="raw-json">
-								{JSON.stringify(e.data, null, 2)}
-							</pre>
-						</div>
-					</div>
-				)}
 				{e.raw && (
 					<div>
 						<div>Source: {e.raw.data_type}</div>

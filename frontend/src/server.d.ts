@@ -12,8 +12,9 @@ export type Sampler =
 export type EventData =
 	| { data_type: "x11_v2"; data: X11EventData }
 	| { data_type: "windows_v1"; data: WindowsEventData }
-	| { data_type: "app_usage_v1"; data: AppUsageEntry }
-	| { data_type: "journald"; data: JournaldEntry }
+	| { data_type: "app_usage_v2"; data: AppUsageEntry }
+	| { data_type: "journald_v1"; data: JournaldEntry }
+	| { data_type: "sleep_as_android_v1"; data: SleepAsAndroidEntry }
 export type X11EventData = {
 	os_info: OsInfo
 	desktop_names: string[]
@@ -54,64 +55,4 @@ export type OsInfo = {
 	batteries: number | null
 	hostname: string
 	machine_id: string | null
-}
-export type ExtractedInfo =
-	| {
-			type: "InteractWithDevice"
-			general: GeneralSoftware
-			specific: SpecificSoftware
-	  }
-	| { type: "PhysicalActivity"; activity_type: Text100Choices }
-export type EnrichedExtractedInfo = { tags: string[]; info: ExtractedInfo }
-export enum SoftwareDeviceType {
-	Desktop = "Desktop",
-	Laptop = "Laptop",
-	Smartphone = "Smartphone",
-	Tablet = "Tablet",
-}
-// - some generic identifier that can be looked up elsewhere. i.e. something that should be unique within the corresponding scope of the surrounding object
-export type Identifier = string
-export enum DeviceStateChange {
-	PowerOn = "PowerOn",
-	PowerOff = "PowerOff",
-	Sleep = "Sleep",
-	Wakeup = "Wakeup",
-}
-export type GeneralSoftware = {
-	hostname: Text100Choices
-	device_type: SoftwareDeviceType
-	device_os: Text10Choices
-	title: Text10000Choices
-	identifier: Identifier
-	unique_name: Text100Choices
-	opened_filepath: Text10000Choices | null
-}
-export type SpecificSoftware =
-	| { type: "DeviceStateChange"; change: DeviceStateChange }
-	| {
-			type: "WebBrowser"
-			url: Text10000Choices | null
-			domain: Text1000Choices | null
-	  }
-	| {
-			type: "Shell"
-			cwd: Text1000Choices
-			cmd: Text10000Choices
-			zsh_histdb_session_id: Identifier
-	  }
-	| {
-			type: "MediaPlayer"
-			media_filename: Text1000Choices
-			media_type: MediaType
-			media_name: Text1000Choices
-	  }
-	| {
-			type: "SoftwareDevelopment"
-			project_path: Text100Choices | null
-			file_path: Text1000Choices
-	  }
-	| { type: "Unknown" }
-export enum MediaType {
-	Audio = "Audio",
-	Video = "Video",
 }

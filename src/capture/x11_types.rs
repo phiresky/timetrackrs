@@ -97,35 +97,32 @@ pub fn split_zero(s: &str) -> Vec<String> {
     return vec;
 }
 
-use crate::extract::{properties::ExtractedInfo, ExtractInfo};
+use crate::extract::ExtractInfo;
 impl ExtractInfo for X11EventData {
-    fn extract_info(&self) -> Option<ExtractedInfo> {
-        use crate::extract::properties::*;
+    fn extract_info(&self) -> Option<Tags> {
+        let mut tags = Tags::new();
         let x = &self;
         // unused for 2 minutes, assume AFK
         if x.ms_since_user_input > 120 * 1000 {
             return None;
         }
-        let mut general = x.os_info.to_partial_general_software();
+        x.os_info.to_partial_general_software(&mut tags);
         let window = x.windows.iter().find(|e| e.window_id == x.focused_window);
         let specific = match window {
-            None => SpecificSoftware::Unknown,
+            None => (),
             Some(w) => {
                 if let Some(window_title) = w.get_title() {
                     let cls = w.get_class();
-                    super::pc_common::match_software(
-                        &mut general,
+                    tags.extend(super::pc_common::match_software(
                         &window_title,
                         &cls,
                         w.process.as_ref().map(|p| p.exe.as_ref()),
                         w.process.as_ref().map(|p| p.cwd.as_ref()),
                         w.process.as_ref().map(|p| p.cmd.as_ref()),
-                    )
-                } else {
-                    SpecificSoftware::Unknown
+                    ));
                 }
             }
         };
-        Some(ExtractedInfo::InteractWithDevice { general, specific })
+        Some(tags)
     }
 }

@@ -1,5 +1,4 @@
-use crate::extract::properties::GeneralSoftware;
-use crate::extract::properties::SpecificSoftware;
+use crate::prelude::*;
 use regex::Regex;
 use serde_json::Value as J;
 use std::collections::HashMap;
@@ -8,13 +7,7 @@ lazy_static::lazy_static! {
     static ref FORMATTED_TITLE_MATCH: Regex = Regex::new(r#"🛤([a-z]{2,5})🠚(.*)🠘"#).unwrap();
     static ref FORMATTED_TITLE_SPLIT: Regex = Regex::new("🙰").unwrap();
     static ref FORMATTED_TITLE_KV: Regex = Regex::new("^([a-z0-9]+)=(.*)$").unwrap();
-    static ref SH_JSON_TITLE: Regex = Regex::new(r#"\{".*[^\\]"}"#).unwrap();
-    static ref UNINTERESTING_BINARY: Regex = Regex::new(r#"/electron\d*$"#).unwrap();
-    static ref BROWSER_BINARY: Regex = Regex::new(r#"/(firefox|google-chrome|chromium)$"#).unwrap();
-    static ref MEDIAPLAYER_BINARY: Regex = Regex::new(r#"/(mpv|vlc)$"#).unwrap();
-    static ref URL: Regex =
-        Regex::new(r#"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"#).unwrap();
-        // Regex::new(r#"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"#).unwrap();
+    static ref JSON_TITLE: Regex = Regex::new(r#"\{".*[^\\]"}"#).unwrap();
 }
 
 fn match_cmdline_to_filepath(cwd: &str, cmdline: &[String]) -> anyhow::Result<String> {
@@ -41,29 +34,28 @@ fn match_cmdline_to_filepath(cwd: &str, cmdline: &[String]) -> anyhow::Result<St
 try to get structured info about a program from title etc
 */
 pub fn match_software(
-    sw: &mut GeneralSoftware,
     window_title: &str,
     window_class: &Option<(String, String)>, // "class" of the window which usually identifies the software
     executable_path: Option<&str>,
     cwd: Option<&str>,
     cmdline: Option<&[String]>,
-) -> SpecificSoftware {
-    use crate::extract::properties::*;
+) -> Tags {
+    use crate::extract::tags::*;
 
-    sw.title = window_title.to_string();
+    let mut tags = Tags::new();
+
+    tags.insert(format!("software-window-title:{}", window_title));
+
     if let Some(exe) = executable_path {
-        sw.identifier = Identifier(exe.to_string());
-        sw.unique_name = exe.to_string();
-        if UNINTERESTING_BINARY.is_match(exe) {
-            if let Some(cls) = window_class {
-                sw.identifier = Identifier(format!("WM_CLASS:{}.{}", cls.0, cls.1));
-            }
-        }
+        tags.insert(format!("software-executable-path:{}", exe));
+    }
+    if let Some(cls) = window_class {
+        tags.insert(format!("software-window-class:{}.{}", cls.0, cls.1));
     }
     if let Some(cwd) = cwd {
         if let Some(cmdline) = cmdline {
             if let Ok(path) = match_cmdline_to_filepath(cwd, cmdline) {
-                sw.opened_filepath = Some(path);
+                tags.insert(format!("software-opened-file:{}", path));
             }
         }
     }
@@ -83,57 +75,28 @@ pub fn match_software(
             }
             kv
         };
-        match category {
-            "sd" => {
-                return SpecificSoftware::SoftwareDevelopment {
-                    project_path: kv.get("proj").or(kv.get("project")).map(|e| e.to_string()),
-                    file_path: kv.get("file").unwrap().to_string(),
-                };
-            }
-            _ => {
-                println!("unknown category in title info: {}", category);
-            }
+        for (k, v) in &kv {
+            tags.insert(format!("title-match-{}-{}:{}", category, k, v));
         }
     }
-    if let Some(m) = SH_JSON_TITLE.find(window_title) {
-        if let Ok(J::Object(o)) = serde_json::from_str(m.as_str()) {
-            if let (
-                Some(J::String(cwd)),
-                Some(J::Number(histdb)),
-                Some(J::String(usr)),
-                Some(J::String(cmd)),
-            ) = (o.get("cwd"), o.get("histdb"), o.get("usr"), o.get("cmd"))
-            {
-                return SpecificSoftware::Shell {
-                    cwd: cwd.to_string(),
-                    cmd: cmd.to_string(),
-                    zsh_histdb_session_id: Identifier(histdb.to_string()),
-                };
+    if let Some(m) = JSON_TITLE.find(window_title) {
+        if let Ok(J::Object(mut o)) = serde_json::from_str(m.as_str()) {
+            let mut category = o.remove("t").or_else(|| o.remove("type"));
+            if category.is_none() && o.contains_key("histdb") {
+                // hack for legacy entries in phiresky db
+                category = Some(J::String("shell".to_string()));
             }
-        }
-    }
-    if let Some(exe) = &executable_path {
-        if BROWSER_BINARY.is_match(&exe) {
-            if let Some(cap) = URL.find_iter(&window_title).last() {
-                if let Ok(url) = url::Url::parse(cap.as_str()) {
-                    return SpecificSoftware::WebBrowser {
-                        url: Some(cap.as_str().to_string()),
-                        domain: url.domain().map(|e| e.to_string()),
+            if let Some(J::String(category)) = category {
+                for (k, v) in &o {
+                    let txtv = match v {
+                        // no "" around string
+                        J::String(s) => format!("{}", s),
+                        any => format!("{}", any),
                     };
+                    tags.insert(format!("title-match-{}-{}:{}", category, k, txtv));
                 }
-                return SpecificSoftware::WebBrowser {
-                    url: None,
-                    domain: None,
-                };
             }
         }
-        if MEDIAPLAYER_BINARY.is_match(&exe) {
-            return SpecificSoftware::MediaPlayer {
-                media_filename: "".to_string(), // todo,
-                media_name: window_title.to_string(),
-                media_type: MediaType::Video,
-            };
-        }
     }
-    SpecificSoftware::Unknown
+    tags
 }

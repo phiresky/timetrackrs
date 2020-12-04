@@ -1,22 +1,49 @@
 use std::fmt::Display;
 
-use crate::{db::fetcher_cache, prelude::*};
+use crate::{db::fetcher_cache, expand::expand_str, prelude::*};
 
 use diesel::SqliteConnection;
 use regex::Regex;
-lazy_static! {
-    static ref public_suffixes: publicsuffix::List =
-        publicsuffix::List::from_str(include_str!("../../data/public_suffix_list.dat")).unwrap();
+
+fn validate_tag_rules(rules: &[TagRule]) {
+    for rule in rules {
+        if let Err(e) = rule.validate() {
+            log::warn!("tag rule {:?} is invalid: {}", rule, e);
+        }
+    }
 }
 fn get_tag_rules() -> Vec<TagRule> {
-    return vec![
+    let rules =vec![
         TagRule::TagRegex {
             regex: Regex::new(r#"^browse-domain:telegram.org$"#).unwrap(),
             new_tag: "use-service:Telegram".to_string(),
         },
         TagRule::TagRegex {
-            regex: Regex::new(r#"^use-executable:.*/telegram-desktop$"#).unwrap(),
+            /**
+            filename of the executable with two exceptions:
+             - if software is updated etc and the executable is replaced with a newer version, the executable path will have (deleted) appended on linux - remove that suffix
+             - on windows, remove the .exe suffix because who cares? 
+            */
+            regex: Regex::new(r#"^software-executable-path:.*/(?P<basename>.*?)(?: \(deleted\)|.exe)?$"#).unwrap(),
+            new_tag: "software-executable-basename:$basename".to_string(),
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^software-executable-basename:telegram-desktop$"#).unwrap(),
             new_tag: "use-service:Telegram".to_string(),
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^software-executable-basename:(firefox|google-chrome|chromium)$"#).unwrap(),
+            new_tag: "software-type:browser".to_string(),
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^software-executable-basename:(mpv|vlc)$"#).unwrap(),
+            new_tag: "software-type:media-player".to_string()
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(
+                r#"^software-window-title:.*(?P<url>https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)).*$"#,
+            ).unwrap(),
+            new_tag: "browse-url:$url".to_string(),
         },
         TagRule::TagRegex {
             regex: Regex::new(r#"^browse-domain:mail.google.com$"#).unwrap(),
@@ -25,6 +52,24 @@ fn get_tag_rules() -> Vec<TagRule> {
         TagRule::TagRegex {
             regex: Regex::new(r#"^browse-domain:(.*\.)?youtube.com$"#).unwrap(),
             new_tag: "use-service:YouTube".to_string(),
+        },
+        TagRule::MultiTagRegex {
+            regexes: vec![
+                Regex::new(r#"^device-hostname:(?P<hostname>.*)$"#).unwrap(),
+                Regex::new(r#"^title-match-sd-proj:(?P<path>.*)$"#).unwrap(),
+            ],
+            new_tag: "software-development-project:$hostname$path".to_string(),
+        },
+        TagRule::MultiTagRegex {
+            regexes: vec![
+                Regex::new(r#"^software-executable-basename:electron\d*$"#).unwrap(),
+                Regex::new(r#"^software-window-class:(?P<class>.+)$"#).unwrap(),
+            ],
+            new_tag: "software-identifier:${class}".to_string(),
+        },
+        TagRule::InternalFetcher {
+            regex: Regex::new(r#"^browse-url:(?P<url>.*)$"#).unwrap(),
+            fetcher: Box::new(fetchers::URLDomainMatcher)
         },
         TagRule::ExternalFetcher {
             regex: Regex::new(r#"^browse-domain:(.*\.)?youtube.com$"#).unwrap(),
@@ -35,6 +80,8 @@ fn get_tag_rules() -> Vec<TagRule> {
             new_tag: "software-development-project-name:$1".to_string(),
         },
     ];
+    validate_tag_rules(&rules);
+    rules
 }
 
 #[derive(Debug)]
@@ -43,9 +90,17 @@ enum TagRule {
         regex: regex::Regex,
         new_tag: String,
     },
+    MultiTagRegex {
+        regexes: Vec<regex::Regex>,
+        new_tag: String,
+    },
+    InternalFetcher {
+        regex: regex::Regex,
+        fetcher: Box<dyn fetchers::SimpleFetcher>,
+    },
     ExternalFetcher {
         regex: regex::Regex,
-        fetcher: Box<dyn fetchers::Fetcher>,
+        fetcher: Box<dyn fetchers::ExternalFetcher>,
     },
 }
 pub type Tags = std::collections::BTreeSet<String>;
@@ -62,11 +117,29 @@ impl TagRule {
                     }
                 }
             }
+            TagRule::MultiTagRegex { regexes, new_tag } => {
+                let mut caps: Vec<regex::Captures> = Vec::new();
+                for regex in regexes {
+                    'thisregex: for tag in tags.iter() {
+                        let new = regex.captures(tag);
+                        if let Some(cap) = new {
+                            caps.push(cap);
+                            break 'thisregex;
+                        }
+                    }
+                    return Ok(());
+                    // no match for this regex, abort
+                }
+                let mut new_tag_replaced: String = String::new();
+                expand_str(&caps, new_tag, &mut new_tag_replaced);
+                new_tags.push(new_tag_replaced);
+            }
+
             TagRule::ExternalFetcher { regex, fetcher } => {
                 for tag in tags.iter() {
-                    if regex.is_match(tag) {
+                    if let Some(cap) = regex.captures(tag) {
                         let id = fetcher.get_id();
-                        if let Some(inner_cache_key) = fetcher.get_cache_key(tags) {
+                        if let Some(inner_cache_key) = fetcher.get_cache_key(&cap, tags) {
                             let global_cache_key = &format!("{}:{}", id, inner_cache_key);
                             log::trace!(
                                 "matcher {} matched, cache key = {:?}",
@@ -97,76 +170,59 @@ impl TagRule {
                     }
                 }
             }
+            TagRule::InternalFetcher { regex, fetcher } => {
+                for tag in tags.iter() {
+                    if let Some(cap) = regex.captures(tag) {
+                        new_tags.extend(
+                            fetcher
+                                .process(&cap, &tags)
+                                .context("processing data")?
+                                .into_iter(),
+                        );
+                    }
+                }
+            }
         }
         tags.extend(new_tags);
         Ok(())
     }
-}
-
-pub fn get_tags(db: &mut SqliteConnection, e: &ExtractedInfo) -> Tags {
-    let mut tags = Tags::new();
-    if let ExtractedInfo::InteractWithDevice {
-        specific:
-            SpecificSoftware::WebBrowser {
-                url: Some(url),
-                domain,
-                ..
-            },
-        ..
-    } = e
-    {
-        tags.insert(format!("browse-url:{}", url.to_string()));
-        if let Some(domain) = domain {
-            tags.insert(format!("browse-full-domain:{}", domain.to_string()));
-            if let Ok(parsed) = public_suffixes.parse_domain(domain) {
-                if let Some(root) = parsed.root() {
-                    tags.insert(format!("browse-domain:{}", root));
+    fn validate(&self) -> anyhow::Result<()> {
+        match self {
+            TagRule::TagRegex { regex, new_tag } => {
+                validate_tag_regex(regex)?;
+                Ok(())
+            }
+            TagRule::MultiTagRegex { regexes, new_tag } => {
+                for regex in regexes {
+                    validate_tag_regex(regex)?;
                 }
-                if !parsed.has_known_suffix() {
-                    tags.insert(format!("error-unknown-domain:{}", parsed));
-                }
+                Ok(())
+            }
+            TagRule::InternalFetcher { regex, fetcher } => {
+                validate_tag_regex(regex)?;
+                Ok(())
+            }
+            TagRule::ExternalFetcher { regex, fetcher } => {
+                validate_tag_regex(regex)?;
+                Ok(())
             }
         }
     }
-    if let ExtractedInfo::InteractWithDevice {
-        general:
-            GeneralSoftware {
-                opened_filepath: Some(path),
-                hostname,
-                ..
-            },
-        ..
-    } = e
-    {
-        tags.insert(format!("open-file:{}{}", hostname, path));
+}
+
+fn validate_tag_regex(regex: &Regex) -> anyhow::Result<()> {
+    let str = regex.as_str();
+    if str.chars().next().context("regex empty")? != '^' {
+        anyhow::bail!("regex must start with ^");
     }
-    if let ExtractedInfo::InteractWithDevice {
-        general: GeneralSoftware { hostname, .. },
-        specific:
-            SpecificSoftware::SoftwareDevelopment {
-                project_path: Some(path),
-                ..
-            },
-        ..
-    } = e
-    {
-        tags.insert(format!("software-development-project:{}{}", hostname, path));
+    if str.chars().last().context("regex empty")? != '$' {
+        anyhow::bail!("regexes must end with $");
     }
-    if let ExtractedInfo::InteractWithDevice {
-        general:
-            GeneralSoftware {
-                device_type,
-                hostname,
-                identifier,
-                ..
-            },
-        ..
-    } = e
-    {
-        tags.insert(format!("use-software:{}", identifier.0));
-        tags.insert(format!("use-device-name:{}", hostname));
-        tags.insert(format!("use-device-type:{:?}", device_type));
-    }
+    Ok(())
+}
+pub fn get_tags(db: &mut SqliteConnection, intrinsic_tags: Tags) -> Tags {
+    let mut tags = Tags::new();
+    tags.extend(intrinsic_tags);
 
     apply_tag_rules(db, &mut tags);
     tags
@@ -182,7 +238,9 @@ pub fn apply_tag_rules(db: &mut SqliteConnection, tags: &mut Tags) {
             if let Err(e) = rule
                 .apply(db, tags)
                 .with_context(|| format!("applying rule {:?}", rule))
-            {}
+            {
+                log::warn!("{:?}", e);
+            }
         }
         settled = tags.len() == last_length;
         last_length = tags.len();

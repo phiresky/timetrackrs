@@ -58,6 +58,7 @@ log = "0.4.11"
 pretty_env_logger = "0.4.0"
 zip = "0.5.8"
 youtube_dl = "0.6.0"
+derive_more = "0.99.11"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["winuser", "processthreadsapi","handleapi", "psapi"] }

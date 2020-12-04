@@ -21,10 +21,18 @@ order by time desc
 #![allow(non_snake_case)]
 
 use crate::prelude::*;
+use derive_more::Display;
 use num_enum::TryFromPrimitive;
 use rusqlite::params;
 use std::{collections::HashMap, path::PathBuf};
 
+#[derive(Debug, Display, Serialize, Deserialize, TypeScriptify, Clone)]
+pub enum SoftwareDeviceType {
+    Laptop,
+    Desktop,
+    Smartphone,
+    Tablet,
+}
 #[derive(StructOpt)]
 pub struct AppUsageImportArgs {
     // ~/data/bck/TitaniumBackup/com.a0soft.gphone.uninstaller-20200114-030409.tar.bz2
@@ -59,7 +67,7 @@ impl std::str::FromStr for SoftwareDeviceType {
         match day {
             "Smartphone" => Ok(SoftwareDeviceType::Smartphone),
             "Tablet" => Ok(SoftwareDeviceType::Tablet),
-            day => Err(anyhow::anyhow!("IDK what {} is", day)),
+            idk => Err(anyhow::anyhow!("IDK what {} is", idk)),
         }
     }
 }
@@ -69,7 +77,7 @@ pub struct AppUsageEntry {
     pub device_type: SoftwareDeviceType,
     pub device_name: String,
     pub duration: i64,
-    pub act_type: i64,
+    pub act_type: i64, // if act_type = UseApp then app is Some, else None
     pub act_type_flag: i64,
     pub pid: i64, // -1 when no app
     pub app: Option<AppUsageAppInfo>,
@@ -81,13 +89,24 @@ pub struct AppUsageAppInfo {
     pub app_type: i64,
 }
 
-use crate::extract::{properties::ExtractedInfo, ExtractInfo};
+use crate::extract::ExtractInfo;
 impl ExtractInfo for AppUsageEntry {
-    fn extract_info(&self) -> Option<ExtractedInfo> {
-        use crate::extract::properties::*;
+    fn extract_info(&self) -> Option<Tags> {
+        let mut tags = Tags::new();
+        if UseType::try_from(self.act_type) == Ok(UseType::UseApp) {
+            let app = self.app.as_ref().unwrap();
+            tags.insert(format!("device-hostname:{}", self.device_name));
+            tags.insert(format!("device-type:{}", self.device_type));
+            tags.insert(format!("software-id:android:{}", app.pkg_name));
+            tags.insert(format!("software-name:{}", app.app_name));
+            tags.insert(format!("device-os-type:Android"));
+        }
+        Some(tags)
+        /*use crate::extract::properties::*;
         let x = &self;
         if UseType::try_from(x.act_type) == Ok(UseType::UseApp) {
             let app = x.app.as_ref().unwrap();
+
             Some(ExtractedInfo::InteractWithDevice {
                 general: GeneralSoftware {
                     hostname: x.device_name.clone(),
@@ -102,7 +121,7 @@ impl ExtractInfo for AppUsageEntry {
             })
         } else {
             None
-        }
+        }*/
     }
 }
 

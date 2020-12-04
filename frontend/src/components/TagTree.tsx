@@ -1,19 +1,14 @@
-import * as React from "react"
-import * as dfn from "date-fns"
-import { autorun, computed, observable } from "mobx"
-import { fromPromise, IPromiseBasedObservable } from "mobx-utils"
-import * as api from "../api"
-import { observer } from "mobx-react"
-import { Link } from "react-router-dom"
-import { ModalLink } from "./ModalLink"
-import { Entry } from "./Entry"
-import { durationToString, totalDuration } from "../util"
-import { map } from "lodash"
-import { TimeRangeSelector } from "./TimeRangeSelector"
 import _ from "lodash"
+import { computed } from "mobx"
+import { observer } from "mobx-react"
+import * as React from "react"
+import * as api from "../api"
+import { durationToString, totalDuration } from "../util"
 import { CategoryChart } from "./CategoryChart"
-import { Page } from "./Page"
 import { ChooserWithChild } from "./ChooserWithChild"
+import { Entry } from "./Entry"
+import { ModalLink } from "./ModalLink"
+import { Page } from "./Page"
 
 interface Tree<T> {
 	leaves: T[]
@@ -185,7 +180,7 @@ export class TagTree extends React.Component<{ events: api.Activity[] }> {
 	@computed get tagTree(): ATree {
 		const tree = rootTree<api.Activity>()
 		for (const event of this.props.events) {
-			for (const tag of event.data.tags) {
+			for (const tag of event.tags) {
 				const inx = tag.indexOf(":")
 				addToTree(
 					tree,
@@ -203,7 +198,6 @@ export class TagTree extends React.Component<{ events: api.Activity[] }> {
 	render(): React.ReactNode {
 		return (
 			<div>
-				<h2>Category Trees</h2>
 				{[...this.tagTree.children].map(([kind, tree]) => (
 					<div key={kind}>
 						<h3>{kind}</h3>

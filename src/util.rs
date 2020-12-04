@@ -41,20 +41,21 @@ impl Default for OsInfo {
     }
 }
 impl OsInfo {
-    pub fn to_partial_general_software(&self) -> GeneralSoftware {
-        GeneralSoftware {
-            hostname: self.hostname.clone(),
-            device_type: if self.batteries.unwrap_or(0) > 0 {
+    pub fn to_partial_general_software(&self, tags: &mut Tags) -> () {
+        tags.insert(format!("device-os-type:{}", self.os_type));
+        tags.insert(format!("device-os-version:{}", self.version));
+        tags.insert(format!("device-hostname:{}", self.hostname));
+        self.machine_id
+            .as_ref()
+            .map(|m| tags.insert(format!("device-machine-id:{}", m)));
+        tags.insert(format!(
+            "device-type:{}",
+            if self.batteries.unwrap_or(0) > 0 {
                 SoftwareDeviceType::Laptop
             } else {
                 SoftwareDeviceType::Desktop
-            },
-            device_os: self.os_type.to_string(),
-            identifier: Identifier("".to_string()),
-            title: "".to_string(),
-            unique_name: "".to_string(),
-            opened_filepath: None,
-        }
+            }
+        ));
     }
 }
 
