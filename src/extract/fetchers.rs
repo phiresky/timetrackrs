@@ -149,9 +149,10 @@ impl ExternalFetcher for YoutubeFetcher {
 
     fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
         log::debug!("querying youtube for {}", cache_key);
-        let data = youtube_dl::YoutubeDl::new(cache_key)
-            .run()
-            .context("youtube-dl")?;
+        let data =
+            youtube_dl::YoutubeDl::new(format!("https://www.youtube.com/watch?v={}", cache_key))
+                .run()
+                .with_context(|| format!("youtube-dl {}", cache_key))?;
         Ok(serde_json::to_string(&data).context("serializing ytdl output")?)
     }
 

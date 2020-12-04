@@ -6,7 +6,6 @@ import * as PlotlyT from "plotly.js"
 import * as PlotlyI from "plotly.js-dist"
 import React from "react"
 import { Activity } from "./api"
-import { categoryAggregate } from "./ftree"
 
 const Plotly = PlotlyI as typeof PlotlyT
 

@@ -1,7 +1,6 @@
 import { observable, runInAction } from "mobx"
 import { observer } from "mobx-react"
 import React, { ReactElement } from "react"
-import { aggregates as detailers, Filter, SummaryFilter } from "../ftree"
 import { Plot } from "../plot"
 import * as api from "../api"
 import { durationToString, totalDuration } from "../util"
@@ -44,39 +43,6 @@ const groupers: Grouper[] = [
 			)
 		},
 	},*/
-	{
-		name: "UsedComputer",
-		shouldGroup(a, b) {
-			const d1 = new Date(a.timestamp)
-			const d2 = new Date(b.timestamp)
-			const distanceSeconds = Math.abs(d1.getTime() - d2.getTime()) / 1000
-			if (distanceSeconds > 2 * (a.duration + b.duration)) return false
-			return a.data.info.type === "InteractWithDevice" &&
-				b.data.info.type === "InteractWithDevice"
-				? a.data.info.general.hostname === b.data.info.general.hostname
-				: false
-		},
-		component(p) {
-			const type =
-				p.entries[0].data.info.type === "InteractWithDevice"
-					? p.entries[0].data.info.general?.device_type || "UNK"
-					: "UNK"
-
-			return (
-				<ul>
-					<li>
-						Used {type} for{" "}
-						{durationToString(totalDuration(p.entries))}: By{" "}
-						<SummaryFilter
-							entries={p.entries}
-							header={false}
-							filter={p.filter}
-						/>
-					</li>
-				</ul>
-			)
-		},
-	},
 	{
 		name: "Daily",
 		shouldGroup(a, b) {
@@ -318,7 +284,7 @@ export class Timeline extends React.Component {
 						</div>
 					</div>
 				</div>
-				<Plot data={[...this.data.values()].flat()} />
+				{/*<Plot data={[...this.data.values()].flat()} />*/}
 			</div>
 		)
 	}
