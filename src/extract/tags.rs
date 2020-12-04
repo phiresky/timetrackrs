@@ -142,12 +142,12 @@ impl TagRule {
             }
             TagRule::MultiTagRegex { regexes, new_tag } => {
                 let mut caps: Vec<regex::Captures> = Vec::new();
-                for regex in regexes {
+                'nextregex: for regex in regexes {
                     'thisregex: for tag in tags.iter() {
                         let new = regex.captures(tag);
                         if let Some(cap) = new {
                             caps.push(cap);
-                            break 'thisregex;
+                            continue 'nextregex;
                         }
                     }
                     return Ok(());

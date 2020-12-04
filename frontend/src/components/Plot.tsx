@@ -5,7 +5,8 @@ import { action } from "mobx"
 import * as PlotlyT from "plotly.js"
 import * as PlotlyI from "plotly.js-dist"
 import React from "react"
-import { Activity } from "./api"
+import { Activity } from "../api"
+import { getTag } from "./Timeline"
 
 const Plotly = PlotlyI as typeof PlotlyT
 
@@ -14,15 +15,9 @@ export class Plot extends React.Component<{ data: Activity[] }> {
 	plot: Plotly.PlotlyHTMLElement | null = null
 	async componentDidUpdate() {
 		if (this.r.current) {
-			// if(this.plot) Plotly.plot
-			if (!categoryAggregate.group) throw Error("a")
-			const g = categoryAggregate.group
-			const _gs = _.groupBy(this.props.data, (e) => {
-				const g1 = g(e)
-				const g2 = g1.group?.(e)
-				if (g2) return g2.key
-				return g1.key
-			})
+			const _gs = _.groupBy(this.props.data, (e) =>
+				getTag(e.tags, "category"),
+			)
 
 			const data: Plotly.Data[] = Object.entries(_gs).map(([key, es]) => {
 				const es2 = es.flatMap((e) => {

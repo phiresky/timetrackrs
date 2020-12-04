@@ -10,7 +10,7 @@ import { Page } from "./Page"
 import { TagTree } from "./TagTree"
 import { Choices, Select } from "./Select"
 
-function getTag(tags: string[], tag: string) {
+export function getTag(tags: string[], tag: string) {
 	return tags.find((t) => t.startsWith(tag + ":"))?.slice(tag.length + 1)
 }
 
