@@ -14,6 +14,8 @@ export const Page: React.FC<{
 					<NavLink to="/timeline">Timeline</NavLink>
 					{" • "}
 					<NavLink to="/tag-tree">Tag Tree</NavLink>
+					{" • "}
+					<NavLink to="/plot">Plot</NavLink>
 				</span>
 				{headerChildren}
 			</div>

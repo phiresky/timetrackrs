@@ -10,6 +10,7 @@ fn main() -> anyhow::Result<()> {
     let data = opt.import()?;
     log::info!("inserting...");
     use track_pc_usage_rs::db::schema::events;
+    for data in data.chunks(10000) {
     let db = track_pc_usage_rs::db::connect()?;
 
     let updated = diesel::insert_or_ignore_into(events::table).values(&data);
@@ -17,6 +18,7 @@ fn main() -> anyhow::Result<()> {
     let updated = updated
         .execute(&db)
         .context("inserting new events into db")?;
+    
 
     log::info!(
         "successfully inserted {}/{} entries ({} already existed)",
@@ -24,5 +26,6 @@ fn main() -> anyhow::Result<()> {
         data.len(),
         data.len() - updated
     );
+}
     Ok(())
 }

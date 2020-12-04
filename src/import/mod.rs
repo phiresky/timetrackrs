@@ -22,5 +22,5 @@ pub enum ImportArgs {
 
 #[enum_dispatch(ImportArgs)]
 pub trait Importable {
-    fn import(&self) -> anyhow::Result<Vec<NewDbEvent>>;
+    fn import(&self) -> anyhow::Result<Box<dyn IntoIterator<Item=NewDbEvent>>>;
 }

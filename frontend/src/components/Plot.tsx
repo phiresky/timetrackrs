@@ -6,16 +6,30 @@ import * as PlotlyT from "plotly.js"
 import * as PlotlyI from "plotly.js-dist"
 import React from "react"
 import { Activity } from "../api"
+import { ChooserWithChild } from "./ChooserWithChild"
+import { Page } from "./Page"
 import { getTag } from "./Timeline"
 
 const Plotly = PlotlyI as typeof PlotlyT
 
-export class Plot extends React.Component<{ data: Activity[] }> {
+export function PlotPage(): React.ReactElement {
+	return (
+		<Page title="Plot">
+			<ChooserWithChild child={Plot} />
+		</Page>
+	)
+}
+
+export class Plot extends React.Component<{ events: Activity[] }> {
 	r = React.createRef<HTMLDivElement>()
 	plot: Plotly.PlotlyHTMLElement | null = null
+	componentDidMount() {
+		this.componentDidUpdate()
+	}
 	async componentDidUpdate() {
+		console.log("plottt")
 		if (this.r.current) {
-			const _gs = _.groupBy(this.props.data, (e) =>
+			const _gs = _.groupBy(this.props.events, (e) =>
 				getTag(e.tags, "category"),
 			)
 
@@ -52,6 +66,7 @@ export class Plot extends React.Component<{ data: Activity[] }> {
 			console.log(data)
 
 			this.plot = await Plotly.newPlot(this.r.current, data, {
+				title: "Plot by Category",
 				barmode: "stack",
 				legend: { position: "top", orientation: "h" },
 				yaxis: {

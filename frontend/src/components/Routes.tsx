@@ -5,10 +5,14 @@ import { Timeline, TimelinePage } from "./Timeline"
 import { SingleEventInfo } from "./SingleEventInfo"
 import { ChooserWithChild } from "./ChooserWithChild"
 import { CategoryChart } from "./CategoryChart"
+import { PlotPage } from "./Plot"
 
 export function Routes(): React.ReactElement {
 	return (
 		<Switch>
+			<Route path="/plot">
+				<PlotPage />
+			</Route>
 			<Route path="/timeline">
 				<TimelinePage />
 			</Route>
