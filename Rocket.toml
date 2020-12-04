@@ -1,5 +1,0 @@
-[development]
-address="0.0.0.0"
-port=8000
-[global.databases]
-events_database = { url = "/home/tehdog/.config/trbtt/activity.sqlite3" }

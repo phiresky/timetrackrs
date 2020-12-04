@@ -118,13 +118,33 @@ fn single_event(mut db: DbConn, id: String) -> DebugRes<Json<J>> {
 
 fn main() -> anyhow::Result<()> {
     util::init_logging();
+    dotenv::dotenv().ok();
+
+    use std::collections::HashMap;
+    use rocket::config::{Config, Environment, Value};
+
+    let mut database_config = HashMap::new();
+    let mut databases = HashMap::new();
+
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+
+    // This is the same as the following TOML:
+    // my_db = { url = "database.sqlite" }
+    database_config.insert("url", Value::from(database_url));
+    databases.insert("events_database", Value::from(database_config));
+
+    let config = Config::build(Environment::Development)
+        .extra("databases", databases)
+        .finalize()
+        .unwrap();
 
     let cors = rocket_cors::CorsOptions {
         allowed_origins: rocket_cors::AllowedOrigins::all(),
         ..Default::default()
     }
     .to_cors()?;
-    rocket::ignite()
+    rocket::custom(config)
         .mount("/", routes![time_range, single_event])
         .attach(cors)
         .attach(DbConn::fairing())

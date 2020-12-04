@@ -114,9 +114,7 @@ function ShowTree({
 				<ul>
 					{tree.leaves.slice(0, children).map((l) => (
 						<li key={l.id}>
-							<ModalLink to={`/single-event/${l.id}`}>
-								<Entry {...l} />
-							</ModalLink>
+							<Entry {...l} />
 						</li>
 					))}
 					{tree.leaves.length > children && (
@@ -173,7 +171,10 @@ export function TagTreePage(): React.ReactElement {
 	)
 }
 @observer
-export class TagTree extends React.Component<{ events: api.Activity[] }> {
+export class TagTree extends React.Component<{
+	events: api.Activity[]
+	tagName?: string
+}> {
 	constructor(props: TagTree["props"]) {
 		super(props)
 	}
@@ -182,9 +183,12 @@ export class TagTree extends React.Component<{ events: api.Activity[] }> {
 		for (const event of this.props.events) {
 			for (const tag of event.tags) {
 				const inx = tag.indexOf(":")
+				const tagName = tag.slice(0, inx)
+				if (this.props.tagName && this.props.tagName !== tagName)
+					continue
 				addToTree(
 					tree,
-					[tag.slice(0, inx), ...tag.slice(inx + 1).split("/")],
+					[tagName, ...tag.slice(inx + 1).split("/")],
 					event,
 				)
 			}

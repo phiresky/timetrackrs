@@ -1,13 +1,20 @@
 import { observable, runInAction } from "mobx"
 import { observer } from "mobx-react"
 import React, { ReactElement } from "react"
-import { Plot } from "../plot"
 import * as api from "../api"
 import { durationToString, totalDuration } from "../util"
 import { Activity } from "../api"
 import { EntriesTime } from "./EntriesTime"
 import { Entry } from "./Entry"
 import { Page } from "./Page"
+import { TagTree } from "./TagTree"
+import { Choices, Select } from "./Select"
+
+function getTag(tags: string[], tag: string) {
+	return tags.find((t) => t.startsWith(tag + ":"))?.slice(tag.length + 1)
+}
+
+type Filter = { tagName: string }
 
 interface Grouper {
 	name: string
@@ -15,34 +22,25 @@ interface Grouper {
 	component: React.ComponentType<{ entries: Activity[]; filter: Filter }>
 }
 const groupers: Grouper[] = [
-	/*{
-		name: "specificComputerProgram",
-		shouldGroup({ data: a }, { data: b }) {
-			if(a.type === "InteractWithDevice" && b.type === "InteractWithDevice") {
-			if (a.shell && a.shell.cwd === b.shell?.cwd) return true
-			if (
-				a.software_development &&
-				a.software_development.project_path ===
-					b.software_development?.project_path
-			)
-				return true
-			if (
-				a.web_browser &&
-				a.web_browser.service === b.web_browser?.service
-			)
-				return true
-			return false
+	{
+		name: "Category",
+		shouldGroup({ tags: a }, { tags: b }) {
+			return getTag(a, "category") === getTag(b, "category")
 		},
 		component(p) {
 			return (
 				<ul>
 					<li>
-						<Entry {...p.entries[0]} />
+						Category: {getTag(p.entries[0].tags, "category")}
+						<TagTree
+							events={p.entries}
+							tagName={p.filter.tagName}
+						/>
 					</li>
 				</ul>
 			)
 		},
-	},*/
+	},
 	{
 		name: "Daily",
 		shouldGroup(a, b) {
@@ -57,11 +55,10 @@ const groupers: Grouper[] = [
 				<ul>
 					<li>
 						Total tracked time:{" "}
-						{durationToString(totalDuration(p.entries))}: By{" "}
-						<SummaryFilter
-							entries={p.entries}
-							header={false}
-							filter={p.filter}
+						{durationToString(totalDuration(p.entries))}:
+						<TagTree
+							events={p.entries}
+							tagName={p.filter.tagName}
 						/>
 					</li>
 				</ul>
@@ -151,36 +148,6 @@ function RenderGroup(props: {
 	)
 }
 
-function Choices<T>(choices: T[], def?: T) {
-	return {
-		choices,
-		value: def || choices[0],
-	}
-}
-function Select<T>(props: {
-	target: { choices: T[]; value: T }
-	getValue: (t: T) => string
-	getName: (t: T) => string
-}) {
-	const { target, getValue, getName } = props
-	return (
-		<select
-			value={getValue(target.value)}
-			onChange={(e) =>
-				(target.value = target.choices.find(
-					(c) => getValue(c) === e.currentTarget.value,
-				)!)
-			}
-		>
-			{target.choices.map((choice) => (
-				<option value={getValue(choice)} key={getValue(choice)}>
-					{getName(choice)}
-				</option>
-			))}
-		</select>
-	)
-}
-
 export function TimelinePage(): ReactElement {
 	return (
 		<Page title="Timeline" headerClass="fade-in">
@@ -188,14 +155,21 @@ export function TimelinePage(): ReactElement {
 		</Page>
 	)
 }
+const detailBy = [
+	{ key: "category", name: "Category" },
+	{ key: "software-executable-basename", name: "Program" },
+]
 @observer
 export class Timeline extends React.Component {
 	@observable data = new Map<string, Activity[]>()
 	@observable loading = false
 	@observable loadState = "unloaded"
 	@observable oldestData = new Date()
-	@observable readonly detailBy = Choices(detailers)
-	@observable readonly aggBy = Choices(groupers)
+	@observable readonly detailBy = Choices(detailBy)
+	@observable readonly aggBy = Choices(
+		groupers,
+		groupers.find((g) => g.name === "Daily"),
+	)
 
 	constructor(p: Record<string, unknown>) {
 		super(p)
@@ -275,7 +249,10 @@ export class Timeline extends React.Component {
 										<h3>{day}</h3>
 										<RenderGroup
 											entries={entries}
-											filter={this.detailBy.value}
+											filter={{
+												tagName: this.detailBy.value
+													.key,
+											}}
 											grouper={this.aggBy.value}
 										/>
 									</section>

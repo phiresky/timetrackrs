@@ -79,6 +79,29 @@ fn get_tag_rules() -> Vec<TagRule> {
             regex: Regex::new(r#"^software-development-project:.*/(.*)$"#).unwrap(),
             new_tag: "software-development-project-name:$1".to_string(),
         },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^software-development-project:.**$"#).unwrap(),
+            new_tag: "software-type:software-development".to_string()
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^software-type:software-development*$"#).unwrap(),
+            new_tag: "category:Productivity/Software Development".to_string()
+        },TagRule::TagRegex {
+            regex: Regex::new(r#"^software-type:media-player*$"#).unwrap(),
+            new_tag: "category:Entertainment".to_string()
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^software-type:shell*$"#).unwrap(),
+            new_tag: "category:Productivity/Shell".to_string()
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^use-service:Telegram*$"#).unwrap(),
+            new_tag: "category:Communication/Instant Messaging".to_string()
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^use-service:Gmail*$"#).unwrap(),
+            new_tag: "category:Communication/Email".to_string()
+        }
     ];
     validate_tag_rules(&rules);
     rules

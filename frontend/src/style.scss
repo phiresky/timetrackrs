@@ -130,7 +130,7 @@ div.header {
 			right: auto;
 			top: 5rem;
 		}
-		div {
+		> div {
 			&:after {
 				content: "";
 				width: 2px;
@@ -142,7 +142,7 @@ div.header {
 				background: #c5c5c5;
 			}
 		}
-		h3 {
+		> div > section > h3 {
 			position: -webkit-sticky;
 			position: sticky;
 			top: 5rem;
@@ -227,4 +227,8 @@ div.header {
 			}
 		}
 	}
+}
+
+.ReactModal__Overlay {
+	z-index: 1000;
 }
