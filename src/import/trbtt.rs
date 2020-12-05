@@ -9,8 +9,18 @@ pub struct TrbttImportArgs {
     after: Option<String>,
     limit: Option<i64>,
 }
+struct YieldAllEventsFromTrbttDatabase {
+    db: SqliteConnection,
+    last_id: i64
+}
+impl Iterator for YieldAllEventsFromTrbttDatabase {
+    type Item=Vec<NewDbEvent>;
+    fn next(&mut self) -> Option<Item> {
+
+    }
+}
 impl Importable for TrbttImportArgs {
-    fn import(&self) -> anyhow::Result<Vec<NewDbEvent>> {
+    fn import(&self) -> ImportResult {
         let db = crate::db::connect_file(&self.filename)?;
 
         let mdata = {
@@ -31,7 +41,7 @@ impl Importable for TrbttImportArgs {
             let limit = self.limit.unwrap_or(1000000);
             query.limit(limit as i64).load::<DbEvent>(&db)?
         };
-        Ok(mdata
+        Ok(Box::new(mdata
             .into_iter()
             .map(|e| NewDbEvent {
                 id: e.id,
@@ -41,6 +51,6 @@ impl Importable for TrbttImportArgs {
                 sampler: e.sampler,
                 sampler_sequence_id: e.sampler_sequence_id,
             })
-            .collect())
+        ))
     }
 }

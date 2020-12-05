@@ -61,7 +61,7 @@ lazy_static! {
     .unwrap();
 }
 impl Importable for JournaldImportArgs {
-    fn import(&self) -> anyhow::Result<Vec<NewDbEvent>> {
+    fn import(&self) -> ImportResult {
         use std::io::{BufRead, BufReader};
         use std::process::{Command, Stdio};
         let os_info = util::get_os_info();
@@ -122,7 +122,7 @@ impl Importable for JournaldImportArgs {
             }
         }
 
-        Ok(outs)
+        Ok(Box::new(outs.into_iter()))
 
         // journalctl -t systemd-sleep --output=json --all
     }

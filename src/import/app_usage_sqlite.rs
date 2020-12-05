@@ -142,7 +142,7 @@ struct ActRow {
 }
 
 impl Importable for AppUsageImportArgs {
-    fn import(&self) -> anyhow::Result<Vec<NewDbEvent>> {
+    fn import(&self) -> ImportResult {
         let mut archive =
             zip::read::ZipArchive::new(File::open(&self.filename).context("opening AUM file")?)
                 .context("opening AUM backup")?;
@@ -245,6 +245,6 @@ impl Importable for AppUsageImportArgs {
         }*/
         println!("");
         println!("got {} acts", outs.len());
-        Ok(outs)
+        Ok(Box::new(outs.into_iter()))
     }
 }

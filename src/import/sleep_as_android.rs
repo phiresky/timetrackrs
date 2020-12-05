@@ -63,7 +63,7 @@ fn parse_saa_entry(
 }
 
 impl Importable for SleepAsAndroidImportArgs {
-    fn import(&self) -> anyhow::Result<Vec<NewDbEvent>> {
+    fn import(&self) -> ImportResult {
         let mut entries = Vec::new();
         let mut csv = csv::ReaderBuilder::new()
             .has_headers(false)
@@ -93,7 +93,7 @@ impl Importable for SleepAsAndroidImportArgs {
         // last row
         parse_saa_entry(&mut header_row, &mut data_row, &mut noise_row)?.map(|e| entries.push(e));
 
-        Ok(entries)
+        Ok(Box::new(std::iter::once(entries)))
     }
 }
 
