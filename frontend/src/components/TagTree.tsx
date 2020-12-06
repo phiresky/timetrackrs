@@ -4,7 +4,7 @@ import { observer, useLocalStore } from "mobx-react"
 import * as React from "react"
 import * as api from "../api"
 import { DefaultMap, durationToString, totalDuration } from "../util"
-import { CategoryChart } from "./CategoryChart"
+import { CategoryChart, CategoryChartModal } from "./CategoryChart"
 import { ChooserWithChild } from "./ChooserWithChild"
 import { Entry } from "./Entry"
 import { ModalLink } from "./ModalLink"
@@ -249,7 +249,16 @@ export class TagTree extends React.Component<{
 			<div>
 				{[...this.tagTree.children].map(([kind, tree]) => (
 					<div key={kind}>
-						<h3>{kind}</h3>
+						<h3>
+							{kind}{" "}
+							{!chart && (
+								<CategoryChartModal
+									events={collect(tree)}
+									deep={false}
+									tagPrefix={kind + ":"}
+								/>
+							)}
+						</h3>
 						{chart && (
 							<CategoryChart
 								events={collect(tree)}

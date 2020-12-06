@@ -1,15 +1,25 @@
 import { computed } from "mobx"
 import React from "react"
 import Plot from "react-plotly.js"
-import { inflateRawSync } from "zlib"
 import { Activity } from "../api"
 import { DefaultMap, KeyedSet, totalDuration } from "../util"
+import { ModalLink } from "./ModalLink"
+import { AiOutlineBarChart } from "react-icons/ai"
 
-export class CategoryChart extends React.Component<{
+type CategoryChartProps = {
 	events: Activity[]
 	tagPrefix: string
 	deep: boolean
-}> {
+}
+
+export function CategoryChartModal(p: CategoryChartProps): React.ReactElement {
+	return (
+		<ModalLink to={`/category-chart/${p.tagPrefix}`}>
+			<AiOutlineBarChart />
+		</ModalLink>
+	)
+}
+export class CategoryChart extends React.Component<CategoryChartProps> {
 	@computed get data() {
 		const prefix = this.props.tagPrefix
 		const groups = new DefaultMap<string, KeyedSet<Activity>>(
