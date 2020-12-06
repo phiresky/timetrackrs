@@ -8,6 +8,7 @@ use std::io::Write;
 
 #[derive(Queryable, Serialize, TypeScriptify)]
 pub struct DbEvent {
+    pub insertion_sequence: i64,
     pub id: String,
     pub timestamp: Timestamptz,
     pub data_type: String,

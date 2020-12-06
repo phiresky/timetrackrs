@@ -120,14 +120,13 @@ fn main() -> anyhow::Result<()> {
     util::init_logging();
     dotenv::dotenv().ok();
 
-    use std::collections::HashMap;
     use rocket::config::{Config, Environment, Value};
+    use std::collections::HashMap;
 
     let mut database_config = HashMap::new();
     let mut databases = HashMap::new();
 
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
+    let database_url = trbtt::db::get_database_location();
 
     // This is the same as the following TOML:
     // my_db = { url = "database.sqlite" }

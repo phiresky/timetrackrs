@@ -1,8 +1,7 @@
 -- Your SQL goes here
-
 CREATE TABLE events2 (
     -- declared autoincrement to prevent id reuse for synchronization
-    insertion_sequence INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    insertion_sequence integer NOT NULL PRIMARY KEY AUTOINCREMENT,
     -- for captured events, the id is generated randomly (uuidv4)
     -- for imported events, the id must be an id taken based on
     -- a combination of data_type and something from the import
@@ -18,9 +17,18 @@ CREATE TABLE events2 (
 
 CREATE INDEX events3_timestamp_idx ON events (timestamp);
 
+INSERT INTO events2 (id, timestamp, data_type, sampler, sampler_sequence_id, data)
+SELECT
+    id,
+    timestamp,
+    data_type,
+    sampler,
+    sampler_sequence_id,
+    data
+FROM
+    events;
 
+ALTER TABLE events RENAME TO events_old;
 
-insert into events2 (id, timestamp, data_type, sampler, sampler_sequence_id, data) select * from events;
+ALTER TABLE events2 RENAME TO events;
 
-alter table events rename to events_old;
-alter table events2 rename to events;

@@ -122,7 +122,7 @@ impl Importable for JournaldImportArgs {
             }
         }
 
-        Ok(Box::new(outs.into_iter()))
+        Ok(Box::new(std::iter::once(outs)))
 
         // journalctl -t systemd-sleep --output=json --all
     }

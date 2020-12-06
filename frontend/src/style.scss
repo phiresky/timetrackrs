@@ -110,11 +110,15 @@ div.header {
 .container {
 	max-height: 100%;
 }
+.timeline-container {
+	display: flex;
+	flex-direction: column;
+}
 .timeline {
 	display: flex;
 	flex: auto;
 	flex-direction: column;
-	max-height: 100%;
+	overflow-y: auto;
 	.timeline-config {
 		position: absolute;
 		margin-top: 200px;

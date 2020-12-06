@@ -1,4 +1,5 @@
 pub mod fetcher_cache;
+pub mod hack;
 pub mod models;
 pub mod schema;
 use anyhow::Context;
@@ -31,10 +32,23 @@ pub fn connect_file(filename: &str) -> anyhow::Result<SqliteConnection> {
     embedded_migrations::run_with_output(&db, &mut std::io::stdout()).context("migrations")?;
     Ok(db)
 }
+pub fn get_database_location() -> String {
+    let database_location = env::var("DATABASE_URL").unwrap_or_else(|_| {
+        let dirs =
+            directories_next::ProjectDirs::from("", "", "trbtt").expect("No HOME directory found");
+        let dir = dirs.data_dir();
+        std::fs::create_dir_all(dir).expect("could not create data dir");
+        dir.join("events.sqlite3")
+            .to_str()
+            .expect("user data dir is invalid unicode")
+            .to_string()
+    });
+    database_location
+}
 
 pub fn connect() -> anyhow::Result<SqliteConnection> {
     dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    connect_file(&database_url)
+    let database_location = get_database_location();
+    log::debug!("Connecting to db at {}", database_location);
+    connect_file(&database_location)
 }

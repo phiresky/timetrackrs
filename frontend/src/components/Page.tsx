@@ -5,9 +5,10 @@ export const Page: React.FC<{
 	headerChildren?: React.ReactNode
 	title?: string
 	headerClass?: string
-}> = ({ title, headerChildren, children, headerClass }) => {
+	containerClass?: string
+}> = ({ title, containerClass, headerChildren, children, headerClass }) => {
 	return (
-		<div className="container">
+		<div className={`container ${containerClass || ""}`}>
 			<div className={`header ${headerClass || ""}`}>
 				<h1>TRBTT</h1>
 				<span className="nav-bar">

@@ -150,7 +150,11 @@ function RenderGroup(props: {
 
 export function TimelinePage(): ReactElement {
 	return (
-		<Page title="Timeline" headerClass="fade-in">
+		<Page
+			title="Timeline"
+			headerClass="fade-in"
+			containerClass="timeline-container"
+		>
 			<Timeline />
 		</Page>
 	)
@@ -209,15 +213,19 @@ export class Timeline extends React.Component {
 		//console.log(this.data.data)
 	}
 
-	onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+	onScroll = async (e: React.UIEvent<HTMLDivElement>): Promise<void> => {
 		const element = e.currentTarget
-		const bottom = element.clientHeight + element.scrollTop
-		if (element.scrollHeight - bottom < 300) {
-			void this.fetchData()
+		let i = 0
+		while (i++ < 10) {
+			const bottom = element.clientHeight + element.scrollTop
+			if (element.scrollHeight - bottom < 300) {
+				await this.fetchData()
+				await new Promise((r) => setImmediate(r))
+			}
 		}
 	}
 
-	render() {
+	render(): React.ReactNode {
 		//const da = groupBy(this.data.data);
 		return (
 			<div className="timeline">

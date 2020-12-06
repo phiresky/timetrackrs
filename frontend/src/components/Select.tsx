@@ -1,16 +1,18 @@
-import React from "react"
+import { observer } from "mobx-react"
+import * as React from "react"
 
-export function Choices<T>(choices: T[], def?: T) {
+type Choices<T> = { choices: T[]; value: T }
+export function Choices<T>(choices: T[], def?: T): Choices<T> {
 	return {
 		choices,
 		value: def || choices[0],
 	}
 }
-export function Select<T>(props: {
-	target: { choices: T[]; value: T }
+function _Select<T>(props: {
+	target: Choices<T>
 	getValue: (t: T) => string
 	getName: (t: T) => string
-}) {
+}): React.ReactElement {
 	const { target, getValue, getName } = props
 	return (
 		<select
@@ -29,3 +31,4 @@ export function Select<T>(props: {
 		</select>
 	)
 }
+export const Select = observer(_Select)

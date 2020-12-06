@@ -1,14 +1,15 @@
 import _ from "lodash"
 import { computed } from "mobx"
-import { observer } from "mobx-react"
+import { observer, useLocalStore } from "mobx-react"
 import * as React from "react"
 import * as api from "../api"
-import { durationToString, totalDuration } from "../util"
+import { DefaultMap, durationToString, totalDuration } from "../util"
 import { CategoryChart } from "./CategoryChart"
 import { ChooserWithChild } from "./ChooserWithChild"
 import { Entry } from "./Entry"
 import { ModalLink } from "./ModalLink"
 import { Page } from "./Page"
+import { Choices, Select } from "./Select"
 
 interface Tree<T> {
 	leaves: T[]
@@ -89,6 +90,60 @@ function collect(tree: ATree) {
 function TotalDuration(props: { tree: ATree }) {
 	return <span>{durationToString(totalDuration(collect(props.tree)))}</span>
 }
+
+const TreeLeaves: React.FC<{ leaves: api.Activity[] }> = observer(
+	({ leaves }) => {
+		const [children, setChildren] = React.useState(5)
+		const store = useLocalStore(() => {
+			const choices = new DefaultMap<string, number>(() => 0)
+			for (const l of leaves) {
+				for (const t of l.tags) {
+					const tagKey = t.split(":")[0]
+					choices.set(tagKey, choices.get(tagKey) + 1)
+				}
+			}
+			const choicesList = _.sortBy([...choices], (k) => k[1])
+				.map((k) => k[0])
+				.slice(0, 10)
+			return {
+				choices: Choices(["singles", ...choicesList], choicesList[0]),
+			}
+		})
+		let inner
+		if (store.choices.value === "singles")
+			inner = (
+				<ul>
+					{leaves.slice(0, children).map((l) => (
+						<li key={l.id}>
+							<Entry {...l} />
+						</li>
+					))}
+					{leaves.length > children && (
+						<li key="more" className="clickable">
+							<a
+								className="clickable"
+								onClick={() => setChildren(children * 2)}
+							>
+								...{leaves.length - children} more
+							</a>
+						</li>
+					)}
+				</ul>
+			)
+		else inner = <TagTree events={leaves} tagName={store.choices.value} />
+		return (
+			<div>
+				{leaves.length} events. grouping by{" "}
+				<Select<string>
+					target={store.choices}
+					getValue={(e) => e}
+					getName={(e) => e}
+				/>
+				{inner}
+			</div>
+		)
+	},
+)
 function ShowTree({
 	tag,
 	tree,
@@ -99,7 +154,6 @@ function ShowTree({
 	noSlash?: boolean
 }) {
 	const [open, setOpen] = React.useState(false)
-	const [children, setChildren] = React.useState(5)
 
 	const title = (noSlash ? "" : "/") + tag || "[empty]"
 
@@ -111,23 +165,7 @@ function ShowTree({
 
 			{open && <ShowTreeChildren tree={tree} />}
 			{open && tree.leaves.length > 0 && (
-				<ul>
-					{tree.leaves.slice(0, children).map((l) => (
-						<li key={l.id}>
-							<Entry {...l} />
-						</li>
-					))}
-					{tree.leaves.length > children && (
-						<li key="more" className="clickable">
-							<a
-								className="clickable"
-								onClick={() => setChildren(children * 2)}
-							>
-								...{tree.leaves.length - children} more
-							</a>
-						</li>
-					)}
-				</ul>
+				<TreeLeaves leaves={tree.leaves} />
 			)}
 		</li>
 	)
@@ -174,6 +212,7 @@ export function TagTreePage(): React.ReactElement {
 export class TagTree extends React.Component<{
 	events: api.Activity[]
 	tagName?: string
+	chart?: boolean
 }> {
 	constructor(props: TagTree["props"]) {
 		super(props)
@@ -181,6 +220,7 @@ export class TagTree extends React.Component<{
 	@computed get tagTree(): ATree {
 		const tree = rootTree<api.Activity>()
 		for (const event of this.props.events) {
+			let added = false
 			for (const tag of event.tags) {
 				const inx = tag.indexOf(":")
 				const tagName = tag.slice(0, inx)
@@ -191,6 +231,10 @@ export class TagTree extends React.Component<{
 					[tagName, ...tag.slice(inx + 1).split("/")],
 					event,
 				)
+				added = true
+			}
+			if (this.props.tagName && !added) {
+				addToTree(tree, [this.props.tagName, "[untagged]"], event)
 			}
 		}
 		for (const c of tree.children) shortenTree(c[1])
@@ -200,16 +244,19 @@ export class TagTree extends React.Component<{
 	}
 
 	render(): React.ReactNode {
+		const { chart = false } = this.props
 		return (
 			<div>
 				{[...this.tagTree.children].map(([kind, tree]) => (
 					<div key={kind}>
 						<h3>{kind}</h3>
-						<CategoryChart
-							events={collect(tree)}
-							deep={false}
-							tagPrefix={kind + ":"}
-						/>
+						{chart && (
+							<CategoryChart
+								events={collect(tree)}
+								deep={false}
+								tagPrefix={kind + ":"}
+							/>
+						)}
 						<ShowTreeChildren tree={tree} noSlash />
 					</div>
 				))}

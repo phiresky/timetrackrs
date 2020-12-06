@@ -3,3 +3,4 @@
 
 [print_schema]
 file = "src/db/schema.rs"
+import_types = ["diesel::sql_types::*", "crate::db::hack::Integer"]

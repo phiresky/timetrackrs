@@ -80,13 +80,22 @@ fn get_tag_rules() -> Vec<TagRule> {
             new_tag: "software-development-project-name:$1".to_string(),
         },
         TagRule::TagRegex {
+            regex: Regex::new(r#"^title-match-shell-cwd:.*$"#).unwrap(),
+            new_tag: "software-type:shell".to_string(),
+        },
+        TagRule::TagRegex {
             regex: Regex::new(r#"^software-development-project:.**$"#).unwrap(),
-            new_tag: "software-type:software-development".to_string()
+            new_tag: "software-type:ide".to_string()
         },
         TagRule::TagRegex {
             regex: Regex::new(r#"^software-type:software-development*$"#).unwrap(),
-            new_tag: "category:Productivity/Software Development".to_string()
-        },TagRule::TagRegex {
+            new_tag: "category:Productivity/Software Development/IDE".to_string()
+        },
+        TagRule::TagRegex {
+            regex: Regex::new(r#"^software-type:shell*$"#).unwrap(),
+            new_tag: "category:Productivity/Shell".to_string()
+        },
+        TagRule::TagRegex {
             regex: Regex::new(r#"^software-type:media-player*$"#).unwrap(),
             new_tag: "category:Entertainment".to_string()
         },
