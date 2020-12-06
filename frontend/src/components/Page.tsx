@@ -17,6 +17,8 @@ export const Page: React.FC<{
 					<NavLink to="/tag-tree">Tag Tree</NavLink>
 					{" • "}
 					<NavLink to="/plot">Plot</NavLink>
+					{" • "}
+					<NavLink to="/tag-rule-editor">Rule Editor</NavLink>
 				</span>
 				{headerChildren}
 			</div>

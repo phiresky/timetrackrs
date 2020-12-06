@@ -1,7 +1,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use diesel::prelude::*;
-use rocket::{get, routes};
+use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
 use serde_json::json;
 use serde_json::Value as J;
@@ -18,7 +18,7 @@ extern crate rocket_contrib;
 struct DbConn(diesel::SqliteConnection);
 
 type DebugRes<T> = Result<T, rocket::response::Debug<anyhow::Error>>;
-#[get("/time-range?<after>&<before>&<limit>")]
+#[get("/api/time-range?<after>&<before>&<limit>")]
 fn time_range(
     mut db: DbConn,
     after: Option<String>,
@@ -48,6 +48,7 @@ fn time_range(
             .load::<DbEvent>(&*db)
             .context("fetching from db")?
     };
+    let mut dbsy = DatyBasy::new(&mut *db);
     // println!("jsonifying...");
     let v = mdata
         .into_iter()
@@ -60,14 +61,17 @@ fn time_range(
                             "id": a.id,
                             "timestamp": a.timestamp,
                             "duration": a.sampler.get_duration(),
-                            "tags": tags::get_tags(&mut *db, data),
+                            "tags": tags::get_tags(&mut dbsy, data).map_err(|e| {
+                                log::warn!("get tags of {} error: {:?}", a.id, e);
+                                e
+                            }).ok()?,
                         }))
                     } else {
                         None
                     }
                 }
                 Err(e) => {
-                    println!("deser of {} error: {:?}", a.id, e);
+                    log::warn!("deser of {} error: {:?}", a.id, e);
                     // println!("data=||{}", a.data);
                     None
                 }
@@ -77,19 +81,19 @@ fn time_range(
     Ok(Json(json!({ "data": &v })))
 }
 
-#[get("/single-event?<id>")]
+#[get("/api/single-event?<id>")]
 fn single_event(mut db: DbConn, id: String) -> DebugRes<Json<J>> {
     // println!("handling...");
     // println!("querying...");
     let a = {
         use trbtt::db::schema::events::dsl;
         dsl::events
-            .into_boxed()
             .filter(dsl::id.eq(id))
             .first::<DbEvent>(&*db)
             .context("fetching from db")?
     };
     // println!("jsonifying...");
+    let mut dbsy = DatyBasy::new(&mut *db);
 
     let r = deserialize_captured((&a.data_type, &a.data));
     let v = match r {
@@ -99,7 +103,7 @@ fn single_event(mut db: DbConn, id: String) -> DebugRes<Json<J>> {
                     "id": a.id,
                     "timestamp": a.timestamp,
                     "duration": a.sampler.get_duration(),
-                    "tags": get_tags(&mut *db, data),
+                    "tags": get_tags(&mut dbsy, data)?,
                     "raw": r
                 }))
             } else {
@@ -114,6 +118,30 @@ fn single_event(mut db: DbConn, id: String) -> DebugRes<Json<J>> {
     };
 
     Ok(Json(json!({ "data": &v })))
+}
+
+#[get("/api/rule-groups")]
+fn rule_groups(db: DbConn) -> DebugRes<Json<J>> {
+    // println!("handling...");
+    // println!("querying...");
+    use trbtt::db::schema::tag_rule_groups::dsl::*;
+    let groups = tag_rule_groups
+        .load::<TagRuleGroup>(&*db)
+        .context("fetching from db")?;
+
+    Ok(Json(json!({ "data": &groups })))
+}
+
+#[post("/api/rule-groups", format = "json", data = "<input>")]
+fn update_rule_group(db: DbConn, input: Json<Vec<TagRuleGroup>>) -> DebugRes<Json<J>> {
+    // println!("handling...");
+    // println!("querying...");
+    use trbtt::db::schema::tag_rule_groups::dsl::*;
+    let groups = tag_rule_groups
+        .load::<TagRuleGroup>(&*db)
+        .context("fetching from db")?;
+
+    Ok(Json(json!({ "data": &groups })))
 }
 
 fn main() -> anyhow::Result<()> {

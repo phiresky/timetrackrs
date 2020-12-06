@@ -1,4 +1,4 @@
-import { EventData } from "./server"
+import { EventData, TagRuleGroup } from "./server"
 export type Activity = {
 	id: string
 	timestamp: string
@@ -9,7 +9,7 @@ export type Activity = {
 
 const backend =
 	new URLSearchParams(location.search).get("server") ||
-	location.protocol + "//" + location.hostname + ":8000"
+	location.protocol + "//" + location.hostname + ":8000/api"
 
 async function handleError(resp: Response): Promise<never> {
 	const text = await resp.text()
@@ -54,5 +54,21 @@ export async function getSingleEvent(info: { id: string }): Promise<Activity> {
 		return await handleError(resp)
 	}
 	const { data } = (await resp.json()) as { data: Activity }
+	return data
+}
+
+export async function getTagRules(info: {
+	id: string
+}): Promise<TagRuleGroup[]> {
+	const backend =
+		new URLSearchParams(location.search).get("server") ||
+		location.protocol + "//" + location.hostname + ":8000"
+	const url = new URL(backend + "/single-event")
+	url.searchParams.set("id", info.id)
+	const resp = await fetch(url.toString())
+	if (!resp.ok) {
+		return await handleError(resp)
+	}
+	const { data } = (await resp.json()) as { data: TagRuleGroup[] }
 	return data
 }

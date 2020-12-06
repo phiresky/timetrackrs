@@ -1,158 +1,160 @@
-use std::fmt::Display;
-
-use crate::{db::fetcher_cache, expand::expand_str, prelude::*};
+use crate::{expand::expand_str, prelude::*};
 
 use diesel::SqliteConnection;
 use regex::Regex;
 
-fn validate_tag_rules(rules: &[TagRule]) {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TagRuleGroupV1 {
+    name: String,
+    description: String,
+    pub rules: Vec<TagRuleWithMeta>,
+}
+
+fn validate_tag_rules<'a>(rules: impl IntoIterator<Item = &'a TagRule>) {
     for rule in rules {
         if let Err(e) = rule.validate() {
             log::warn!("tag rule {:?} is invalid: {}", rule, e);
         }
     }
 }
-fn get_tag_rules() -> Vec<TagRule> {
-    let rules =vec![
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^browse-domain:telegram.org$"#).unwrap(),
-            new_tag: "use-service:Telegram".to_string(),
-        },
-        TagRule::TagRegex {
-            /**
-            filename of the executable with two exceptions:
-             - if software is updated etc and the executable is replaced with a newer version, the executable path will have (deleted) appended on linux - remove that suffix
-             - on windows, remove the .exe suffix because who cares? 
-            */
-            regex: Regex::new(r#"^software-executable-path:.*/(?P<basename>.*?)(?: \(deleted\)|.exe)?$"#).unwrap(),
-            new_tag: "software-executable-basename:$basename".to_string(),
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^software-executable-basename:telegram-desktop$"#).unwrap(),
-            new_tag: "use-service:Telegram".to_string(),
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^software-executable-basename:(firefox|google-chrome|chromium)$"#).unwrap(),
-            new_tag: "software-type:browser".to_string(),
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^software-executable-basename:(mpv|vlc)$"#).unwrap(),
-            new_tag: "software-type:media-player".to_string()
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(
+pub fn get_default_tag_rule_groups() -> Vec<TagRuleGroup> {
+    let rules = TagRuleGroupV1 {
+        name: "Default Rules".to_string(),
+        description: "These are shipped with the program :)".to_string(),
+        rules: vec![
+            SimpleRegexRule(r#"^browse-domain:telegram.org$"#, "use-service:Telegram"),
+            SimpleRegexRule(
+                r#"^software-executable-path:.*/(?P<basename>.*?)(?: \(deleted\)|.exe)?$"#,
+                "software-executable-basename:$basename",
+            ),
+            SimpleRegexRule(
+                r#"^software-executable-basename:telegram-desktop$"#,
+                "use-service:Telegram",
+            ),
+            SimpleRegexRule(
+                r#"^software-executable-basename:(firefox|google-chrome|chromium)$"#,
+                "software-type:browser",
+            ),
+            SimpleRegexRule(
+                r#"^software-executable-basename:(mpv|vlc)$"#,
+                "software-type:media-player",
+            ),
+            SimpleRegexRule(
                 r#"^software-window-title:.*(?P<url>https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)).*$"#,
-            ).unwrap(),
-            new_tag: "browse-url:$url".to_string(),
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^browse-domain:mail.google.com$"#).unwrap(),
-            new_tag: "use-service:Gmail".to_string(),
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^browse-domain:(.*\.)?youtube.com$"#).unwrap(),
-            new_tag: "use-service:YouTube".to_string(),
-        },
-        TagRule::MultiTagRegex {
-            regexes: vec![
-                Regex::new(r#"^device-hostname:(?P<hostname>.*)$"#).unwrap(),
-                Regex::new(r#"^title-match-sd-proj:(?P<path>.*)$"#).unwrap(),
-            ],
-            new_tag: "software-development-project:$hostname$path".to_string(),
-        },
-        TagRule::MultiTagRegex {
-            regexes: vec![
-                Regex::new(r#"^software-executable-basename:electron\d*$"#).unwrap(),
-                Regex::new(r#"^software-window-class:(?P<class>.+)$"#).unwrap(),
-            ],
-            new_tag: "software-identifier:${class}".to_string(),
-        },
-        TagRule::InternalFetcher {
-            regex: Regex::new(r#"^browse-url:(?P<url>.*)$"#).unwrap(),
-            fetcher: Box::new(fetchers::URLDomainMatcher)
-        },
-        TagRule::ExternalFetcher {
-            regex: Regex::new(r#"^browse-domain:(.*\.)?youtube.com$"#).unwrap(),
-            fetcher: Box::new(fetchers::YoutubeFetcher),
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^software-development-project:.*/(.*)$"#).unwrap(),
-            new_tag: "software-development-project-name:$1".to_string(),
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^title-match-shell-cwd:.*$"#).unwrap(),
-            new_tag: "software-type:shell".to_string(),
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^software-development-project:.**$"#).unwrap(),
-            new_tag: "software-type:ide".to_string()
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^software-type:software-development*$"#).unwrap(),
-            new_tag: "category:Productivity/Software Development/IDE".to_string()
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^software-type:shell*$"#).unwrap(),
-            new_tag: "category:Productivity/Shell".to_string()
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^software-type:media-player*$"#).unwrap(),
-            new_tag: "category:Entertainment".to_string()
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^software-type:shell*$"#).unwrap(),
-            new_tag: "category:Productivity/Shell".to_string()
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^use-service:Telegram*$"#).unwrap(),
-            new_tag: "category:Communication/Instant Messaging".to_string()
-        },
-        TagRule::TagRegex {
-            regex: Regex::new(r#"^use-service:Gmail*$"#).unwrap(),
-            new_tag: "category:Communication/Email".to_string()
-        }
-    ];
-    validate_tag_rules(&rules);
-    rules
+                "browse-url:$url",
+            ),
+            SimpleRegexRule(r#"^browse-domain:mail.google.com$"#, "use-service:Gmail"),
+            SimpleRegexRule(
+                r#"^browse-domain:(.*\.)?youtube.com$"#,
+                "use-service:YouTube",
+            ),
+            TagRuleWithMeta {
+                enabled: true,
+                rule: TagRule::TagRegex {
+                    regexes: vec![
+                        Regex::new(r#"^device-hostname:(?P<hostname>.*)$"#).unwrap(),
+                        Regex::new(r#"^title-match-sd-proj:(?P<path>.*)$"#).unwrap(),
+                    ],
+                    new_tag: "software-development-project:$hostname$path".to_string(),
+                },
+            },
+            TagRuleWithMeta {
+                enabled: true,
+                rule: TagRule::TagRegex {
+                    regexes: vec![
+                        Regex::new(r#"^software-executable-basename:electron\d*$"#).unwrap(),
+                        Regex::new(r#"^software-window-class:(?P<class>.+)$"#).unwrap(),
+                    ],
+                    new_tag: "software-identifier:${class}".to_string(),
+                },
+            },
+            TagRuleWithMeta {
+                enabled: true,
+                rule: TagRule::InternalFetcher {
+                    regex: Regex::new(r#"^browse-url:(?P<url>.*)$"#).unwrap(),
+                    fetcher: Box::new(fetchers::URLDomainMatcher),
+                },
+            },
+            TagRuleWithMeta {
+                enabled: true,
+                rule: TagRule::ExternalFetcher {
+                    regex: Regex::new(r#"^browse-domain:(.*\.)?youtube.com$"#).unwrap(),
+                    fetcher: Box::new(fetchers::YoutubeFetcher),
+                },
+            },
+            SimpleRegexRule(
+                r#"^software-development-project:.*/(.*)$"#,
+                "software-development-project-name:$1",
+            ),
+            SimpleRegexRule(r#"^title-match-shell-cwd:.*$"#, "software-type:shell"),
+            SimpleRegexRule(r#"^software-development-project:.**$"#, "software-type:ide"),
+            SimpleRegexRule(
+                r#"^software-type:software-development*$"#,
+                "category:Productivity/Software Development/IDE",
+            ),
+            SimpleRegexRule(r#"^software-type:shell*$"#, "category:Productivity/Shell"),
+            SimpleRegexRule(r#"^software-type:media-player*$"#, "category:Entertainment"),
+            SimpleRegexRule(r#"^software-type:shell*$"#, "category:Productivity/Shell"),
+            SimpleRegexRule(
+                r#"^use-service:Telegram*$"#,
+                "category:Communication/Instant Messaging",
+            ),
+            SimpleRegexRule(r#"^use-service:Gmail*$"#, "category:Communication/Email"),
+        ],
+    };
+    validate_tag_rules(rules.rules.iter().map(|e| &e.rule));
+    vec![TagRuleGroup {
+        global_id: "zdaarqppqxxayfbm".to_string(),
+        data: TagRuleGroupData::V1(rules),
+    }]
 }
 
-#[derive(Debug)]
-enum TagRule {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TagRuleWithMeta {
+    //id: String,
+    //name: Option<String>,
+    //description: Option<String>,
+    pub enabled: bool,
+    pub rule: TagRule,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum TagRule {
     TagRegex {
-        regex: regex::Regex,
-        new_tag: String,
-    },
-    MultiTagRegex {
+        #[serde(with = "serde_regex")]
         regexes: Vec<regex::Regex>,
         new_tag: String,
     },
     InternalFetcher {
+        #[serde(with = "serde_regex")]
         regex: regex::Regex,
         fetcher: Box<dyn fetchers::SimpleFetcher>,
     },
     ExternalFetcher {
+        #[serde(with = "serde_regex")]
         regex: regex::Regex,
         fetcher: Box<dyn fetchers::ExternalFetcher>,
     },
 }
 pub type Tags = std::collections::BTreeSet<String>;
 
+fn SimpleRegexRule(regex: &str, new_tag: &str) -> TagRuleWithMeta {
+    TagRuleWithMeta {
+        rule: TagRule::TagRegex {
+            regexes: vec![Regex::new(regex).unwrap()],
+            new_tag: new_tag.to_string(),
+        },
+        enabled: true,
+    }
+}
 impl TagRule {
-    fn apply(&self, db: &mut SqliteConnection, tags: &mut Tags) -> anyhow::Result<()> {
+    fn apply(&self, db: &DatyBasy, tags: &mut Tags) -> anyhow::Result<()> {
         let mut new_tags = Vec::new();
         match self {
-            TagRule::TagRegex { regex, new_tag } => {
-                for tag in tags.iter() {
-                    let new = regex.replace(tag, new_tag.as_str());
-                    if &new != tag {
-                        new_tags.push(new.to_string());
-                    }
-                }
-            }
-            TagRule::MultiTagRegex { regexes, new_tag } => {
+            TagRule::TagRegex { regexes, new_tag } => {
                 let mut caps: Vec<regex::Captures> = Vec::new();
                 'nextregex: for regex in regexes {
-                    'thisregex: for tag in tags.iter() {
+                    for tag in tags.iter() {
                         let new = regex.captures(tag);
                         if let Some(cap) = new {
                             caps.push(cap);
@@ -178,7 +180,8 @@ impl TagRule {
                                 id,
                                 global_cache_key
                             );
-                            let cached_data = fetcher_cache::get_cache_entry(db, global_cache_key)
+                            let cached_data = db
+                                .get_cache_entry(global_cache_key)
                                 .context("get cache entry")?;
                             let data = match cached_data {
                                 Some(data) => data,
@@ -186,7 +189,7 @@ impl TagRule {
                                     let data = fetcher
                                         .fetch_data(&inner_cache_key)
                                         .context("fetching data")?;
-                                    fetcher_cache::set_cache_entry(db, &global_cache_key, &data)
+                                    db.set_cache_entry(&global_cache_key, &data)
                                         .context("saving to cache")?;
                                     data
                                 }
@@ -220,11 +223,7 @@ impl TagRule {
     }
     fn validate(&self) -> anyhow::Result<()> {
         match self {
-            TagRule::TagRegex { regex, new_tag } => {
-                validate_tag_regex(regex)?;
-                Ok(())
-            }
-            TagRule::MultiTagRegex { regexes, new_tag } => {
+            TagRule::TagRegex { regexes, new_tag } => {
                 for regex in regexes {
                     validate_tag_regex(regex)?;
                 }
@@ -252,21 +251,22 @@ fn validate_tag_regex(regex: &Regex) -> anyhow::Result<()> {
     }
     Ok(())
 }
-pub fn get_tags(db: &mut SqliteConnection, intrinsic_tags: Tags) -> Tags {
+pub fn get_tags(db: &mut DatyBasy, intrinsic_tags: Tags) -> anyhow::Result<Tags> {
     let mut tags = Tags::new();
     tags.extend(intrinsic_tags);
 
-    apply_tag_rules(db, &mut tags);
-    tags
+    apply_tag_rules(db, &mut tags)?;
+    Ok(tags)
 }
 
-pub fn apply_tag_rules(db: &mut SqliteConnection, tags: &mut Tags) {
+pub fn apply_tag_rules<'a>(db: &mut DatyBasy, tags: &mut Tags) -> anyhow::Result<()> {
     let mut last_length = tags.len();
     let mut settled = false;
     let mut iterations = 0;
-    let rules = get_tag_rules();
+    db.fetch_all_tag_rules_if_thoink()?;
+    let rules = db.get_all_tag_rules()?;
     while !settled && iterations < 50 {
-        for rule in rules.iter() {
+        for rule in rules {
             if let Err(e) = rule
                 .apply(db, tags)
                 .with_context(|| format!("applying rule {:?}", rule))
@@ -281,4 +281,5 @@ pub fn apply_tag_rules(db: &mut SqliteConnection, tags: &mut Tags) {
     if !settled {
         log::warn!("warning: tags did not settle");
     }
+    Ok(())
 }

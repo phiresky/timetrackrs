@@ -24,7 +24,18 @@ table! {
     }
 }
 
+table! {
+    use diesel::sql_types::*;
+    use crate::db::hack::Integer;
+
+    tag_rule_groups (global_id) {
+        global_id -> Text,
+        data -> Text,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(
     events,
     fetcher_cache,
+    tag_rule_groups,
 );

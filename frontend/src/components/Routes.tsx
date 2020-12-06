@@ -6,6 +6,7 @@ import { SingleEventInfo } from "./SingleEventInfo"
 import { ChooserWithChild } from "./ChooserWithChild"
 import { CategoryChart } from "./CategoryChart"
 import { PlotPage } from "./Plot"
+import { TagRuleEditorPage } from "./TagRuleEditor"
 
 export function Routes(): React.ReactElement {
 	return (
@@ -64,6 +65,13 @@ export function Routes(): React.ReactElement {
 					<SingleEventInfo id={p.match.params.id}></SingleEventInfo>
 				)}
 			></Route>
+			<Route
+				path="/tag-rule-editor"
+				render={(p: RouteComponentProps<{ id: string }>) => (
+					<TagRuleEditorPage />
+				)}
+			></Route>
+
 			<div>Error 404</div>
 		</Switch>
 	)

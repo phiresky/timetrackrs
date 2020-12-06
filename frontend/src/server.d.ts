@@ -56,3 +56,4 @@ export type OsInfo = {
 	hostname: string
 	machine_id: string | null
 }
+export type TagRuleGroup = { global_id: string; data: TagRuleGroupData }

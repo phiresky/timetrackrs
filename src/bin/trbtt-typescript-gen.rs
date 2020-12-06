@@ -16,6 +16,7 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     x11_types::X11WindowGeometry::type_script_ify,
     x11_types::ProcessData::type_script_ify,
     util::OsInfo::type_script_ify,
+    TagRuleGroup::type_script_ify,
 ];
 
 #[cfg(not(debug_assertions))]

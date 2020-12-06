@@ -1,4 +1,4 @@
-use crate::db::schema::events;
+use crate::db::schema::*;
 use crate::prelude::*;
 use diesel::deserialize::{self, FromSql};
 use diesel::serialize::{self, Output, ToSql};
@@ -72,4 +72,45 @@ pub struct NewDbEvent {
     pub sampler: Sampler,
     pub sampler_sequence_id: String,
     pub data: String,
+}
+
+#[derive(Queryable, Insertable, Serialize, Deserialize, TypeScriptify)]
+#[table_name = "tag_rule_groups"]
+pub struct TagRuleGroup {
+    pub global_id: String,
+    pub data: TagRuleGroupData,
+}
+
+#[derive(AsExpression, FromSqlRow, Debug, Serialize, Deserialize)]
+#[sql_type = "Text"]
+#[serde(tag = "version")]
+pub enum TagRuleGroupData {
+    V1(TagRuleGroupV1),
+}
+
+impl TagRuleGroupData {
+    pub fn into_iter_active_rules(self) -> impl Iterator<Item = TagRule> {
+        match self {
+            TagRuleGroupData::V1(g) => {
+                g.rules
+                    .into_iter()
+                    .filter_map(|r| if r.enabled { Some(r.rule) } else { None })
+            }
+        }
+    }
+}
+
+impl FromSql<Text, Sqlite> for TagRuleGroupData {
+    fn from_sql(
+        bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
+    ) -> deserialize::Result<Self> {
+        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
+        Ok(serde_json::from_str(&s)?)
+    }
+}
+impl ToSql<Text, Sqlite> for TagRuleGroupData {
+    fn to_sql<W: Write>(&self, out: &mut Output<W, Sqlite>) -> serialize::Result {
+        let s = serde_json::to_string(&self)?;
+        <String as ToSql<Text, Sqlite>>::to_sql(&s, out)
+    }
 }
