@@ -1,11 +1,9 @@
 type DateTime<T> = string
 type Local = unknown
 type Timestamptz = string
-type Text10Choices = string
-type Text100Choices = string
-type Text1000Choices = string
-type Text10000Choices = string
-type Text100000Choices = string
+type Regex = string
+type ExternalFetcher = string
+type InternalFetcher = string
 export type Sampler =
 	| { type: "RandomSampler"; avg_time: number }
 	| { type: "Explicit"; duration: number }
@@ -57,3 +55,15 @@ export type OsInfo = {
 	machine_id: string | null
 }
 export type TagRuleGroup = { global_id: string; data: TagRuleGroupData }
+export type TagRuleGroupData = { version: "V1"; data: TagRuleGroupV1 }
+export type TagRuleWithMeta = { enabled: boolean; rule: TagRule }
+export type TagRule =
+	| { type: "TagRegex"; regexes: Regex[]; new_tag: string }
+	| { type: "InternalFetcher"; regex: Regex; fetcher: SimpleFetcher }
+	| { type: "ExternalFetcher"; regex: Regex; fetcher: ExternalFetcher }
+export type TagRuleGroupV1 = {
+	name: string
+	description: string
+	editable: boolean
+	rules: TagRuleWithMeta[]
+}

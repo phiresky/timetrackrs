@@ -3,10 +3,11 @@ use crate::{expand::expand_str, prelude::*};
 use diesel::SqliteConnection;
 use regex::Regex;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
 pub struct TagRuleGroupV1 {
-    name: String,
-    description: String,
+    pub name: String,
+    pub description: String,
+    pub editable: bool,
     pub rules: Vec<TagRuleWithMeta>,
 }
 
@@ -21,8 +22,9 @@ pub fn get_default_tag_rule_groups() -> Vec<TagRuleGroup> {
     let rules = TagRuleGroupV1 {
         name: "Default Rules".to_string(),
         description: "These are shipped with the program :)".to_string(),
+        editable: false,
         rules: vec![
-            SimpleRegexRule(r#"^browse-domain:telegram.org$"#, "use-service:Telegram"),
+            SimpleRegexRule(r#"^browse-domain:telegram\.org$"#, "use-service:Telegram"),
             SimpleRegexRule(
                 r#"^software-executable-path:.*/(?P<basename>.*?)(?: \(deleted\)|.exe)?$"#,
                 "software-executable-basename:$basename",
@@ -87,9 +89,9 @@ pub fn get_default_tag_rule_groups() -> Vec<TagRuleGroup> {
                 "software-development-project-name:$1",
             ),
             SimpleRegexRule(r#"^title-match-shell-cwd:.*$"#, "software-type:shell"),
-            SimpleRegexRule(r#"^software-development-project:.**$"#, "software-type:ide"),
+            SimpleRegexRule(r#"^software-development-project:.*$"#, "software-type:ide"),
             SimpleRegexRule(
-                r#"^software-type:software-development*$"#,
+                r#"^software-type:software-development$"#,
                 "category:Productivity/Software Development/IDE",
             ),
             SimpleRegexRule(r#"^software-type:shell*$"#, "category:Productivity/Shell"),
@@ -105,11 +107,11 @@ pub fn get_default_tag_rule_groups() -> Vec<TagRuleGroup> {
     validate_tag_rules(rules.rules.iter().map(|e| &e.rule));
     vec![TagRuleGroup {
         global_id: "zdaarqppqxxayfbm".to_string(),
-        data: TagRuleGroupData::V1(rules),
+        data: TagRuleGroupData::V1 { data: rules },
     }]
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
 pub struct TagRuleWithMeta {
     //id: String,
     //name: Option<String>,
@@ -117,7 +119,7 @@ pub struct TagRuleWithMeta {
     pub enabled: bool,
     pub rule: TagRule,
 }
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
 #[serde(tag = "type")]
 pub enum TagRule {
     TagRegex {

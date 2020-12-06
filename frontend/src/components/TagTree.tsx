@@ -1,6 +1,6 @@
 import _ from "lodash"
 import { computed } from "mobx"
-import { observer, useLocalStore } from "mobx-react"
+import { observer, useLocalObservable } from "mobx-react"
 import * as React from "react"
 import * as api from "../api"
 import { DefaultMap, durationToString, totalDuration } from "../util"
@@ -94,7 +94,7 @@ function TotalDuration(props: { tree: ATree }) {
 const TreeLeaves: React.FC<{ leaves: api.Activity[] }> = observer(
 	({ leaves }) => {
 		const [children, setChildren] = React.useState(5)
-		const store = useLocalStore(() => {
+		const store = useLocalObservable(() => {
 			const choices = new DefaultMap<string, number>(() => 0)
 			for (const l of leaves) {
 				for (const t of l.tags) {

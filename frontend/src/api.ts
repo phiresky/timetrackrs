@@ -44,9 +44,6 @@ export async function getTimeRange(info: {
 }
 
 export async function getSingleEvent(info: { id: string }): Promise<Activity> {
-	const backend =
-		new URLSearchParams(location.search).get("server") ||
-		location.protocol + "//" + location.hostname + ":8000"
 	const url = new URL(backend + "/single-event")
 	url.searchParams.set("id", info.id)
 	const resp = await fetch(url.toString())
@@ -57,18 +54,26 @@ export async function getSingleEvent(info: { id: string }): Promise<Activity> {
 	return data
 }
 
-export async function getTagRules(info: {
-	id: string
-}): Promise<TagRuleGroup[]> {
-	const backend =
-		new URLSearchParams(location.search).get("server") ||
-		location.protocol + "//" + location.hostname + ":8000"
-	const url = new URL(backend + "/single-event")
-	url.searchParams.set("id", info.id)
+export async function getTagRules(): Promise<TagRuleGroup[]> {
+	const url = new URL(backend + "/rule-groups")
 	const resp = await fetch(url.toString())
 	if (!resp.ok) {
 		return await handleError(resp)
 	}
 	const { data } = (await resp.json()) as { data: TagRuleGroup[] }
+	return data
+}
+
+export async function saveTagRules(groups: TagRuleGroup[]): Promise<void> {
+	const url = new URL(backend + "/rule-groups")
+	const resp = await fetch(url.toString(), {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(groups),
+	})
+	if (!resp.ok) {
+		return await handleError(resp)
+	}
+	const { data } = (await resp.json()) as { data: void }
 	return data
 }

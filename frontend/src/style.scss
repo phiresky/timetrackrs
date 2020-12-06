@@ -43,10 +43,6 @@ a {
 	}
 }
 
-.clickable {
-	cursor: pointer;
-}
-
 div.item {
 	display: flex;
 	flex: auto;
@@ -233,6 +229,18 @@ div.header {
 	}
 }
 
+.centerbody {
+	max-width: 900px;
+	margin: 0 auto;
+}
 .ReactModal__Overlay {
 	z-index: 1000;
+}
+
+details > summary > h2 {
+	display: inline-block;
+}
+.clickable,
+details > summary {
+	cursor: pointer;
 }

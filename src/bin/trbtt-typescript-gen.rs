@@ -17,6 +17,10 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     x11_types::ProcessData::type_script_ify,
     util::OsInfo::type_script_ify,
     TagRuleGroup::type_script_ify,
+    TagRuleGroupData::type_script_ify,
+    TagRuleWithMeta::type_script_ify,
+    TagRule::type_script_ify,
+    TagRuleGroupV1::type_script_ify,
 ];
 
 #[cfg(not(debug_assertions))]
@@ -30,9 +34,9 @@ fn main() -> anyhow::Result<()> {
     writeln!(ofile, "type DateTime<T> = string;")?;
     writeln!(ofile, "type Local = unknown;")?;
     writeln!(ofile, "type Timestamptz = string;")?;
-    for i in &[10, 100, 1000, 10000, 100000] {
-        writeln!(ofile, "type Text{}Choices = string;", i)?;
-    }
+    writeln!(ofile, "type Regex = string;")?;
+    writeln!(ofile, "type ExternalFetcher = string;")?;
+    writeln!(ofile, "type InternalFetcher = string;")?;
     if cfg!(any(debug_assertions, feature = "export-typescript")) {
         if FS.len() == 0 {
             println!("Not in debug mode??");

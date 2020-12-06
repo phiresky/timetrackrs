@@ -2,7 +2,7 @@ import React, { useContext, useEffect } from "react"
 import { Link, StaticRouter } from "react-router-dom"
 import { Routes } from "./Routes"
 import Modal from "react-modal"
-import { observer, useLocalStore } from "mobx-react"
+import { observer, useLocalObservable } from "mobx-react"
 import { reaction } from "mobx"
 
 type ModalContextType = { currentLink: string | null }
@@ -28,7 +28,7 @@ export const ModalLink: React.FC<{ to: string }> = ({ to, children }) => {
 
 export const MaybeModal: React.FC<{ appElement: HTMLElement }> = observer(
 	({ appElement, children }) => {
-		const store = useLocalStore<ModalContextType>(() => {
+		const store = useLocalObservable<ModalContextType>(() => {
 			const x = new URLSearchParams(location.hash.substr(1))
 			const currentLink = x.get("modal") || null
 			return { currentLink }

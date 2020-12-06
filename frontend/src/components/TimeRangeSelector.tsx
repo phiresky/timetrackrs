@@ -1,4 +1,4 @@
-import { observer, useLocalStore } from "mobx-react"
+import { observer, useLocalObservable } from "mobx-react"
 import React from "react"
 import * as dfn from "date-fns"
 
@@ -11,7 +11,7 @@ export const TimeRangeSelector: React.FC<{
 	const Modes = ["today", "past 7 days", "past month", "custom"] as const
 	type Mode = typeof Modes[number]
 
-	const state = useLocalStore(() => ({
+	const state = useLocalObservable(() => ({
 		mode: "today" as Mode,
 		setMode(mode: Mode) {
 			this.mode = mode

@@ -18,7 +18,7 @@ extern crate rocket_contrib;
 struct DbConn(diesel::SqliteConnection);
 
 type DebugRes<T> = Result<T, rocket::response::Debug<anyhow::Error>>;
-#[get("/api/time-range?<after>&<before>&<limit>")]
+#[get("/time-range?<after>&<before>&<limit>")]
 fn time_range(
     mut db: DbConn,
     after: Option<String>,
@@ -81,7 +81,7 @@ fn time_range(
     Ok(Json(json!({ "data": &v })))
 }
 
-#[get("/api/single-event?<id>")]
+#[get("/single-event?<id>")]
 fn single_event(mut db: DbConn, id: String) -> DebugRes<Json<J>> {
     // println!("handling...");
     // println!("querying...");
@@ -120,7 +120,7 @@ fn single_event(mut db: DbConn, id: String) -> DebugRes<Json<J>> {
     Ok(Json(json!({ "data": &v })))
 }
 
-#[get("/api/rule-groups")]
+#[get("/rule-groups")]
 fn rule_groups(db: DbConn) -> DebugRes<Json<J>> {
     // println!("handling...");
     // println!("querying...");
@@ -132,16 +132,30 @@ fn rule_groups(db: DbConn) -> DebugRes<Json<J>> {
     Ok(Json(json!({ "data": &groups })))
 }
 
-#[post("/api/rule-groups", format = "json", data = "<input>")]
-fn update_rule_group(db: DbConn, input: Json<Vec<TagRuleGroup>>) -> DebugRes<Json<J>> {
+#[post("/rule-groups", format = "json", data = "<input>")]
+fn update_rule_groups(db: DbConn, input: Json<Vec<TagRuleGroup>>) -> DebugRes<Json<J>> {
     // println!("handling...");
     // println!("querying...");
     use trbtt::db::schema::tag_rule_groups::dsl::*;
-    let groups = tag_rule_groups
-        .load::<TagRuleGroup>(&*db)
-        .context("fetching from db")?;
+    db.transaction::<(), anyhow::Error, _>(|| {
+        for g in input.into_inner() {
+            let updated = diesel::update(tag_rule_groups)
+                .set(&g)
+                .execute(&*db)
+                .context("updating in db")?;
 
-    Ok(Json(json!({ "data": &groups })))
+            if updated == 0 {
+                log::info!("inserting new group");
+                diesel::insert_into(tag_rule_groups)
+                    .values(g)
+                    .execute(&*db)
+                    .context("inserting into db")?;
+            }
+        }
+        Ok(())
+    })?;
+
+    Ok(Json(json!({})))
 }
 
 fn main() -> anyhow::Result<()> {
@@ -172,7 +186,10 @@ fn main() -> anyhow::Result<()> {
     }
     .to_cors()?;
     rocket::custom(config)
-        .mount("/", routes![time_range, single_event])
+        .mount(
+            "/api",
+            routes![time_range, single_event, rule_groups, update_rule_groups],
+        )
         .attach(cors)
         .attach(DbConn::fairing())
         .launch();

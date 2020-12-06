@@ -74,25 +74,25 @@ pub struct NewDbEvent {
     pub data: String,
 }
 
-#[derive(Queryable, Insertable, Serialize, Deserialize, TypeScriptify)]
+#[derive(Queryable, Insertable, Serialize, Deserialize, TypeScriptify, AsChangeset)]
 #[table_name = "tag_rule_groups"]
 pub struct TagRuleGroup {
     pub global_id: String,
     pub data: TagRuleGroupData,
 }
 
-#[derive(AsExpression, FromSqlRow, Debug, Serialize, Deserialize)]
+#[derive(AsExpression, FromSqlRow, Debug, Serialize, Deserialize, TypeScriptify)]
 #[sql_type = "Text"]
 #[serde(tag = "version")]
 pub enum TagRuleGroupData {
-    V1(TagRuleGroupV1),
+    V1 { data: TagRuleGroupV1 },
 }
 
 impl TagRuleGroupData {
     pub fn into_iter_active_rules(self) -> impl Iterator<Item = TagRule> {
         match self {
-            TagRuleGroupData::V1(g) => {
-                g.rules
+            TagRuleGroupData::V1 { data } => {
+                data.rules
                     .into_iter()
                     .filter_map(|r| if r.enabled { Some(r.rule) } else { None })
             }
