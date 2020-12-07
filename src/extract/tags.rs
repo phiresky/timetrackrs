@@ -8,6 +8,7 @@ pub struct TagRuleGroupV1 {
     pub name: String,
     pub description: String,
     pub editable: bool,
+    pub enabled: bool,
     pub rules: Vec<TagRuleWithMeta>,
 }
 
@@ -23,6 +24,7 @@ pub fn get_default_tag_rule_groups() -> Vec<TagRuleGroup> {
         name: "Default Rules".to_string(),
         description: "These are shipped with the program :)".to_string(),
         editable: false,
+        enabled: true,
         rules: vec![
             SimpleRegexRule(r#"^browse-domain:telegram\.org$"#, "use-service:Telegram"),
             SimpleRegexRule(

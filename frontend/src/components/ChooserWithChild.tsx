@@ -1,4 +1,10 @@
-import { observable, autorun, computed } from "mobx"
+import {
+	observable,
+	autorun,
+	computed,
+	makeAutoObservable,
+	makeObservable,
+} from "mobx"
 import { observer } from "mobx-react"
 import { IPromiseBasedObservable, fromPromise } from "mobx-utils"
 import React from "react"
@@ -17,6 +23,7 @@ export class ChooserWithChild extends React.Component<{
 	timeRange = TimeRangeSelectorDefault()
 	constructor(p: ChooserWithChild["props"]) {
 		super(p)
+		makeObservable(this)
 		autorun(() => console.log("from", this.timeRange.from))
 	}
 

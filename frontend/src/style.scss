@@ -232,6 +232,7 @@ div.header {
 .centerbody {
 	max-width: 900px;
 	margin: 0 auto;
+	padding: 0 1em;
 }
 .ReactModal__Overlay {
 	z-index: 1000;
@@ -243,4 +244,30 @@ details > summary > h2 {
 .clickable,
 details > summary {
 	cursor: pointer;
+}
+details > div {
+	margin-left: 1em;
+}
+.rule-editor {
+	margin-left: 0.5em;
+}
+
+details.rule-group {
+	border: 1px solid gray;
+	padding: 1ex;
+	margin: 1ex;
+	border-radius: 3px;
+}
+
+.rule-group .regex {
+	margin-left: 1ex;
+}
+
+.regex-editor {
+	border: 1px solid lightgray;
+	padding: 2px;
+	border-radius: 3px;
+	&:focus-within {
+		border-color: skyblue;
+	}
 }

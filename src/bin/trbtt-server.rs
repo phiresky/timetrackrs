@@ -139,10 +139,9 @@ fn update_rule_groups(db: DbConn, input: Json<Vec<TagRuleGroup>>) -> DebugRes<Js
     use trbtt::db::schema::tag_rule_groups::dsl::*;
     db.transaction::<(), anyhow::Error, _>(|| {
         for g in input.into_inner() {
-            let updated = diesel::update(tag_rule_groups)
-                .set(&g)
-                .execute(&*db)
-                .context("updating in db")?;
+            let q = diesel::update(&g).set(&g);
+            log::info!("query: {}", diesel::debug_query(&q));
+            let updated = q.execute(&*db).context("updating in db")?;
 
             if updated == 0 {
                 log::info!("inserting new group");
@@ -180,8 +179,9 @@ fn main() -> anyhow::Result<()> {
         .finalize()
         .unwrap();
 
+    // TODO: remove in prod
     let cors = rocket_cors::CorsOptions {
-        allowed_origins: rocket_cors::AllowedOrigins::all(),
+        allowed_origins: rocket_cors::AllowedOrigins::some_exact(&["http://localhost:8081"]),
         ..Default::default()
     }
     .to_cors()?;

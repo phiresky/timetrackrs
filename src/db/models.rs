@@ -74,7 +74,10 @@ pub struct NewDbEvent {
     pub data: String,
 }
 
-#[derive(Queryable, Insertable, Serialize, Deserialize, TypeScriptify, AsChangeset)]
+#[derive(
+    Queryable, Identifiable, Insertable, Serialize, Deserialize, TypeScriptify, AsChangeset,
+)]
+#[primary_key(global_id)]
 #[table_name = "tag_rule_groups"]
 pub struct TagRuleGroup {
     pub global_id: String,

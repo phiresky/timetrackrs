@@ -7,6 +7,7 @@ import * as api from "../api"
 import { observable, runInAction } from "mobx"
 import { generateId } from "../util"
 import { useState } from "react"
+import { RegexEditor } from "./RegexEditor"
 
 export function TagRuleEditorPage(): React.ReactElement {
 	return (
@@ -83,14 +84,14 @@ const TagRuleGroupEditor: React.FC<{
 	const g = group.data.data
 	const [dirty, setDirty] = useState(false)
 	return (
-		<details>
+		<details className="rule-group">
 			<summary>
 				<h2>
 					Group <em>{g.name}</em> {!g.editable && <>(Not editable)</>}
 					{dirty && <button onClick={save}>Save changes</button>}
 				</h2>
 			</summary>
-			<div>
+			<div className="rule-group-detail">
 				Description: {g.description}
 				<h3>Rules:</h3>
 				{g.rules.map((r, i) => (
@@ -98,6 +99,7 @@ const TagRuleGroupEditor: React.FC<{
 						key={i}
 						index={i}
 						rule={r}
+						editable={g.editable}
 						dirty={() => setDirty(true)}
 					/>
 				))}
@@ -125,21 +127,31 @@ const TagRuleGroupEditor: React.FC<{
 type RuleMoppies = { [T in TagRule["type"]]: TagRule & { type: T } }
 
 const ruleEditors: {
-	[k in keyof RuleMoppies]: React.FC<{ rule: RuleMoppies[k] }>
+	[k in keyof RuleMoppies]: React.FC<{
+		rule: RuleMoppies[k]
+		editable: boolean
+	}>
 } = {
 	TagRegex(p) {
 		return (
-			<>
+			<div className="tag-regex-rule">
 				If{" "}
 				{p.rule.regexes.length > 1
 					? "all of the following match"
 					: "the following matches"}{" "}
 				:
-				{p.rule.regexes.map((r) => (
-					<p key={r}>{r}</p>
+				{p.rule.regexes.map((r, i) => (
+					<RegexEditor
+						key={r}
+						editable={p.editable}
+						value={r}
+						onChange={(r) =>
+							runInAction(() => (p.rule.regexes[i] = r))
+						}
+					/>
 				))}
 				Then add new tag: {p.rule.new_tag}
-			</>
+			</div>
 		)
 	},
 	InternalFetcher(p) {
@@ -149,14 +161,17 @@ const ruleEditors: {
 		return <em>[external caching fetcher {p.rule.fetcher}]</em>
 	},
 }
+for (const [k, v] of Object.entries(ruleEditors))
+	ruleEditors[k] = observer(v) as any
 
 const RuleEditor: React.FC<{
 	index: number
 	rule: TagRuleWithMeta
+	editable: boolean
 	dirty: () => void
-}> = observer(({ dirty, index, rule }) => {
+}> = observer(({ dirty, index, rule, editable }) => {
 	return (
-		<div>
+		<div className="rule-editor">
 			<h4>
 				<label className="clickable">
 					<input
@@ -175,6 +190,7 @@ const RuleEditor: React.FC<{
 			</h4>
 			{React.createElement(ruleEditors[rule.rule.type] as any, {
 				rule: rule.rule,
+				editable,
 			})}
 		</div>
 	)
