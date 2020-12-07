@@ -93,7 +93,7 @@ pub fn get_default_tag_rule_groups() -> Vec<TagRuleGroup> {
             SimpleRegexRule(r#"^title-match-shell-cwd:.*$"#, "software-type:shell"),
             SimpleRegexRule(r#"^software-development-project:.*$"#, "software-type:ide"),
             SimpleRegexRule(
-                r#"^software-type:software-development$"#,
+                r#"^software-type:ide$"#,
                 "category:Productivity/Software Development/IDE",
             ),
             SimpleRegexRule(r#"^software-type:shell*$"#, "category:Productivity/Shell"),

@@ -1,4 +1,4 @@
-import { observable, runInAction } from "mobx"
+import { makeObservable, observable, runInAction } from "mobx"
 import { observer } from "mobx-react"
 import React, { ReactElement } from "react"
 import * as api from "../api"
@@ -177,6 +177,7 @@ export class Timeline extends React.Component {
 
 	constructor(p: Record<string, unknown>) {
 		super(p)
+		makeObservable(this)
 		Object.assign(window, { gui: this })
 		void this.fetchData()
 	}

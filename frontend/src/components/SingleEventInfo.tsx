@@ -1,5 +1,5 @@
 import { formatDuration, formatRelative } from "date-fns"
-import { computed, observable } from "mobx"
+import { computed, makeObservable, observable } from "mobx"
 import { observer } from "mobx-react"
 import { fromPromise } from "mobx-utils"
 import * as React from "react"
@@ -8,6 +8,10 @@ import { Entry } from "./Entry"
 
 @observer
 export class SingleEventInfo extends React.Component<{ id: string }> {
+	constructor(p: { id: string }) {
+		super(p)
+		makeObservable(this)
+	}
 	@computed get data() {
 		return fromPromise(api.getSingleEvent({ id: this.props.id }))
 	}

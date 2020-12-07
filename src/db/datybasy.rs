@@ -44,17 +44,17 @@ impl<'a> DatyBasy<'a> {
         use crate::db::schema::tag_rule_groups::dsl::*;
         if self.enabled_tag_rules.is_none() {
             let groups: Vec<TagRuleGroup> = tag_rule_groups.load(self.conn)?;
-            if groups.len() == 0 {
+            /*if groups.len() == 0 {
                 // insert defaults
-                let groups = get_default_tag_rule_groups();
+                let groups = 
                 diesel::insert_into(tag_rule_groups)
                     .values(groups)
                     .execute(self.conn)?;
                 return self.fetch_all_tag_rules_if_thoink();
-            }
+            }*/
             self.enabled_tag_rules.replace(
                 groups
-                    .into_iter()
+                    .into_iter().chain(get_default_tag_rule_groups().into_iter())
                     .flat_map(|g| g.data.into_iter_active_rules())
                     .collect(),
             );

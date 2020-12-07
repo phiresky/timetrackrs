@@ -1,5 +1,5 @@
 import _ from "lodash"
-import { computed } from "mobx"
+import { computed, makeObservable } from "mobx"
 import { observer, useLocalObservable } from "mobx-react"
 import * as React from "react"
 import * as api from "../api"
@@ -216,6 +216,7 @@ export class TagTree extends React.Component<{
 }> {
 	constructor(props: TagTree["props"]) {
 		super(props)
+		makeObservable(this)
 	}
 	@computed get tagTree(): ATree {
 		const tree = rootTree<api.Activity>()

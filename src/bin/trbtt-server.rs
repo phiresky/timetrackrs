@@ -181,7 +181,7 @@ fn main() -> anyhow::Result<()> {
 
     // TODO: remove in prod
     let cors = rocket_cors::CorsOptions {
-        allowed_origins: rocket_cors::AllowedOrigins::some_exact(&["http://localhost:8081"]),
+        allowed_origins: rocket_cors::AllowedOrigins::some_exact(&["http://localhost:8081", "http://localhost:8080"]),
         ..Default::default()
     }
     .to_cors()?;
