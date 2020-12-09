@@ -75,5 +75,5 @@ xcb = "0.9.0"
 version = "0.4.6"
 features = ["diesel_sqlite_pool"]
 
-[profile.dev.package."*"]
-opt-level = 3
+#[profile.dev.package."*"]
+#opt-level = 3

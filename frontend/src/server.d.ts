@@ -59,8 +59,8 @@ export type TagRuleGroupData = { version: "V1"; data: TagRuleGroupV1 }
 export type TagRuleWithMeta = { enabled: boolean; rule: TagRule }
 export type TagRule =
 	| { type: "TagRegex"; regexes: Regex[]; new_tag: string }
-	| { type: "InternalFetcher"; regex: Regex; fetcher: SimpleFetcher }
-	| { type: "ExternalFetcher"; regex: Regex; fetcher: ExternalFetcher }
+	| { type: "InternalFetcher"; fetcher_id: string }
+	| { type: "ExternalFetcher"; fetcher_id: string }
 export type TagRuleGroupV1 = {
 	name: string
 	description: string
@@ -68,3 +68,6 @@ export type TagRuleGroupV1 = {
 	enabled: boolean
 	rules: TagRuleWithMeta[]
 }
+export type TagAddReason =
+	| { type: "IntrinsicTag"; raw_data_type: string }
+	| { type: "AddedByRule"; matched_tags: string[]; rule: TagRule }

@@ -1,9 +1,10 @@
-import { EventData, TagRuleGroup } from "./server"
+import { EventData, TagAddReason, TagRuleGroup } from "./server"
 export type Activity = {
 	id: string
 	timestamp: string
 	duration: number
 	tags: string[]
+	tags_reasons: { [tag: string]: TagAddReason }
 	raw?: EventData
 }
 

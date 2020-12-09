@@ -169,6 +169,7 @@ export class Timeline extends React.Component {
 	@observable loading = false
 	@observable loadState = "unloaded"
 	@observable oldestData = new Date()
+	@observable gotOldestEver = false
 	@observable readonly detailBy = Choices(detailBy)
 	@observable readonly aggBy = Choices(
 		groupers,
@@ -206,6 +207,7 @@ export class Timeline extends React.Component {
 					}
 					z.push(d)
 				}
+				if (data.length < 10) this.gotOldestEver = true
 				if (l) this.oldestData = l
 				this.loadState = "loaded"
 			})
@@ -221,6 +223,7 @@ export class Timeline extends React.Component {
 	}
 
 	onScroll = async (): Promise<void> => {
+		if (this.gotOldestEver) return
 		const element = this.scrollDiv.current
 		if (!element) return
 		let i = 0

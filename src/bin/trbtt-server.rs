@@ -103,6 +103,7 @@ fn single_event(mut db: DbConn, id: String) -> DebugRes<Json<J>> {
                     "id": a.id,
                     "timestamp": a.timestamp,
                     "duration": a.sampler.get_duration(),
+                    "tags_reasons": get_tags_with_reasons(&mut dbsy, data.clone())?,
                     "tags": get_tags(&mut dbsy, data)?,
                     "raw": r
                 }))
@@ -181,7 +182,10 @@ fn main() -> anyhow::Result<()> {
 
     // TODO: remove in prod
     let cors = rocket_cors::CorsOptions {
-        allowed_origins: rocket_cors::AllowedOrigins::some_exact(&["http://localhost:8081", "http://localhost:8080"]),
+        allowed_origins: rocket_cors::AllowedOrigins::some_exact(&[
+            "http://localhost:8081",
+            "http://localhost:8080",
+        ]),
         ..Default::default()
     }
     .to_cors()?;

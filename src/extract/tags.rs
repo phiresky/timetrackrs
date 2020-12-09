@@ -118,8 +118,12 @@ pub fn get_default_tag_rule_groups() -> Vec<TagRuleGroup> {
                 "category:Entertainment/Video",
             ),
             SimpleRegexRule(r#"^software-type:shell*$"#, "category:Productivity/Shell"),
-            SimpleRegexRule(
+            /*SimpleRegexRule(
                 r#"^use-service:Telegram*$"#,
+                "category:Communication/Instant Messaging",
+            ),*/
+            SimpleRegexRule(
+                r#"^wikidata-category:instant messaging client*$"#,
                 "category:Communication/Instant Messaging",
             ),
             SimpleRegexRule(r#"^use-service:Gmail*$"#, "category:Communication/Email"),

@@ -3,6 +3,7 @@ import { computed, makeObservable, observable } from "mobx"
 import { observer } from "mobx-react"
 import { fromPromise } from "mobx-utils"
 import * as React from "react"
+import { AiOutlineQuestionCircle } from "react-icons/ai"
 import * as api from "../api"
 import { Entry } from "./Entry"
 
@@ -14,6 +15,38 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 	}
 	@computed get data() {
 		return fromPromise(api.getSingleEvent({ id: this.props.id }))
+	}
+	@observable showReasons = new Set<string>()
+
+	reason(tag: string) {
+		if (this.data.state !== "fulfilled") return <>wat</>
+		const e = this.data.value
+		const reason = e.tags_reasons[tag]
+		return (
+			<>
+				<br />(
+				{reason.type === "IntrinsicTag" ? (
+					<>intrinsic tag)</>
+				) : (
+					<>
+						added because{" "}
+						{reason.rule.type === "TagRegex"
+							? reason.rule.regexes.join(",")
+							: reason.rule.fetcher_id}{" "}
+						matches tag{" "}
+						<ul>
+							{reason.matched_tags.map((tag) => (
+								<li key={tag}>
+									{tag}
+									{this.reason(tag)}
+								</li>
+							))}
+						</ul>
+						)
+					</>
+				)}
+			</>
+		)
 	}
 	render(): React.ReactNode {
 		if (this.data.state === "pending") return "Loading..."
@@ -44,10 +77,21 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 					})}
 				</p>
 				<div>
-					Tags:{" "}
+					Tags:
 					<ul>
 						{e.tags.map((tag) => (
-							<li key={tag}>{tag}</li>
+							<li key={tag}>
+								{tag}
+								{this.showReasons.has(tag) ? (
+									this.reason(tag)
+								) : (
+									<AiOutlineQuestionCircle
+										onClick={(e) =>
+											this.showReasons.add(tag)
+										}
+									/>
+								)}
+							</li>
 						))}
 					</ul>
 				</div>

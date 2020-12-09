@@ -2,3 +2,4 @@
 /.env
 /*.sqlite3*
 /notes
+/result
