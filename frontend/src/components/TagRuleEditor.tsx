@@ -4,10 +4,12 @@ import * as React from "react"
 import { TagRule, TagRuleGroup, TagRuleWithMeta } from "../server"
 import { Page } from "./Page"
 import * as api from "../api"
-import { observable, runInAction } from "mobx"
-import { generateId } from "../util"
+import { action, observable, runInAction } from "mobx"
+import { generateId, intersperse } from "../util"
 import { useState } from "react"
 import { RegexEditor } from "./RegexEditor"
+import { O_DIRECTORY } from "constants"
+import AutosizeInput from "./AutosizeInput"
 
 export function TagRuleEditorPage(): React.ReactElement {
 	return (
@@ -47,6 +49,7 @@ const TagRuleEditor: React.FC = observer(() => {
 											data: {
 												description: "",
 												editable: true,
+												enabled: true,
 												name:
 													prompt(
 														"Group Name",
@@ -77,7 +80,7 @@ const TagRuleEditor: React.FC = observer(() => {
 
 const TagRuleGroupEditor: React.FC<{
 	group: TagRuleGroup
-	save: () => void
+	save: () => Promise<void>
 }> = observer(({ group, save }) => {
 	if (group.data.version !== "V1")
 		throw Error("unexpected group data version")
@@ -88,7 +91,16 @@ const TagRuleGroupEditor: React.FC<{
 			<summary>
 				<h2>
 					Group <em>{g.name}</em> {!g.editable && <>(Not editable)</>}
-					{dirty && <button onClick={save}>Save changes</button>}
+					{dirty && (
+						<button
+							onClick={async () => {
+								await save()
+								setDirty(false)
+							}}
+						>
+							Save changes
+						</button>
+					)}
 				</h2>
 			</summary>
 			<div className="rule-group-detail">
@@ -130,6 +142,7 @@ const ruleEditors: {
 	[k in keyof RuleMoppies]: React.FC<{
 		rule: RuleMoppies[k]
 		editable: boolean
+		dirty: () => void
 	}>
 } = {
 	TagRegex(p) {
@@ -138,19 +151,56 @@ const ruleEditors: {
 				If{" "}
 				{p.rule.regexes.length > 1
 					? "all of the following match"
-					: "the following matches"}{" "}
-				:
-				{p.rule.regexes.map((r, i) => (
-					<RegexEditor
-						key={r}
-						editable={p.editable}
-						value={r}
-						onChange={(r) =>
-							runInAction(() => (p.rule.regexes[i] = r))
-						}
+					: "the following matches"}
+				:{" "}
+				{intersperse(
+					p.rule.regexes.map((r, i) => (
+						<RegexEditor
+							key={i}
+							editable={p.editable}
+							value={r}
+							onChange={(r) =>
+								runInAction(() => {
+									p.rule.regexes[i] = r
+									p.dirty()
+								})
+							}
+						/>
+					)),
+					() => (
+						<> and </>
+					),
+				)}{" "}
+				<button
+					onClick={() => {
+						p.rule.regexes.push("^...$")
+					}}
+				>
+					+
+				</button>{" "}
+				{p.rule.regexes.length > 1 && (
+					<button
+						onClick={() => {
+							p.rule.regexes.pop()
+							p.dirty()
+						}}
+					>
+						-
+					</button>
+				)}
+				<div>
+					Then add new tag:{" "}
+					<AutosizeInput
+						minWidth={100}
+						value={p.rule.new_tag}
+						onChange={action(
+							(e: React.ChangeEvent<HTMLInputElement>) => {
+								p.rule.new_tag = e.currentTarget.value
+								p.dirty()
+							},
+						)}
 					/>
-				))}
-				Then add new tag: {p.rule.new_tag}
+				</div>
 			</div>
 		)
 	},
@@ -191,6 +241,7 @@ const RuleEditor: React.FC<{
 			{React.createElement(ruleEditors[rule.rule.type] as any, {
 				rule: rule.rule,
 				editable,
+				dirty,
 			})}
 		</div>
 	)

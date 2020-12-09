@@ -73,3 +73,7 @@ export function generateId(len = 16): string {
 	window.crypto.getRandomValues(arr)
 	return Array.from(arr, (dec) => dec.toString(16).padStart(2, "0")).join("")
 }
+
+export function intersperse<T>(arr: T[], separator: (n: number) => T): T[] {
+	return arr.flatMap((a, i) => (i > 0 ? [separator(i - 1), a] : [a]))
+}

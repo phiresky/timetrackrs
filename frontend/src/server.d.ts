@@ -65,5 +65,6 @@ export type TagRuleGroupV1 = {
 	name: string
 	description: string
 	editable: boolean
+	enabled: boolean
 	rules: TagRuleWithMeta[]
 }

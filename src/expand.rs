@@ -17,6 +17,21 @@ pub fn find_byte(needle: u8, haystack: &[u8]) -> Option<usize> {
     imp(needle, haystack)
 }
 
+pub fn get_capture<'a>(caps: &'a [Captures], reference: impl Into<Ref<'a>>) -> Option<&'a str> {
+    match reference.into() {
+        Ref::Number(i) => caps
+            .iter()
+            .flat_map(|caps| caps.get(i))
+            .next()
+            .map(|m| m.as_str()),
+        Ref::Named(name) => caps
+            .iter()
+            .flat_map(|caps| caps.name(name))
+            .next()
+            .map(|m| m.as_str()),
+    }
+}
+
 pub fn expand_str(caps: &[Captures], mut replacement: &str, dst: &mut String) {
     while !replacement.is_empty() {
         match find_byte(b'$', replacement.as_bytes()) {
@@ -41,26 +56,7 @@ pub fn expand_str(caps: &[Captures], mut replacement: &str, dst: &mut String) {
             }
         };
         replacement = &replacement[cap_ref.end..];
-        match cap_ref.cap {
-            Ref::Number(i) => {
-                dst.push_str(
-                    caps.iter()
-                        .flat_map(|caps| caps.get(i))
-                        .next()
-                        .map(|m| m.as_str())
-                        .unwrap_or(""),
-                );
-            }
-            Ref::Named(name) => {
-                dst.push_str(
-                    caps.iter()
-                        .flat_map(|caps| caps.name(name))
-                        .next()
-                        .map(|m| m.as_str())
-                        .unwrap_or(""),
-                );
-            }
-        }
+        dst.push_str(get_capture(caps, cap_ref.cap).unwrap_or(""));
     }
     dst.push_str(replacement);
 }

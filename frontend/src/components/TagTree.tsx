@@ -103,14 +103,20 @@ const TreeLeaves: React.FC<{ leaves: api.Activity[] }> = observer(
 				}
 			}
 			const choicesList = _.sortBy([...choices], (k) => k[1])
-				.map((k) => k[0])
-				.slice(0, 10)
+				.map((k) => ({ value: k[0], name: `${k[0]} (${k[1]})` }))
+				.slice(0, 40)
 			return {
-				choices: Choices(["singles", ...choicesList], choicesList[0]),
+				choices: Choices(
+					[
+						{ value: "singles", name: "singles (no agg)" },
+						...choicesList,
+					],
+					choicesList[0],
+				),
 			}
 		})
 		let inner
-		if (store.choices.value === "singles")
+		if (store.choices.value.value === "singles")
 			inner = (
 				<ul>
 					{leaves.slice(0, children).map((l) => (
@@ -130,14 +136,17 @@ const TreeLeaves: React.FC<{ leaves: api.Activity[] }> = observer(
 					)}
 				</ul>
 			)
-		else inner = <TagTree events={leaves} tagName={store.choices.value} />
+		else
+			inner = (
+				<TagTree events={leaves} tagName={store.choices.value.value} />
+			)
 		return (
 			<div>
 				{leaves.length} events. grouping by{" "}
-				<Select<string>
+				<Select<{ value: string; name: string }>
 					target={store.choices}
-					getValue={(e) => e}
-					getName={(e) => e}
+					getValue={(e) => e.value}
+					getName={(e) => e.name}
 				/>
 				{inner}
 			</div>

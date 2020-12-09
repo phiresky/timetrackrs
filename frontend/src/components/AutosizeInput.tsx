@@ -1,10 +1,4 @@
-import React, {
-	ChangeEvent,
-	ChangeEventHandler,
-	Component,
-	CSSProperties,
-} from "react"
-import PropTypes from "prop-types"
+import React, { ChangeEventHandler, Component, CSSProperties } from "react"
 
 const sizerStyle: CSSProperties = {
 	position: "absolute",
@@ -30,6 +24,7 @@ const isIE =
 		? /MSIE |Trident\/|Edge\//.test(window.navigator.userAgent)
 		: false
 
+declare const ResizeObserver: typeof MutationObserver
 class AutosizeInput extends Component<Props, { inputWidth: string | number }> {
 	input = React.createRef<HTMLInputElement>()
 	mounted = false
@@ -46,6 +41,11 @@ class AutosizeInput extends Component<Props, { inputWidth: string | number }> {
 		this.mounted = true
 		this.copyInputStyles()
 		this.updateInputWidth()
+
+		if (this.input.current)
+			new ResizeObserver(() => this.updateInputWidth()).observe(
+				this.input.current,
+			)
 	}
 	componentDidUpdate(
 		prevProps: AutosizeInput["props"],
@@ -70,12 +70,13 @@ class AutosizeInput extends Component<Props, { inputWidth: string | number }> {
 		if (!inputStyles) {
 			return
 		}
+		console.log("copying input styles")
 		if (this.sizer.current) copyStyles(inputStyles, this.sizer.current)
 		if (this.placeHolderSizer.current) {
 			copyStyles(inputStyles, this.placeHolderSizer.current)
 		}
 	}
-	updateInputWidth() {
+	updateInputWidth(): void {
 		if (
 			!this.mounted ||
 			!this.sizer.current ||

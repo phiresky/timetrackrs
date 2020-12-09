@@ -84,4 +84,5 @@ pub fn init_logging() {
         std::env::set_var("RUST_LOG", "info");
     }
     pretty_env_logger::init();
+    log::debug!("env logger inited")
 }

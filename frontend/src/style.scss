@@ -250,6 +250,17 @@ details > div {
 }
 .rule-editor {
 	margin-left: 0.5em;
+	h4 {
+		margin-top: 1ex;
+	}
+}
+.tag-regex-rule {
+	line-height: 1.4;
+	button {
+		min-width: 1em;
+		border-radius: 4px;
+		border: 1px solid #eaeaea;
+	}
 }
 
 details.rule-group {

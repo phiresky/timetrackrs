@@ -174,6 +174,7 @@ export class Timeline extends React.Component {
 		groupers,
 		groupers.find((g) => g.name === "Daily"),
 	)
+	@observable scrollDiv = React.createRef<HTMLDivElement>()
 
 	constructor(p: Record<string, unknown>) {
 		super(p)
@@ -213,15 +214,20 @@ export class Timeline extends React.Component {
 		}
 		//console.log(this.data.data)
 	}
+	componentDidUpdate() {
+		setTimeout(() => {
+			void this.onScroll()
+		}, 0)
+	}
 
-	onScroll = async (e: React.UIEvent<HTMLDivElement>): Promise<void> => {
-		const element = e.currentTarget
+	onScroll = async (): Promise<void> => {
+		const element = this.scrollDiv.current
+		if (!element) return
 		let i = 0
 		while (i++ < 10) {
 			const bottom = element.clientHeight + element.scrollTop
 			if (element.scrollHeight - bottom < 300) {
 				await this.fetchData()
-				await new Promise((r) => setImmediate(r))
 			}
 		}
 	}
@@ -249,7 +255,11 @@ export class Timeline extends React.Component {
 						/>
 					</div>
 				</div>
-				<div className="item" onScroll={this.onScroll}>
+				<div
+					className="item"
+					ref={this.scrollDiv}
+					onScroll={this.onScroll}
+				>
 					<div className="timeline-inner">
 						<div>
 							{[...this.data.entries()].map(([day, entries]) => {

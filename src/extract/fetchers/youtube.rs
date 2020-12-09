@@ -1,128 +1,9 @@
 use std::{collections::BTreeSet, fmt::Debug};
 
-use super::tags::Tags;
+use super::{tags::Tags, ExternalFetcher};
 use crate::prelude::*;
 use lazy_static::lazy_static;
 use regex::Regex;
-
-fn get_external_fetchers() -> Vec<Box<dyn ExternalFetcher>> {
-    vec![Box::new(YoutubeFetcher)]
-}
-
-fn get_simple_fetchers() -> Vec<Box<dyn SimpleFetcher>> {
-    vec![Box::new(URLDomainMatcher)]
-}
-
-pub trait ExternalFetcher {
-    fn get_id(&self) -> &'static str;
-    fn get_cache_key(&self, found: &regex::Captures, tags: &Tags) -> Option<String>;
-    fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String>;
-    fn process_data(&self, tags: &Tags, cache_key: &str, data: &str) -> anyhow::Result<Tags>;
-}
-
-impl Serialize for dyn ExternalFetcher {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        self.get_id().serialize(serializer)
-    }
-}
-
-impl Serialize for dyn SimpleFetcher {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        self.get_id().serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for Box<dyn ExternalFetcher> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let id = <&str>::deserialize(deserializer)?;
-        let fetcher = get_external_fetchers()
-            .into_iter()
-            .filter(|e| e.get_id() == id)
-            .next()
-            .ok_or_else(|| {
-                serde::de::Error::custom(format!("Could not find fetcher with id {}", id))
-            })?;
-
-        Ok(fetcher)
-    }
-}
-
-impl<'de> Deserialize<'de> for Box<dyn SimpleFetcher> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let id = <&str>::deserialize(deserializer)?;
-        let fetcher = get_simple_fetchers()
-            .into_iter()
-            .filter(|e| e.get_id() == id)
-            .next()
-            .ok_or_else(|| {
-                serde::de::Error::custom(format!("Could not find fetcher with id {}", id))
-            })?;
-
-        Ok(fetcher)
-    }
-}
-
-impl Debug for dyn ExternalFetcher {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Fetcher({})", self.get_id())
-    }
-}
-
-pub trait SimpleFetcher {
-    fn get_id(&self) -> &'static str;
-    fn process(&self, found: &regex::Captures, tags: &Tags) -> anyhow::Result<Tags>;
-}
-
-impl Debug for dyn SimpleFetcher {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Fetcher({})", self.get_id())
-    }
-}
-
-pub struct URLDomainMatcher;
-impl SimpleFetcher for URLDomainMatcher {
-    fn get_id(&self) -> &'static str {
-        "URLDomainMatcher"
-    }
-    fn process(&self, found: &regex::Captures, tags: &Tags) -> anyhow::Result<Tags> {
-        lazy_static! {
-            static ref public_suffixes: publicsuffix::List =
-                publicsuffix::List::from_str(include_str!("../../data/public_suffix_list.dat"))
-                    .unwrap();
-        }
-        let tag = found.name("url").context("Url match invalid?")?;
-        let mut tags = Tags::new();
-
-        let url = tag.as_str();
-        let host = public_suffixes
-            .parse_url(url)
-            .map_err(|e| anyhow::anyhow!("{}", e))
-            .with_context(|| format!("parsing url '{}'", url))?;
-
-        if let publicsuffix::Host::Domain(domain) = host {
-            tags.insert(format!("browse-full-domain:{}", domain.to_string()));
-            if let Some(root) = domain.root() {
-                tags.insert(format!("browse-domain:{}", root));
-            }
-            if !domain.has_known_suffix() {
-                tags.insert(format!("error-unknown-domain:{}", domain));
-            }
-        };
-        Ok(tags)
-    }
-}
 
 pub struct YoutubeFetcher;
 
@@ -130,8 +11,16 @@ impl ExternalFetcher for YoutubeFetcher {
     fn get_id(&self) -> &'static str {
         "youtube-meta-json"
     }
+    fn get_regexes(&self) -> &[Regex] {
+        lazy_static! {
+            static ref regexes: Vec<Regex> =
+                vec![Regex::new(r#"^browse-main-domain:youtube.com$"#).unwrap()];
+        }
 
-    fn get_cache_key(&self, found: &regex::Captures, tags: &Tags) -> Option<String> {
+        &regexes
+    }
+
+    fn get_cache_key(&self, found: &[regex::Captures], tags: &Tags) -> Option<String> {
         // https://github.com/ytdl-org/youtube-dl/blob/1fb034d029c8b7feafe45f64e6a0808663ad315e/youtube_dl/extractor/youtube.py
         lazy_static! {
             static ref watch_regex: Regex = Regex::new(
