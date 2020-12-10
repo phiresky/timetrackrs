@@ -100,8 +100,10 @@ impl ExtractInfo for AppUsageEntry {
             tags.insert(format!("software-id:android:{}", app.pkg_name));
             tags.insert(format!("software-name:{}", app.app_name));
             tags.insert(format!("device-os-type:Android"));
+            Some(tags)
+        } else {
+            None
         }
-        Some(tags)
         /*use crate::extract::properties::*;
         let x = &self;
         if UseType::try_from(x.act_type) == Ok(UseType::UseApp) {

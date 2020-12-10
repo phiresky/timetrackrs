@@ -2,6 +2,8 @@ import _ from "lodash"
 import { computed, makeObservable } from "mobx"
 import { observer, useLocalObservable } from "mobx-react"
 import * as React from "react"
+import { useState } from "react"
+import { setTextRange } from "typescript"
 import * as api from "../api"
 import { Counter, DefaultMap, durationToString, totalDuration } from "../util"
 import { CategoryChart, CategoryChartModal } from "./CategoryChart"
@@ -108,6 +110,9 @@ const TreeLeaves: React.FC<{ leaves: api.Activity[] }> = observer(
 					valueCounter.get(tagKey).add(tagValue)
 				}
 			}
+			// somewhat incorrect: the total counts differ on each tags because events can have multiple tags
+			// const correctTotalCount = _.sum([...totalCounts.values()])
+
 			for (const [tagKey, counter] of valueCounter) {
 				counter.set("[none]", totalCount - totalCounts.get(tagKey))
 			}
@@ -235,9 +240,18 @@ function ShowTreeChildren({
 }
 
 export function TagTreePage(): React.ReactElement {
+	const [tag, setTag] = useState("")
 	return (
 		<Page title="Category Trees">
-			<ChooserWithChild child={TagTree} />
+			Filter Tag:{" "}
+			<input
+				type="text"
+				value={tag}
+				onChange={(e) => setTag(e.currentTarget.value)}
+			/>
+			<ChooserWithChild
+				child={(e) => <TagTree tagName={tag || undefined} {...e} />}
+			/>
 		</Page>
 	)
 }

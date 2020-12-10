@@ -10,8 +10,18 @@ import { Page } from "./Page"
 import { TagTree } from "./TagTree"
 import { Choices, Select } from "./Select"
 
-export function getTag(tags: string[], tag: string) {
-	return tags.find((t) => t.startsWith(tag + ":"))?.slice(tag.length + 1)
+export function getTag(
+	tags: string[],
+	tag: string,
+	deep = true,
+): string | undefined {
+	const value = tags
+		.find((t) => t.startsWith(tag + ":"))
+		?.slice(tag.length + 1)
+	if (!deep) {
+		return value?.split("/")[0]
+	}
+	return value
 }
 
 type Filter = { tagName: string }

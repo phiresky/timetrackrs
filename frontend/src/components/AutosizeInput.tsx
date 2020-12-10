@@ -70,7 +70,6 @@ class AutosizeInput extends Component<Props, { inputWidth: string | number }> {
 		if (!inputStyles) {
 			return
 		}
-		console.log("copying input styles")
 		if (this.sizer.current) copyStyles(inputStyles, this.sizer.current)
 		if (this.placeHolderSizer.current) {
 			copyStyles(inputStyles, this.placeHolderSizer.current)
@@ -160,7 +159,6 @@ class AutosizeInput extends Component<Props, { inputWidth: string | number }> {
 				...inputStyle,
 			} as CSSProperties,
 		}
-		console.log(inputProps)
 
 		return (
 			<div className={this.props.className} style={wrapperStyle}>

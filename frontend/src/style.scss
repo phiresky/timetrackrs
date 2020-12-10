@@ -9,6 +9,15 @@ html,
 body {
 	height: 100%;
 }
+html {
+	box-sizing: border-box;
+}
+*,
+*:before,
+*:after {
+	box-sizing: inherit;
+}
+
 ul {
 	padding-left: 40px;
 }
@@ -230,7 +239,7 @@ div.header {
 }
 
 .centerbody {
-	max-width: 900px;
+	max-width: 1200px;
 	margin: 0 auto;
 	padding: 0 1em;
 }
@@ -281,4 +290,14 @@ details.rule-group {
 	&:focus-within {
 		border-color: skyblue;
 	}
+}
+
+.maxwidth {
+	width: 100%;
+}
+
+.caretbutton {
+	font-size: 19px;
+	padding: 11px 11px 9px;
+	vertical-align: middle;
 }

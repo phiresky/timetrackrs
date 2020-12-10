@@ -18,6 +18,7 @@ import * as api from "../api"
 @observer
 export class ChooserWithChild extends React.Component<{
 	child: React.ComponentType<{ events: api.Activity[] }>
+	containerClass?: string
 }> {
 	@observable
 	timeRange = TimeRangeSelectorDefault()
@@ -39,7 +40,7 @@ export class ChooserWithChild extends React.Component<{
 	render(): React.ReactNode {
 		console.log(this.data.value)
 		return (
-			<div className="container">
+			<div className={`container ${this.props.containerClass || ""}`}>
 				Time Range: <TimeRangeSelector target={this.timeRange} />
 				<div>
 					{this.data.case({
