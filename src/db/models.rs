@@ -17,7 +17,7 @@ pub struct DbEvent {
     pub data: String,
 }
 
-#[derive(AsExpression, FromSqlRow, PartialEq, Debug, Clone, Serialize)]
+#[derive(AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Serialize)]
 #[sql_type = "Text"]
 #[serde(untagged)]
 pub enum Timestamptz {

@@ -21,37 +21,46 @@ type DebugRes<T> = Result<T, rocket::response::Debug<anyhow::Error>>;
 #[get("/time-range?<after>&<before>&<limit>")]
 fn time_range(
     mut db: DbConn,
-    after: Option<String>,
-    limit: Option<u32>,
     before: Option<String>,
+    after: Option<String>,
+    limit: Option<usize>,
 ) -> DebugRes<Json<J>> {
     // println!("handling...");
     // println!("querying...");
-    let mdata = {
-        use trbtt::db::schema::events::dsl::*;
-        let mut query = events.into_boxed();
-        if let Some(after) = after {
-            let after = iso_string_to_date(&after)?;
-            query = query
-                .filter(timestamp.gt(Timestamptz::new(after)))
-                .order(timestamp.asc());
-        }
-        if let Some(before) = before {
-            let before = iso_string_to_date(&before)?;
-            query = query
-                .filter(timestamp.lt(Timestamptz::new(before)))
-                .order(timestamp.desc());
-        }
-        let limit = limit.unwrap_or(100);
-        query
-            .limit(limit as i64)
-            .load::<DbEvent>(&*db)
-            .context("fetching from db")?
+    let before = match before {
+        Some(before) => Some(iso_string_to_date(&before).context("could not parse before date")?),
+        None => None,
     };
-    let mut dbsy = DatyBasy::new(&mut *db);
+    let after = match after {
+        Some(after) => Some(iso_string_to_date(&after).context("could not parse after date")?),
+        None => None,
+    };
+
+    // if we get events before date X then we need to sort descending
+    // if both before and after are set either would be ok
+    let mdata = YieldEventsFromTrbttDatabase {
+        db: &db.0,
+        chunk_size: 1000,
+        last_fetched: Timestamptz::new(
+            before
+                .or(after)
+                .context("one of after and before must be specified")?,
+        ),
+        ascending: before.is_none(),
+    };
+
+    let mut dbsy = DatyBasy::new(&db);
     // println!("jsonifying...");
     let v = mdata
         .into_iter()
+        .flatten()
+        .take_while(|a| match (before, after) {
+            (Some(before), Some(after)) => {
+                // both limits exist, we are fetching descending,
+                a.timestamp >= Timestamptz::new(after)
+            }
+            _ => true,
+        })
         .filter_map(|a| {
             let r = deserialize_captured((&a.data_type, &a.data));
             match r {
@@ -77,7 +86,9 @@ fn time_range(
                 }
             }
         })
+        .take(limit.unwrap_or(10000))
         .collect::<Vec<_>>();
+    log::debug!("after filter: {}", v.len());
     Ok(Json(json!({ "data": &v })))
 }
 

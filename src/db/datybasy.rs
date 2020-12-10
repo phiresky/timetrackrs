@@ -3,12 +3,12 @@ use diesel::prelude::*;
 use diesel::SqliteConnection;
 
 pub struct DatyBasy<'a> {
-    conn: &'a mut SqliteConnection,
+    conn: &'a SqliteConnection,
     enabled_tag_rules: Option<Vec<TagRule>>,
 }
 
 impl<'a> DatyBasy<'a> {
-    pub fn new(conn: &mut SqliteConnection) -> DatyBasy {
+    pub fn new(conn: &'a SqliteConnection) -> DatyBasy {
         DatyBasy {
             conn,
             enabled_tag_rules: None,
@@ -46,7 +46,7 @@ impl<'a> DatyBasy<'a> {
             let groups: Vec<TagRuleGroup> = tag_rule_groups.load(self.conn)?;
             /*if groups.len() == 0 {
                 // insert defaults
-                let groups = 
+                let groups =
                 diesel::insert_into(tag_rule_groups)
                     .values(groups)
                     .execute(self.conn)?;
@@ -54,7 +54,8 @@ impl<'a> DatyBasy<'a> {
             }*/
             self.enabled_tag_rules.replace(
                 groups
-                    .into_iter().chain(get_default_tag_rule_groups().into_iter())
+                    .into_iter()
+                    .chain(get_default_tag_rule_groups().into_iter())
                     .flat_map(|g| g.data.into_iter_active_rules())
                     .collect(),
             );

@@ -184,7 +184,7 @@ export class Timeline extends React.Component {
 		void this.fetchData()
 	}
 
-	async fetchData() {
+	async fetchData(): Promise<void> {
 		if (this.loading) return
 		try {
 			this.loading = true
@@ -207,7 +207,10 @@ export class Timeline extends React.Component {
 					}
 					z.push(d)
 				}
-				if (data.length < 10) this.gotOldestEver = true
+				if (data.length < 10) {
+					this.gotOldestEver = true
+					console.log(`got oldest!!`, data)
+				}
 				if (l) this.oldestData = l
 				this.loadState = "loaded"
 			})
@@ -216,7 +219,7 @@ export class Timeline extends React.Component {
 		}
 		//console.log(this.data.data)
 	}
-	componentDidUpdate() {
+	componentDidUpdate(): void {
 		setTimeout(() => {
 			void this.onScroll()
 		}, 0)
@@ -231,6 +234,7 @@ export class Timeline extends React.Component {
 			const bottom = element.clientHeight + element.scrollTop
 			if (element.scrollHeight - bottom < 300) {
 				await this.fetchData()
+				if (this.gotOldestEver) return
 			}
 		}
 	}

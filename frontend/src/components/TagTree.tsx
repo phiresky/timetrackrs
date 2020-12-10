@@ -3,7 +3,7 @@ import { computed, makeObservable } from "mobx"
 import { observer, useLocalObservable } from "mobx-react"
 import * as React from "react"
 import * as api from "../api"
-import { DefaultMap, durationToString, totalDuration } from "../util"
+import { Counter, DefaultMap, durationToString, totalDuration } from "../util"
 import { CategoryChart, CategoryChartModal } from "./CategoryChart"
 import { ChooserWithChild } from "./ChooserWithChild"
 import { Entry } from "./Entry"
@@ -95,15 +95,39 @@ const TreeLeaves: React.FC<{ leaves: api.Activity[] }> = observer(
 	({ leaves }) => {
 		const [children, setChildren] = React.useState(5)
 		const store = useLocalObservable(() => {
-			const choices = new DefaultMap<string, number>(() => 0)
+			const totalCount = leaves.length
+			const totalCounts = new Counter<string>()
+			const valueCounter = new DefaultMap<string, Counter<string>>(
+				() => new Counter(),
+			)
 			for (const l of leaves) {
 				for (const t of l.tags) {
-					const tagKey = t.split(":")[0]
-					choices.set(tagKey, choices.get(tagKey) + 1)
+					const sI = t.indexOf(":")
+					const [tagKey, tagValue] = [t.slice(0, sI), t.slice(sI + 1)]
+					totalCounts.add(tagKey)
+					valueCounter.get(tagKey).add(tagValue)
 				}
 			}
-			const choicesList = _.sortBy([...choices], (k) => k[1])
-				.map((k) => ({ value: k[0], name: `${k[0]} (${k[1]})` }))
+			for (const [tagKey, counter] of valueCounter) {
+				counter.set("[none]", totalCount - totalCounts.get(tagKey))
+			}
+			const averageEntropy = new Map(
+				[...valueCounter].map(([tagKey, counter]) => {
+					// sample probability
+					const P = (count: number) => count / totalCount
+					const entropy = -_.sumBy([...counter.values()], (count) =>
+						count > 0 ? P(count) * Math.log2(P(count)) : 0,
+					)
+					console.log(tagKey, entropy)
+					const entropyPerChoice = entropy / counter.size
+					return [tagKey, entropyPerChoice] as const
+				}),
+			)
+			const choicesList = _.sortBy([...averageEntropy], (k) => -k[1])
+				.map((k) => ({
+					value: k[0],
+					name: `${k[0]} (${k[1].toFixed(2)})`,
+				}))
 				.slice(0, 40)
 			return {
 				choices: Choices(

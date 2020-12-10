@@ -27,6 +27,19 @@ export class DefaultMap<K, V> extends Map<K, V> {
 		return res
 	}
 }
+
+export class Counter<K> extends DefaultMap<K, number> {
+	constructor(entries?: K[]) {
+		super(() => 0)
+		if (entries)
+			for (const entry of entries) {
+				this.add(entry)
+			}
+	}
+	add(k: K): void {
+		this.set(k, this.get(k) + 1)
+	}
+}
 export class KeyedSet<E> implements Set<E> {
 	private map = new Map<string, E>()
 	constructor(private getKey: (e: E) => string) {}
