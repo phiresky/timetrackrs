@@ -6,11 +6,13 @@ use anyhow::Context;
 use diesel::prelude::*;
 use diesel_migrations::embed_migrations;
 use dotenv::dotenv;
-use std::env;
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 embed_migrations!();
 
-pub fn connect_file(filename: &str) -> anyhow::Result<SqliteConnection> {
-    let db = SqliteConnection::establish(&filename).context("Establishing connection")?;
+pub fn set_pragmas(db: &SqliteConnection) -> anyhow::Result<()> {
     db.execute("pragma page_size = 32768;")
         .context("setup pragma 1")?;
     db.execute("pragma foreign_keys = on;")
@@ -28,7 +30,11 @@ pub fn connect_file(filename: &str) -> anyhow::Result<SqliteConnection> {
     //db.execute("pragma auto_vacuum = incremental")
     //    .context("setup pragma 7")?;
     // db.execute("pragma optimize;")?;
-
+    Ok(())
+}
+pub fn connect_file(filename: &str) -> anyhow::Result<SqliteConnection> {
+    let db = SqliteConnection::establish(&filename).context("Establishing connection")?;
+    set_pragmas(&db).with_context(|| format!("set pragmas for {}", &filename))?;
     embedded_migrations::run_with_output(&db, &mut std::io::stdout()).context("migrations")?;
     Ok(db)
 }
