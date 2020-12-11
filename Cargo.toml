@@ -70,6 +70,7 @@ winapi = { version = "0.3.9", features = ["winuser", "processthreadsapi","handle
 [target.'cfg(target_os="linux")'.dependencies]
 x11rb = { version = "0.7.0", features = ["screensaver"] }
 xcb = "0.9.0"
+nl80211 = {git="https://github.com/Eonm/nl80211", branch="master"}
 
 [dependencies.rocket_contrib]
 version = "0.4.6"

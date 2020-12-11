@@ -296,8 +296,13 @@ details.rule-group {
 	width: 100%;
 }
 
-.caretbutton {
+.time-range-selector {
 	font-size: 19px;
-	padding: 11px 11px 9px;
-	vertical-align: middle;
+	select {
+		font-size: 19px;
+	}
+	.caretbutton {
+		padding: 11px 11px 9px;
+		vertical-align: middle;
+	}
 }

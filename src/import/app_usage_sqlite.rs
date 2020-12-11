@@ -93,6 +93,10 @@ use crate::extract::ExtractInfo;
 impl ExtractInfo for AppUsageEntry {
     fn extract_info(&self) -> Option<Tags> {
         let mut tags = Tags::new();
+        if (self.duration as f64) / 1000.0 > 3.0 * 60.0 * 60.0 {
+            // screen on for more than three hours without interaction, probably screen left on but not used
+            return None;
+        }
         if UseType::try_from(self.act_type) == Ok(UseType::UseApp) {
             let app = self.app.as_ref().unwrap();
             tags.insert(format!("device-hostname:{}", self.device_name));

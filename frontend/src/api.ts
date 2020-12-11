@@ -44,7 +44,9 @@ export async function getTimeRange(info: {
 	return data
 }
 
-export async function getSingleEvent(info: { id: string }): Promise<Activity> {
+export async function getSingleEvent(info: {
+	id: string
+}): Promise<Activity | null> {
 	const url = new URL(backend + "/single-event")
 	url.searchParams.set("id", info.id)
 	const resp = await fetch(url.toString())

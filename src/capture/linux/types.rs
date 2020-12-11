@@ -9,15 +9,16 @@ use typescript_definitions::TypeScriptify;
 #[derive(StructOpt)]
 pub struct X11CaptureArgs {
     // captures from default screen, no options really
+    #[structopt(long)]
+    /// if true, only capture the focused window.
+    /// if false, capture all windows.
+    pub only_focused_window: bool,
 }
 
 #[cfg(target_os = "linux")]
 impl CapturerCreator for X11CaptureArgs {
-    fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
-        match super::x11::init() {
-            Ok(e) => Ok(Box::new(e)),
-            Err(e) => Err(e),
-        }
+    fn create_capturer(self) -> anyhow::Result<Box<dyn Capturer>> {
+        super::x11::init(self).map(|e| Box::new(e) as Box<dyn Capturer>)
     }
 }
 
@@ -38,6 +39,7 @@ pub struct X11EventData {
     pub ms_since_user_input: u32,
     pub ms_until_screensaver: u32,
     pub screensaver_window: u32,
+    pub network: Option<NetworkInfo>,
     pub windows: Vec<X11WindowData>,
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify)]
@@ -67,6 +69,30 @@ pub struct ProcessData {
     pub start_time: DateTime<Utc>,
     pub cpu_usage: Option<f32>, // can be NaN -> null
 }
+
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+pub struct WifiInterface {
+    /// Interface essid
+    pub ssid: String,
+    /// Interface MAC address
+    pub mac: String,
+    /// Interface name (u8, String)
+    pub name: String,
+    /// Interface transmit power level in signed mBm units.
+    pub power: u32,
+    /// Signal strength average (i8, dBm)
+    pub average_signal: i8,
+    /// Station bssid (u8)
+    pub bssid: String,
+    /// Time since the station is last connected in seconds (u32)
+    pub connected_time: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+pub struct NetworkInfo {
+    pub wifi: Option<WifiInterface>,
+}
+
 impl X11WindowData {
     fn get_title(&self) -> Option<String> {
         if let Some(J::String(title)) = &self.window_properties.get("_NET_WM_NAME") {
@@ -107,13 +133,16 @@ impl ExtractInfo for X11EventData {
             return None;
         }
         x.os_info.to_partial_general_software(&mut tags);
+        if let Some(NetworkInfo { wifi: Some(wifi) }) = &x.network {
+            tags.insert(format!("connected-wifi:{}", wifi.ssid));
+        }
         let window = x.windows.iter().find(|e| e.window_id == x.focused_window);
-        let specific = match window {
+        match window {
             None => (),
             Some(w) => {
                 if let Some(window_title) = w.get_title() {
                     let cls = w.get_class();
-                    tags.extend(super::pc_common::match_software(
+                    tags.extend(super::super::pc_common::match_software(
                         &window_title,
                         &cls,
                         w.process.as_ref().map(|p| p.exe.as_ref()),

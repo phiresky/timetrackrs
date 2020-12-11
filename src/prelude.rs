@@ -1,6 +1,6 @@
 // just lots of imports cause i'm lazy
-pub use crate::capture::winwins_types::{WindowsCaptureArgs, WindowsEventData};
-pub use crate::capture::x11_types::{X11CaptureArgs, X11EventData};
+pub use crate::capture::linux::types::*;
+pub use crate::capture::windows::types::*;
 pub use crate::capture::*;
 pub use crate::db::datybasy::*;
 pub use crate::db::db_iterator::YieldEventsFromTrbttDatabase;

@@ -55,6 +55,7 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 			return <div>Could not load: {String(this.data.value)}</div>
 		}
 		const e = this.data.value
+		if (!e) return <div>Event not found</div>
 		console.log("raw data", e)
 		return (
 			<div>

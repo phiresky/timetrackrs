@@ -86,6 +86,7 @@ export class Plot extends React.Component<{ events: Activity[] }> {
 						title: "Plot by Category",
 						barmode: "stack",
 						legend: { orientation: "h" },
+
 						yaxis: {
 							title: "Spent time (minutes)",
 							tickformat: "min",

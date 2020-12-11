@@ -11,17 +11,19 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
     // DbEvent::type_script_ify,
     Sampler::type_script_ify,
     EventData::type_script_ify,
-    x11_types::X11EventData::type_script_ify,
-    x11_types::X11WindowData::type_script_ify,
-    x11_types::X11WindowGeometry::type_script_ify,
-    x11_types::ProcessData::type_script_ify,
+    linux::types::X11EventData::type_script_ify,
+    linux::types::X11WindowData::type_script_ify,
+    linux::types::X11WindowGeometry::type_script_ify,
+    linux::types::ProcessData::type_script_ify,
+    linux::types::NetworkInfo::type_script_ify,
+    linux::types::WifiInterface::type_script_ify,
     util::OsInfo::type_script_ify,
     TagRuleGroup::type_script_ify,
     TagRuleGroupData::type_script_ify,
     TagRuleWithMeta::type_script_ify,
     TagRule::type_script_ify,
     TagRuleGroupV1::type_script_ify,
-    TagAddReason::type_script_ify
+    TagAddReason::type_script_ify,
 ];
 
 #[cfg(not(debug_assertions))]

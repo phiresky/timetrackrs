@@ -4,7 +4,7 @@
 
 #![allow(non_snake_case)]
 
-use super::x11_types::*;
+use super::types::*;
 use crate::prelude::*;
 
 use serde_json::{json, Value as J};
@@ -64,6 +64,7 @@ fn single<T: Copy>(v: &Vec<T>) -> T {
 }
 
 pub struct X11Capturer<C: Connection> {
+    options: X11CaptureArgs,
     conn: C,
     root_window: u32,
     atom_name_map: HashMap<u32, anyhow::Result<String>>,
@@ -87,11 +88,12 @@ impl<C: Connection> X11Capturer<C> {
         }
     }
 }
-pub fn init() -> anyhow::Result<X11Capturer<impl Connection>> {
+pub fn init(options: X11CaptureArgs) -> anyhow::Result<X11Capturer<impl Connection>> {
     let (conn, screen_num) = x11rb::connect(None)?;
     let screen = &conn.setup().roots[screen_num];
     let root_window = screen.root;
     Ok(X11Capturer {
+        options,
         conn,
         root_window,
         os_info: util::get_os_info(),
@@ -117,7 +119,7 @@ impl<C: Connection> Capturer for X11Capturer<C> {
             self.root_window,
             NET_CURRENT_DESKTOP,
         )?);
-        let desktop_names = super::x11_types::split_zero(&get_property_text(
+        let desktop_names = split_zero(&get_property_text(
             &self.conn,
             self.root_window,
             NET_DESKTOP_NAMES,
@@ -125,6 +127,9 @@ impl<C: Connection> Capturer for X11Capturer<C> {
         let focus = self.conn.get_input_focus()?.reply()?.focus;
         let mut windows = get_property32(&self.conn, self.root_window, NET_CLIENT_LIST)?;
         windows.sort();
+        if self.options.only_focused_window {
+            windows.retain(|i| i == &focus);
+        }
 
         let mut windowsdata = vec![];
         if !windows.contains(&focus) {
@@ -252,6 +257,9 @@ impl<C: Connection> Capturer for X11Capturer<C> {
             ms_until_screensaver: xscreensaver.ms_until_server,
             screensaver_window: xscreensaver.saver_window,
             windows: windowsdata,
+            network: linux::network::get_network_info()
+                .map_err(|e| log::info!("could not get net info: {}", e))
+                .ok(),
         };
         Ok(EventData::x11_v2(data))
     }

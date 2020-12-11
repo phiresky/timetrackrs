@@ -105,7 +105,7 @@ export const TimeRangeSelector: React.FC<{
 			/>
 		)
 	return (
-		<div>
+		<div className="time-range-selector">
 			<button
 				title="day before"
 				className="caretbutton"
