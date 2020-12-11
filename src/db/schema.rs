@@ -3,7 +3,7 @@ table! {
     use crate::db::hack::Integer;
 
     events (insertion_sequence) {
-        insertion_sequence -> Integer,
+        insertion_sequence -> BigInt,
         id -> Text,
         timestamp -> Text,
         data_type -> Text,
@@ -34,8 +34,4 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(
-    events,
-    fetcher_cache,
-    tag_rule_groups,
-);
+allow_tables_to_appear_in_same_query!(events, fetcher_cache, tag_rule_groups,);

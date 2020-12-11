@@ -1,12 +1,15 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 
-use crate::{expand::expand_str, prelude::*};
+use crate::{
+    expand::{expand_str_captures, expand_str_ez},
+    prelude::*,
+};
 
 use regex::Regex;
 
 use super::fetchers::{get_external_fetcher, get_simple_fetcher};
 
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct TagRuleGroupV1 {
     pub name: String,
     pub description: String,
@@ -23,120 +26,24 @@ fn validate_tag_rules<'a>(rules: impl IntoIterator<Item = &'a TagRule>) {
     }
 }
 pub fn get_default_tag_rule_groups() -> Vec<TagRuleGroup> {
-    let rules = TagRuleGroupV1 {
-        name: "Default Rules".to_string(),
-        description: "These are shipped with the program :)".to_string(),
-        editable: false,
-        enabled: true,
-        rules: vec![
-            SimpleRegexRule(
-                r#"^browse-main-domain:telegram\.org$"#,
-                "use-service:Telegram",
-            ),
-            SimpleRegexRule(
-                r#"^software-executable-path:.*/(?P<basename>.*?)(?: \(deleted\)|.exe)?$"#,
-                "software-executable-basename:$basename",
-            ),
-            SimpleRegexRule(
-                r#"^software-executable-basename:telegram-desktop$"#,
-                "use-service:Telegram",
-            ),
-            SimpleRegexRule(
-                r#"^software-executable-basename:(firefox|google-chrome|chromium)$"#,
-                "software-type:browser",
-            ),
-            SimpleRegexRule(
-                r#"^software-executable-basename:(mpv|vlc)$"#,
-                "software-type:media-player",
-            ),
-            SimpleRegexRule(
-                r#"^software-window-title:.*(?P<url>https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)).*$"#,
-                "browse-url:$url",
-            ),
-            SimpleRegexRule(
-                r#"^browse-full-domain:mail.google.com$"#,
-                "use-service:Gmail",
-            ),
-            SimpleRegexRule(r#"^browse-main-domain:youtube.com$"#, "use-service:YouTube"),
-            TagRuleWithMeta {
-                enabled: true,
-                rule: TagRule::TagRegex {
-                    regexes: vec![
-                        Regex::new(r#"^device-hostname:(?P<hostname>.*)$"#).unwrap(),
-                        Regex::new(r#"^title-match-sd-proj:(?P<path>.*)$"#).unwrap(),
-                    ],
-                    new_tag: "software-development-project:$hostname$path".to_string(),
-                },
+    lazy_static! {
+        static ref RULES: Vec<TagRuleGroupV1> =
+            serde_json::from_str(include_str!("../../data/rules/default.json"))
+                .expect("could not parse internal rules");
+    }
+    validate_tag_rules(RULES.iter().flat_map(|d| &d.rules).map(|e| &e.rule));
+    RULES
+        .iter()
+        .map(|data| TagRuleGroup {
+            global_id: "<internal>".to_string(),
+            data: TagRuleGroupData::V1 {
+                data: (*data).clone(),
             },
-            TagRuleWithMeta {
-                enabled: true,
-                rule: TagRule::TagRegex {
-                    regexes: vec![
-                        Regex::new(r#"^software-executable-basename:electron\d*$"#).unwrap(),
-                        Regex::new(r#"^software-window-class:(?P<class>.+)$"#).unwrap(),
-                    ],
-                    new_tag: "software-identifier:${class}".to_string(),
-                },
-            },
-            TagRuleWithMeta {
-                enabled: true,
-                rule: TagRule::InternalFetcher {
-                    fetcher_id: "url-domain-matcher".to_string(),
-                },
-            },
-            TagRuleWithMeta {
-                enabled: true,
-                rule: TagRule::ExternalFetcher {
-                    fetcher_id: "youtube-meta-json".to_string(),
-                },
-            },
-            TagRuleWithMeta {
-                enabled: true,
-                rule: TagRule::ExternalFetcher {
-                    fetcher_id: "wikidata-domain-to-id-v1".to_string(),
-                },
-            },
-            TagRuleWithMeta {
-                enabled: true,
-                rule: TagRule::ExternalFetcher {
-                    fetcher_id: "wikidata-id-to-class".to_string(),
-                },
-            },
-            SimpleRegexRule(
-                r#"^software-development-project:.*/(.*)$"#,
-                "software-development-project-name:$1",
-            ),
-            SimpleRegexRule(r#"^title-match-shell-cwd:.*$"#, "software-type:shell"),
-            SimpleRegexRule(r#"^software-development-project:.*$"#, "software-type:ide"),
-            SimpleRegexRule(
-                r#"^software-type:ide$"#,
-                "category:Productivity/Software Development/IDE",
-            ),
-            SimpleRegexRule(r#"^software-type:shell*$"#, "category:Productivity/Shell"),
-            SimpleRegexRule(
-                r#"^software-type:media-player*$"#,
-                "category:Entertainment/Video",
-            ),
-            SimpleRegexRule(r#"^software-type:shell*$"#, "category:Productivity/Shell"),
-            /*SimpleRegexRule(
-                r#"^use-service:Telegram*$"#,
-                "category:Communication/Instant Messaging",
-            ),*/
-            SimpleRegexRule(
-                r#"^wikidata-category:instant messaging client*$"#,
-                "category:Communication/Instant Messaging",
-            ),
-            SimpleRegexRule(r#"^use-service:Gmail*$"#, "category:Communication/Email"),
-        ],
-    };
-    validate_tag_rules(rules.rules.iter().map(|e| &e.rule));
-    vec![TagRuleGroup {
-        global_id: "zdaarqppqxxayfbm".to_string(),
-        data: TagRuleGroupData::V1 { data: rules },
-    }]
+        })
+        .collect()
 }
 
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, Clone, TypeScriptify)]
 pub struct TagRuleWithMeta {
     //id: String,
     //name: Option<String>,
@@ -147,6 +54,20 @@ pub struct TagRuleWithMeta {
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 #[serde(tag = "type")]
 pub enum TagRule {
+    HasTag {
+        tag: String,
+        new_tag: String,
+    },
+    ExactTagValue {
+        tag: String,
+        value: String,
+        new_tag: String,
+    },
+    TagValuePrefix {
+        tag: String,
+        prefix: String,
+        new_tag: String,
+    },
     TagRegex {
         #[serde(with = "serde_regex")]
         regexes: Vec<regex::Regex>,
@@ -161,15 +82,6 @@ pub enum TagRule {
 }
 pub type Tags = std::collections::BTreeSet<String>;
 
-fn SimpleRegexRule(regex: &str, new_tag: &str) -> TagRuleWithMeta {
-    TagRuleWithMeta {
-        rule: TagRule::TagRegex {
-            regexes: vec![Regex::new(regex).unwrap()],
-            new_tag: new_tag.to_string(),
-        },
-        enabled: true,
-    }
-}
 // match all regexes against tags. returns None if one of the regexes did not match
 fn match_multi_regex<'a>(
     regexes: &[Regex],
@@ -191,6 +103,11 @@ fn match_multi_regex<'a>(
     }
     Some((caps, matched_tags))
 }
+fn single<'a>(tag: impl Into<Cow<'a, str>>) -> Tags {
+    let mut tags = Tags::new();
+    tags.insert(tag.into().into_owned());
+    return tags;
+}
 impl TagRule {
     fn apply<'a>(
         &self,
@@ -198,17 +115,70 @@ impl TagRule {
         tags: &'a Tags,
     ) -> anyhow::Result<Option<(Tags, Vec<&'a str>)>> {
         match self {
+            TagRule::HasTag { tag, new_tag } => {
+                if let Some((full_tag, tag_value)) = tags
+                    .iter()
+                    .filter_map(|t| Some((t, t.strip_prefix(tag)?.strip_prefix(":")?)))
+                    .next()
+                {
+                    Ok(Some((
+                        single(expand_str_ez(new_tag, |r| match r {
+                            "value" => tag_value,
+                            _ => "",
+                        })),
+                        vec![full_tag],
+                    )))
+                } else {
+                    Ok(None)
+                }
+            }
+            TagRule::ExactTagValue {
+                tag,
+                value,
+                new_tag,
+            } => {
+                let search = format!("{}:{}", tag, value);
+                if let Some(i) = tags.iter().find(|i| *i == &search) {
+                    Ok(Some((single(new_tag), vec![i])))
+                } else {
+                    Ok(None)
+                }
+            }
+            TagRule::TagValuePrefix {
+                tag,
+                prefix,
+                new_tag,
+            } => {
+                // example: tag=foo,prefix=bar
+                // input tag: foo:barbaz
+                // (full_tag=foo:bar, tag_value=barbaz, suffix=baz)
+                if let Some((full_tag, tag_value, suffix)) = tags
+                    .iter()
+                    .filter_map(|t| Some((t, t.strip_prefix(tag)?.strip_prefix(":")?)))
+                    .filter_map(|(full, value)| Some((full, value, value.strip_prefix(prefix)?)))
+                    .next()
+                {
+                    Ok(Some((
+                        single(expand_str_ez(new_tag, |r| match r {
+                            "value" => tag_value,
+                            "prefix" => prefix,
+                            "suffix" => suffix,
+                            _ => "",
+                        })),
+                        vec![full_tag],
+                    )))
+                } else {
+                    Ok(None)
+                }
+            }
             TagRule::TagRegex { regexes, new_tag } => {
-                let mut new_tag_replaced: String = String::new();
                 let caps = match_multi_regex(&regexes, &tags);
                 match caps {
                     None => Ok(None),
-                    Some((caps, reason_tags)) => {
-                        expand_str(&caps, new_tag, &mut new_tag_replaced);
-                        let mut new_tags = Tags::new();
-                        new_tags.insert(new_tag_replaced);
-                        Ok(Some((new_tags, reason_tags)))
-                    }
+                    Some((caps, reason_tags)) => Ok(Some((
+                        single(expand_str_captures(&caps, new_tag)),
+                        reason_tags,
+                    ))),
                 }
             }
 
@@ -291,6 +261,9 @@ impl TagRule {
                 }
                 Ok(())
             }
+            TagRule::HasTag { .. } => Ok(()),
+            TagRule::ExactTagValue { .. } => Ok(()),
+            TagRule::TagValuePrefix { .. } => Ok(()),
         }
     }
 }
@@ -311,7 +284,7 @@ pub fn get_tags(db: &mut DatyBasy, intrinsic_tags: Tags) -> anyhow::Result<Tags>
     Ok(tags)
 }
 
-pub fn apply_tag_rules<'a>(db: &mut DatyBasy, tags: &mut Tags) -> anyhow::Result<()> {
+pub fn apply_tag_rules(db: &mut DatyBasy, tags: &mut Tags) -> anyhow::Result<()> {
     let mut last_length = tags.len();
     let mut settled = false;
     let mut iterations = 0;
@@ -373,7 +346,10 @@ pub fn get_tags_with_reasons(
     while !settled && iterations < 50 {
         for rule in rules {
             match rule
-                .apply(db, &tags.iter().map(|(tag, _why)| tag.to_string()).collect())
+                .apply(
+                    db,
+                    &tags.iter().map(|(tag, _why)| tag.to_string()).collect(),
+                )
                 .with_context(|| format!("applying rule {:?}", rule))
             {
                 Err(e) => log::warn!("{:?}", e),

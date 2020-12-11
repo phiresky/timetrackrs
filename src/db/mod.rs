@@ -2,14 +2,13 @@ pub mod datybasy;
 pub mod db_iterator;
 pub mod hack;
 pub mod models;
+#[allow(clippy::all)]
 pub mod schema;
 use anyhow::Context;
 use diesel::prelude::*;
 use diesel_migrations::embed_migrations;
 use dotenv::dotenv;
-use std::{
-    env,
-};
+use std::env;
 embed_migrations!();
 
 pub fn set_pragmas(db: &SqliteConnection) -> anyhow::Result<()> {
@@ -39,7 +38,7 @@ pub fn connect_file(filename: &str) -> anyhow::Result<SqliteConnection> {
     Ok(db)
 }
 pub fn get_database_location() -> String {
-    let database_location = env::var("DATABASE_URL").unwrap_or_else(|_| {
+    env::var("DATABASE_URL").unwrap_or_else(|_| {
         let dirs =
             directories_next::ProjectDirs::from("", "", "trbtt").expect("No HOME directory found");
         let dir = dirs.data_dir();
@@ -48,8 +47,7 @@ pub fn get_database_location() -> String {
             .to_str()
             .expect("user data dir is invalid unicode")
             .to_string()
-    });
-    database_location
+    })
 }
 
 pub fn connect() -> anyhow::Result<SqliteConnection> {

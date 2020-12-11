@@ -57,6 +57,7 @@ pub struct X11WindowGeometry {
     pub height: i32,
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[allow(non_snake_case)]
 pub struct ProcessData {
     pub pid: i32,
     pub name: String,

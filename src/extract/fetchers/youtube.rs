@@ -84,8 +84,7 @@ impl ExternalFetcher for YoutubeFetcher {
             ).unwrap();
         }
         for tag in tags {
-            if tag.starts_with("browse-url:") {
-                let url = &tag["browse-url:".len()..];
+            if let Some(url) = tag.strip_prefix("browse-url:") {
                 if let Some(matches) = WATCH_REGEX.captures(url) {
                     let id = matches.name("id").unwrap().as_str();
                     log::trace!("url={}, id={}", url, id);

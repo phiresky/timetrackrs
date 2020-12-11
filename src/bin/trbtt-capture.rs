@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
 
     loop {
         let sample = sampler.get_sample();
-        println!("sleeping {}s", sample);
+        log::info!("sleeping {}s", sample);
         std::thread::sleep(std::time::Duration::from_secs_f64(sample));
 
         let data = c.capture()?;

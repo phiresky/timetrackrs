@@ -1,3 +1,5 @@
+#![allow(clippy::trivial_regex)]
+
 use crate::prelude::*;
 use regex::Regex;
 use serde_json::Value as J;
@@ -5,6 +7,7 @@ use std::collections::HashMap;
 
 lazy_static::lazy_static! {
     static ref FORMATTED_TITLE_MATCH: Regex = Regex::new(r#"🛤([a-z]{2,5})🠚(.*)🠘"#).unwrap();
+
     static ref FORMATTED_TITLE_SPLIT: Regex = Regex::new("🙰").unwrap();
     static ref FORMATTED_TITLE_KV: Regex = Regex::new("^([a-z0-9]+)=(.*)$").unwrap();
     static ref JSON_TITLE: Regex = Regex::new(r#"\{".*[^\\]"}"#).unwrap();

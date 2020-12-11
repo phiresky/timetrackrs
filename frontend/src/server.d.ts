@@ -21,6 +21,7 @@ export type X11EventData = {
 	ms_since_user_input: number
 	ms_until_screensaver: number
 	screensaver_window: number
+	network: NetworkInfo | null
 	windows: X11WindowData[]
 }
 export type X11WindowData = {
@@ -47,6 +48,16 @@ export type ProcessData = {
 	start_time: DateTime<Utc>
 	cpu_usage: number | null
 }
+export type NetworkInfo = { wifi: WifiInterface | null }
+export type WifiInterface = {
+	ssid: string
+	mac: string
+	name: string
+	power: number
+	average_signal: number
+	bssid: string
+	connected_time: number
+}
 export type OsInfo = {
 	os_type: string
 	version: string
@@ -58,6 +69,9 @@ export type TagRuleGroup = { global_id: string; data: TagRuleGroupData }
 export type TagRuleGroupData = { version: "V1"; data: TagRuleGroupV1 }
 export type TagRuleWithMeta = { enabled: boolean; rule: TagRule }
 export type TagRule =
+	| { type: "HasTag"; tag: string; new_tag: string }
+	| { type: "ExactTagValue"; tag: string; value: string; new_tag: string }
+	| { type: "TagValuePrefix"; tag: string; prefix: string; new_tag: string }
 	| { type: "TagRegex"; regexes: Regex[]; new_tag: string }
 	| { type: "InternalFetcher"; fetcher_id: string }
 	| { type: "ExternalFetcher"; fetcher_id: string }

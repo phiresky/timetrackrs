@@ -1,0 +1,399 @@
+[
+    {
+        "name": "Cool Group",
+        "description": "",
+        "editable": false,
+        "enabled": true,
+        "rules": [
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "ExactTagValue",
+                    "tag": "browse-domain",
+                    "value": "reddit.com",
+                    "new_tag": "use-service:Reddit"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "ExactTagValue",
+                    "tag": "software-executable-basename",
+                    "value": "blender",
+                    "new_tag": "use-software:Blender"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^use-software:Blender$"],
+                    "new_tag": "category:Productivity/3D Modeling"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^browse-url:http://localhost:8081/.*$"],
+                    "new_tag": "software-development-project-name:track-pc-usage-rs"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": [
+                        "^software-development-project-name:.*$",
+                        "^browse-full-domain:localhost$"
+                    ],
+                    "new_tag": "category:Productivity/Software Development/Testing"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^youtube-category:(Gaming|Entertainment)$"],
+                    "new_tag": "category:Entertainment/Video"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^youtube-category:News & Politics$"],
+                    "new_tag": "category:Entertainment/News"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^browse-main-domain:github.com$"],
+                    "new_tag": "category:Productivity/Software Development/Research"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^use-service:Reddit$"],
+                    "new_tag": "category:Social Media"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^browse-main-domain:reddit.com$"],
+                    "new_tag": "use-service:Reddit"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^browse-main-domain:twitch.tv$"],
+                    "new_tag": "use-service:Twitch"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^use-service:Twitch$"],
+                    "new_tag": "category:Entertainment/Video"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^youtube-category:Music$"],
+                    "new_tag": "category:Entertainment/Music"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^youtube-category:Science & Technology$"],
+                    "new_tag": "category:Education/Video"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": [
+                        "^browse-main-domain:(docs.rs|crates.io|rust-lang.org|diesel.rs|sqlite.org|serde.rs|stackoverflow.com|rocket.rs)$"
+                    ],
+                    "new_tag": "category:Productivity/Software Development/Research"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^browse-main-domain:wikipedia.org$"],
+                    "new_tag": "use-service:Wikipedia"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^browse-full-domain:news.ycombinator.com$"],
+                    "new_tag": "category:Entertainment/News"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^use-service:Wikipedia$"],
+                    "new_tag": "category:Education/Research"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^wikidata-category:instant messaging client$"],
+                    "new_tag": "category:Communication/Instant Messaging"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^physical-activity:sleeping$"],
+                    "new_tag": "category:Flesh Prison/Sleep"
+                }
+            }
+        ]
+    },
+    {
+        "name": "android",
+        "description": "",
+        "editable": false,
+        "enabled": true,
+        "rules": [
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": [
+                        "^software-id:android:com.laurencedawson.reddit_sync.pro$"
+                    ],
+                    "new_tag": "use-service:Reddit"
+                }
+            }
+        ]
+    },
+    {
+        "name": "Default Rules",
+        "description": "These are shipped with the program :)",
+        "editable": false,
+        "enabled": true,
+        "rules": [
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^browse-main-domain:telegram\\.org$"],
+                    "new_tag": "use-service:Telegram"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": [
+                        "^software-executable-path:.*/(?P<basename>.*?)(?: \\(deleted\\)|.exe)?$"
+                    ],
+                    "new_tag": "software-executable-basename:$basename"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": [
+                        "^software-executable-basename:telegram-desktop$"
+                    ],
+                    "new_tag": "use-service:Telegram"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": [
+                        "^software-executable-basename:(firefox|google-chrome|chromium)$"
+                    ],
+                    "new_tag": "software-type:browser"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^software-executable-basename:(mpv|vlc)$"],
+                    "new_tag": "software-type:media-player"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": [
+                        "^software-window-title:.*(?P<url>https?://(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)).*$"
+                    ],
+                    "new_tag": "browse-url:$url"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^browse-full-domain:mail.google.com$"],
+                    "new_tag": "use-service:Gmail"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^browse-main-domain:youtube.com$"],
+                    "new_tag": "use-service:YouTube"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": [
+                        "^device-hostname:(?P<hostname>.*)$",
+                        "^title-match-sd-proj:(?P<path>.*)$"
+                    ],
+                    "new_tag": "software-development-project:$hostname$path"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": [
+                        "^software-executable-basename:electron\\d*$",
+                        "^software-window-class:(?P<class>.+)$"
+                    ],
+                    "new_tag": "software-identifier:${class}"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "InternalFetcher",
+                    "fetcher_id": "url-domain-matcher"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "ExternalFetcher",
+                    "fetcher_id": "youtube-meta-json"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "ExternalFetcher",
+                    "fetcher_id": "wikidata-domain-to-id-v1"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "ExternalFetcher",
+                    "fetcher_id": "wikidata-id-to-class"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^software-development-project:.*/(.*)$"],
+                    "new_tag": "software-development-project-name:$1"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^title-match-shell-cwd:.*$"],
+                    "new_tag": "software-type:shell"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^software-development-project:.*$"],
+                    "new_tag": "software-type:ide"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^software-type:ide$"],
+                    "new_tag": "category:Productivity/Software Development/IDE"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^software-type:shell*$"],
+                    "new_tag": "category:Productivity/Shell"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^software-type:media-player*$"],
+                    "new_tag": "category:Entertainment/Video"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^software-type:shell*$"],
+                    "new_tag": "category:Productivity/Shell"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": [
+                        "^wikidata-category:instant messaging client*$"
+                    ],
+                    "new_tag": "category:Communication/Instant Messaging"
+                }
+            },
+            {
+                "enabled": true,
+                "rule": {
+                    "type": "TagRegex",
+                    "regexes": ["^use-service:Gmail*$"],
+                    "new_tag": "category:Communication/Email"
+                }
+            }
+        ]
+    }
+]

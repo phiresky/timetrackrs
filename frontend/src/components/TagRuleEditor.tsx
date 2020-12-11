@@ -138,6 +138,24 @@ const TagRuleGroupEditor: React.FC<{
 
 type RuleMoppies = { [T in TagRule["type"]]: TagRule & { type: T } }
 
+function _InputWithTarget<K extends string>(p: {
+	dirty: () => void
+	target: { [k in K]: string }
+	k: K
+}) {
+	return (
+		<AutosizeInput
+			minWidth={100}
+			value={p.target[p.k]}
+			onChange={action((e: React.ChangeEvent<HTMLInputElement>) => {
+				p.target[p.k] = e.currentTarget.value
+				p.dirty()
+			})}
+		/>
+	)
+}
+const InputWithTarget = observer(_InputWithTarget)
+
 const ruleEditors: {
 	[k in keyof RuleMoppies]: React.FC<{
 		rule: RuleMoppies[k]
@@ -145,13 +163,42 @@ const ruleEditors: {
 		dirty: () => void
 	}>
 } = {
+	HasTag(p) {
+		return <div className="has-tag-rule"></div>
+	},
+	ExactTagValue(p) {
+		return (
+			<div className="exact-tag-value-rule">
+				If tag{" "}
+				<InputWithTarget target={p.rule} k="tag" dirty={p.dirty} /> has
+				value{" "}
+				<InputWithTarget target={p.rule} k="value" dirty={p.dirty} />
+				<br />
+				Then add new tag:{" "}
+				<InputWithTarget target={p.rule} k="new_tag" dirty={p.dirty} />
+			</div>
+		)
+	},
+	TagValuePrefix(p) {
+		return (
+			<div className="exact-tag-value-rule">
+				If tag{" "}
+				<InputWithTarget target={p.rule} k="tag" dirty={p.dirty} /> has
+				prefix{" "}
+				<InputWithTarget target={p.rule} k="prefix" dirty={p.dirty} />
+				<br />
+				Then add new tag:{" "}
+				<InputWithTarget target={p.rule} k="new_tag" dirty={p.dirty} />
+			</div>
+		)
+	},
 	TagRegex(p) {
 		return (
 			<div className="tag-regex-rule">
 				If{" "}
 				{p.rule.regexes.length > 1
-					? "all of the following match"
-					: "the following matches"}
+					? "all of the following regexes match"
+					: "the following regex matches"}
 				:{" "}
 				{intersperse(
 					p.rule.regexes.map((r, i) => (
@@ -190,25 +237,20 @@ const ruleEditors: {
 				)}
 				<div>
 					Then add new tag:{" "}
-					<AutosizeInput
-						minWidth={100}
-						value={p.rule.new_tag}
-						onChange={action(
-							(e: React.ChangeEvent<HTMLInputElement>) => {
-								p.rule.new_tag = e.currentTarget.value
-								p.dirty()
-							},
-						)}
+					<InputWithTarget
+						target={p.rule}
+						k="new_tag"
+						dirty={p.dirty}
 					/>
 				</div>
 			</div>
 		)
 	},
 	InternalFetcher(p) {
-		return <em>[internal fetcher {p.rule.fetcher}]</em>
+		return <em>[internal fetcher {p.rule.fetcher_id}]</em>
 	},
 	ExternalFetcher(p) {
-		return <em>[external caching fetcher {p.rule.fetcher}]</em>
+		return <em>[external caching fetcher {p.rule.fetcher_id}]</em>
 	},
 }
 for (const [k, v] of Object.entries(ruleEditors))
@@ -238,11 +280,14 @@ const RuleEditor: React.FC<{
 					{rule.enabled ? "" : " (disabled)"}
 				</label>
 			</h4>
-			{React.createElement(ruleEditors[rule.rule.type] as any, {
-				rule: rule.rule,
-				editable,
-				dirty,
-			})}
+			{React.createElement(
+				(ruleEditors[rule.rule.type] || (() => <p>UNK</p>)) as any,
+				{
+					rule: rule.rule,
+					editable,
+					dirty,
+				},
+			)}
 		</div>
 	)
 })

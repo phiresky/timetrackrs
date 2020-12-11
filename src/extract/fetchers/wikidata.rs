@@ -25,10 +25,10 @@ impl ExternalFetcher for WikidataIdFetcher {
 
     fn get_regexes(&self) -> &[Regex] {
         lazy_static::lazy_static! {
-            static ref regexes: Vec<Regex> =
+            static ref REGEXES: Vec<Regex> =
                 vec![Regex::new(r#"^browse-full-domain:(?P<domain>.*)$"#).unwrap()];
         }
-        &regexes
+        &REGEXES
     }
 
     fn get_cache_key(
@@ -60,7 +60,7 @@ impl ExternalFetcher for WikidataIdFetcher {
             format!("http://{}/", cache_key),
             format!("https://{}/", cache_key),
         ];
-        let main_domain_urls: Vec<String> = super::public_suffixes
+        let main_domain_urls: Vec<String> = super::PUBLIC_SUFFIXES
             .parse_domain(cache_key)
             .map(|e| {
                 e.root().map(|root| {
@@ -132,7 +132,7 @@ impl ExternalFetcher for WikidataIdFetcher {
         let matches = parsed["full_domain_matches"]
             .as_array()
             .filter(|e| !e.is_empty())
-            .or(parsed["main_domain_matches"].as_array())
+            .or_else(|| parsed["main_domain_matches"].as_array())
             .context("internal error?")?;
 
         for matching in matches {

@@ -93,7 +93,7 @@ fn time_range(
 }
 
 #[get("/single-event?<id>")]
-fn single_event(mut db: DbConn, id: String) -> DebugRes<Json<J>> {
+fn single_event(db: DbConn, id: String) -> DebugRes<Json<J>> {
     // println!("handling...");
     // println!("querying...");
     let a = {
@@ -104,7 +104,7 @@ fn single_event(mut db: DbConn, id: String) -> DebugRes<Json<J>> {
             .context("fetching from db")?
     };
     // println!("jsonifying...");
-    let mut dbsy = DatyBasy::new(&mut *db);
+    let mut dbsy = DatyBasy::new(&db);
 
     let r = deserialize_captured((&a.data_type, &a.data));
     let v = match r {
@@ -139,7 +139,10 @@ fn rule_groups(db: DbConn) -> DebugRes<Json<J>> {
     use trbtt::db::schema::tag_rule_groups::dsl::*;
     let groups = tag_rule_groups
         .load::<TagRuleGroup>(&*db)
-        .context("fetching from db")?;
+        .context("fetching from db")?
+        .into_iter()
+        .chain(get_default_tag_rule_groups())
+        .collect::<Vec<_>>();
 
     Ok(Json(json!({ "data": &groups })))
 }

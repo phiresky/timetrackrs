@@ -78,7 +78,7 @@ impl Importable for JournaldImportArgs {
             let line = line?;
             let cap = JOURNALD_LIST_BOOTS
                 .captures(&line)
-                .ok_or(anyhow::anyhow!("could no match output '{}'", line))?;
+                .with_context(|| format!("could no match output '{}'", line))?;
             let relative_boot_number = cap.name("relative_boot_number").unwrap().as_str();
             let boot_id = cap.name("boot_id").unwrap().as_str();
             let start = cap.name("start").unwrap().as_str();

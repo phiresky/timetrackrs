@@ -11,24 +11,24 @@ pub mod youtube;
 pub use wikidata::*;
 pub use youtube::YoutubeFetcher;
 
-pub fn get_external_fetcher(id: &str) -> Option<&'static Box<dyn ExternalFetcher>> {
+pub fn get_external_fetcher(id: &str) -> Option<&'static dyn ExternalFetcher> {
     lazy_static::lazy_static! {
-        static ref ext_fetchers: HashMap<&'static str, Box<dyn ExternalFetcher>> = vec![
+        static ref EXT_FETCHERS: HashMap<&'static str, Box<dyn ExternalFetcher>> = vec![
             Box::new(youtube::YoutubeFetcher) as Box<dyn ExternalFetcher>,
             Box::new(WikidataIdFetcher) as Box<dyn ExternalFetcher>,
             Box::new(WikidataCategoryFetcher) as Box<dyn ExternalFetcher>,
         ].into_iter().map(|e| (e.get_id(), e)).collect();
     }
-    ext_fetchers.get(id)
+    EXT_FETCHERS.get(id).map(|e| e.as_ref())
 }
 
-pub fn get_simple_fetcher(id: &str) -> Option<&'static Box<dyn SimpleFetcher>> {
+pub fn get_simple_fetcher(id: &str) -> Option<&'static dyn SimpleFetcher> {
     lazy_static::lazy_static! {
-        static ref simple_fetchers: HashMap<&'static str, Box<dyn SimpleFetcher>> = vec![
+        static ref SIMPLE_FETCHERS: HashMap<&'static str, Box<dyn SimpleFetcher>> = vec![
             Box::new(URLDomainMatcher) as Box<dyn SimpleFetcher>,
         ].into_iter().map(|e| (e.get_id(), e)).collect();
     }
-    simple_fetchers.get(id)
+    SIMPLE_FETCHERS.get(id).map(|e| e.as_ref())
 }
 
 pub trait ExternalFetcher: Sync + Send {
@@ -60,7 +60,7 @@ impl Debug for dyn SimpleFetcher {
 lazy_static! {
     // in theory the public suffix list should be kept up to date regularily
     // but eh
-    pub static ref public_suffixes: publicsuffix::List =
+    pub static ref PUBLIC_SUFFIXES: publicsuffix::List =
         publicsuffix::List::from_str(include_str!("../../../data/public_suffix_list.dat"))
             .unwrap();
 }
@@ -82,7 +82,7 @@ impl SimpleFetcher for URLDomainMatcher {
         let url = get_capture(found, "url").context("Url match invalid?")?;
         let mut tags = Tags::new();
 
-        let host = public_suffixes
+        let host = PUBLIC_SUFFIXES
             .parse_url(url)
             .map_err(|e| anyhow::anyhow!("{}", e))
             .with_context(|| format!("parsing url '{}'", url))?;

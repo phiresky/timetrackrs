@@ -56,7 +56,7 @@ fn get_property_text<Conn: ?Sized + RequestConnection>(
 
     Ok(String::from_utf8(reply.value).unwrap())
 }
-fn single<T: Copy>(v: &Vec<T>) -> T {
+fn single<T: Copy>(v: &[T]) -> T {
     if v.len() != 1 {
         panic!("not one response!!");
     }
@@ -126,7 +126,7 @@ impl<C: Connection> Capturer for X11Capturer<C> {
         )?);
         let focus = self.conn.get_input_focus()?.reply()?.focus;
         let mut windows = get_property32(&self.conn, self.root_window, NET_CLIENT_LIST)?;
-        windows.sort();
+        windows.sort_unstable();
         if self.options.only_focused_window {
             windows.retain(|i| i == &focus);
         }

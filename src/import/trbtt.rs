@@ -1,13 +1,12 @@
-
-
 use crate::prelude::*;
 use diesel::prelude::*;
 
 #[derive(StructOpt)]
 pub struct TrbttImportArgs {
+    /// path to import events.sqlite3
     filename: String,
-    after: Option<String>,
-    limit: Option<i64>,
+    /// the previously seen max sequence. skips importing older events defaults to 0
+    last_id: Option<i64>,
 }
 struct YieldAllEventsFromTrbttDatabase {
     db: SqliteConnection,
@@ -39,6 +38,7 @@ impl Iterator for YieldAllEventsFromTrbttDatabase {
                     .collect(),
             )
         } else {
+            log::info!("final import sequence id: {}", self.last_id);
             // done
             None
         }
@@ -48,6 +48,9 @@ impl Importable for TrbttImportArgs {
     fn import(&self) -> ImportResult {
         let db = crate::db::connect_file(&self.filename)?;
 
-        Ok(Box::new(YieldAllEventsFromTrbttDatabase { db, last_id: 0 }))
+        Ok(Box::new(YieldAllEventsFromTrbttDatabase {
+            db,
+            last_id: self.last_id.unwrap_or(0),
+        }))
     }
 }
