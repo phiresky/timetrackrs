@@ -32,7 +32,7 @@ impl<'a> Iterator for YieldEventsFromTrbttDatabase<'a> {
             self.chunk_size,
             result.len()
         );
-        if result.len() > 0 {
+        if !result.is_empty() {
             self.last_fetched = result[result.len() - 1].timestamp.clone();
             Some(result)
         } else {

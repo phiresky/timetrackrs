@@ -23,8 +23,8 @@ order by time desc
 use crate::prelude::*;
 use derive_more::Display;
 use num_enum::TryFromPrimitive;
-use rusqlite::params;
-use std::{collections::HashMap, path::PathBuf};
+
+use std::{collections::HashMap};
 
 #[derive(Debug, Display, Serialize, Deserialize, TypeScriptify, Clone)]
 pub enum SoftwareDeviceType {
@@ -103,7 +103,7 @@ impl ExtractInfo for AppUsageEntry {
             tags.insert(format!("device-type:{}", self.device_type));
             tags.insert(format!("software-id:android:{}", app.pkg_name));
             tags.insert(format!("software-name:{}", app.app_name));
-            tags.insert(format!("device-os-type:Android"));
+            tags.insert("device-os-type:Android".to_string());
             Some(tags)
         } else {
             None
@@ -222,7 +222,7 @@ impl Importable for AppUsageImportArgs {
                 .context("serialization")?,
             )
         }
-        if outs.len() > 0 {
+        if !outs.is_empty() {
             log::info!(
                 "have {} actions from {:?} to {:?}",
                 outs.len(),
@@ -249,7 +249,7 @@ impl Importable for AppUsageImportArgs {
                 .try_into()?,
             );
         }*/
-        println!("");
+        println!();
         println!("got {} acts", outs.len());
         Ok(Box::new(std::iter::once(outs)))
     }

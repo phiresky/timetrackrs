@@ -42,7 +42,7 @@ pub fn expand_str(caps: &[Captures], mut replacement: &str, dst: &mut String) {
             }
         }
         if replacement.as_bytes().get(1).map_or(false, |&b| b == b'$') {
-            dst.push_str("$");
+            dst.push('$');
             replacement = &replacement[2..];
             continue;
         }
@@ -50,7 +50,7 @@ pub fn expand_str(caps: &[Captures], mut replacement: &str, dst: &mut String) {
         let cap_ref = match find_cap_ref(replacement.as_bytes()) {
             Some(cap_ref) => cap_ref,
             None => {
-                dst.push_str("$");
+                dst.push('$');
                 replacement = &replacement[1..];
                 continue;
             }
@@ -99,7 +99,7 @@ impl From<usize> for Ref<'static> {
 /// If no such valid reference could be found, None is returned.
 fn find_cap_ref(replacement: &[u8]) -> Option<CaptureRef> {
     let mut i = 0;
-    let rep: &[u8] = replacement.as_ref();
+    let rep: &[u8] = replacement;
     if rep.len() <= 1 || rep[0] != b'$' {
         return None;
     }

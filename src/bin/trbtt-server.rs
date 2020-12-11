@@ -20,7 +20,7 @@ struct DbConn(diesel::SqliteConnection);
 type DebugRes<T> = Result<T, rocket::response::Debug<anyhow::Error>>;
 #[get("/time-range?<after>&<before>&<limit>")]
 fn time_range(
-    mut db: DbConn,
+    db: DbConn,
     before: Option<String>,
     after: Option<String>,
     limit: Option<usize>,
@@ -55,7 +55,7 @@ fn time_range(
         .into_iter()
         .flatten()
         .take_while(|a| match (before, after) {
-            (Some(before), Some(after)) => {
+            (Some(_before), Some(after)) => {
                 // both limits exist, we are fetching descending,
                 a.timestamp >= Timestamptz::new(after)
             }

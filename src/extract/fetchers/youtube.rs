@@ -1,5 +1,3 @@
-use std::{collections::BTreeSet, fmt::Debug};
-
 use super::{tags::Tags, ExternalFetcher};
 use crate::prelude::*;
 use lazy_static::lazy_static;
@@ -13,17 +11,17 @@ impl ExternalFetcher for YoutubeFetcher {
     }
     fn get_regexes(&self) -> &[Regex] {
         lazy_static! {
-            static ref regexes: Vec<Regex> =
+            static ref REGEXES: Vec<Regex> =
                 vec![Regex::new(r#"^browse-main-domain:youtube.com$"#).unwrap()];
         }
 
-        &regexes
+        &REGEXES
     }
 
-    fn get_cache_key(&self, found: &[regex::Captures], tags: &Tags) -> Option<String> {
+    fn get_cache_key(&self, _found: &[regex::Captures], tags: &Tags) -> Option<String> {
         // https://github.com/ytdl-org/youtube-dl/blob/1fb034d029c8b7feafe45f64e6a0808663ad315e/youtube_dl/extractor/youtube.py
         lazy_static! {
-            static ref watch_regex: Regex = Regex::new(
+            static ref WATCH_REGEX: Regex = Regex::new(
                 r#"(?x)^
                      (
                          (?:https?://|//)                                    # http(s):// or protocol-independent URL
@@ -88,7 +86,7 @@ impl ExternalFetcher for YoutubeFetcher {
         for tag in tags {
             if tag.starts_with("browse-url:") {
                 let url = &tag["browse-url:".len()..];
-                if let Some(matches) = watch_regex.captures(url) {
+                if let Some(matches) = WATCH_REGEX.captures(url) {
                     let id = matches.name("id").unwrap().as_str();
                     log::trace!("url={}, id={}", url, id);
                     return Some(id.to_string());
@@ -107,7 +105,7 @@ impl ExternalFetcher for YoutubeFetcher {
         Ok(serde_json::to_string(&data).context("serializing ytdl output")?)
     }
 
-    fn process_data(&self, tags: &Tags, cache_key: &str, data: &str) -> anyhow::Result<Tags> {
+    fn process_data(&self, _tags: &Tags, _cache_key: &str, data: &str) -> anyhow::Result<Tags> {
         use youtube_dl::*;
         let d: YoutubeDlOutput = serde_json::from_str(data).context("serde")?;
         let mut tags = Tags::new();

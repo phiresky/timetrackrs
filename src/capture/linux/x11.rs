@@ -78,7 +78,7 @@ impl<C: Connection> X11Capturer<C> {
         let conn = &self.conn;
         let z = self
             .atom_name_map
-            .entry(e.into())
+            .entry(e)
             .or_insert_with(|| -> anyhow::Result<String> {
                 Ok(String::from_utf8(conn.get_atom_name(e)?.reply()?.name)?)
             });
@@ -249,7 +249,7 @@ impl<C: Connection> Capturer for X11Capturer<C> {
         // see XScreenSaverQueryInfo at https://linux.die.net/man/3/xscreensaverunsetattributes
 
         let data = X11EventData {
-            desktop_names: desktop_names,
+            desktop_names,
             os_info: self.os_info.clone(),
             current_desktop_id: current_desktop as usize,
             focused_window: focus,

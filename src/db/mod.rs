@@ -9,7 +9,6 @@ use diesel_migrations::embed_migrations;
 use dotenv::dotenv;
 use std::{
     env,
-    path::{Path, PathBuf},
 };
 embed_migrations!();
 

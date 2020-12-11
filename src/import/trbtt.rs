@@ -1,4 +1,4 @@
-use crate::util::iso_string_to_date;
+
 
 use crate::prelude::*;
 use diesel::prelude::*;
@@ -23,9 +23,9 @@ impl Iterator for YieldAllEventsFromTrbttDatabase {
             .limit(10000)
             .load::<DbEvent>(&self.db)
             .expect("db loading error not handled");
-        if result.len() > 0 {
+        if !result.is_empty() {
             self.last_id = result[result.len() - 1].insertion_sequence;
-            return Some(
+            Some(
                 result
                     .into_iter()
                     .map(|e| NewDbEvent {
@@ -37,10 +37,10 @@ impl Iterator for YieldAllEventsFromTrbttDatabase {
                         sampler_sequence_id: e.sampler_sequence_id,
                     })
                     .collect(),
-            );
+            )
         } else {
             // done
-            return None;
+            None
         }
     }
 }

@@ -219,7 +219,7 @@ impl TagRule {
                 let caps = match_multi_regex(&regexes, &tags);
                 log::trace!("fetcher {} matched regexes to {:?}", fetcher.get_id(), caps);
                 match caps {
-                    None => return Ok(None),
+                    None => Ok(None),
                     Some((caps, reason_tags)) => {
                         let id = fetcher.get_id();
                         if let Some(inner_cache_key) = fetcher.get_cache_key(&caps, tags) {
@@ -259,7 +259,7 @@ impl TagRule {
                 let regexes = fetcher.get_regexes();
                 let caps = match_multi_regex(&regexes, &tags);
                 match caps {
-                    None => return Ok(None),
+                    None => Ok(None),
                     Some((caps, reason_tags)) => Ok(Some((
                         fetcher.process(&caps, &tags).context("processing data")?,
                         reason_tags,
@@ -373,7 +373,7 @@ pub fn get_tags_with_reasons(
     while !settled && iterations < 50 {
         for rule in rules {
             match rule
-                .apply(db, &tags.iter().map(|(tag, why)| tag.to_string()).collect())
+                .apply(db, &tags.iter().map(|(tag, _why)| tag.to_string()).collect())
                 .with_context(|| format!("applying rule {:?}", rule))
             {
                 Err(e) => log::warn!("{:?}", e),

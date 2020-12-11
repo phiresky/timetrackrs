@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, fmt::Debug};
+use std::fmt::Debug;
 
 use super::tags::Tags;
 use crate::{expand::get_capture, prelude::*};
@@ -72,13 +72,13 @@ impl SimpleFetcher for URLDomainMatcher {
     }
     fn get_regexes(&self) -> &[Regex] {
         lazy_static! {
-            static ref regexes: Vec<Regex> =
+            static ref REGEXES: Vec<Regex> =
                 vec![Regex::new(r#"^browse-url:(?P<url>.*)$"#).unwrap()];
         }
 
-        &regexes
+        &REGEXES
     }
-    fn process(&self, found: &[regex::Captures], tags: &Tags) -> anyhow::Result<Tags> {
+    fn process(&self, found: &[regex::Captures], _tags: &Tags) -> anyhow::Result<Tags> {
         let url = get_capture(found, "url").context("Url match invalid?")?;
         let mut tags = Tags::new();
 

@@ -21,7 +21,7 @@ impl Sampler {
             Sampler::RandomSampler { avg_time } => {
                 let distribution = rand::distributions::Uniform::new(0f64, (avg_time) * 2.0);
                 let mut rng = rand::thread_rng();
-                return rng.sample(distribution);
+                rng.sample(distribution)
             }
             Sampler::Explicit { duration } => *duration,
         }

@@ -14,10 +14,10 @@ fn match_cmdline_to_filepath(cwd: &str, cmdline: &[String]) -> anyhow::Result<St
     if cmdline.len() == 2 {
         // TODO: windows??
         // on windows all paths should be converted to sane unix paths (e.g. C:\foo -> /c:/foo)
-        if cmdline[1].starts_with("/") {
+        if cmdline[1].starts_with('/') {
             return Ok(cmdline[1].clone());
         }
-        if !cmdline[1].starts_with("-") {
+        if !cmdline[1].starts_with('-') {
             // path joining shouldn't be os-specific
             return Ok(std::path::PathBuf::from(cwd)
                 .join(&cmdline[1])
@@ -90,7 +90,7 @@ pub fn match_software(
                 for (k, v) in &o {
                     let txtv = match v {
                         // no "" around string
-                        J::String(s) => format!("{}", s),
+                        J::String(s) => s.to_string(),
                         any => format!("{}", any),
                     };
                     tags.insert(format!("title-match-{}-{}:{}", category, k, txtv));

@@ -1,4 +1,4 @@
-#[warn(clippy::print_stdout)]
+#![warn(clippy::print_stdout)]
 #[macro_use]
 extern crate diesel;
 #[macro_use]

@@ -115,12 +115,12 @@ impl X11WindowData {
 }
 // "2\u{0}4\u{0}5\u{0}6\u{0}8\u{0}9\u{0}1\u{0}" to array of strings
 pub fn split_zero(s: &str) -> Vec<String> {
-    let mut vec: Vec<String> = s.split("\0").map(|e| String::from(e)).collect();
+    let mut vec: Vec<String> = s.split('\0').map(String::from).collect();
     let last = vec.pop().unwrap();
-    if last.len() != 0 {
+    if !last.is_empty() {
         panic!("not zero terminated");
     }
-    return vec;
+    vec
 }
 
 use crate::extract::ExtractInfo;

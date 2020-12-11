@@ -34,7 +34,7 @@ impl ExternalFetcher for WikidataIdFetcher {
     fn get_cache_key(
         &self,
         found: &[regex::Captures],
-        tags: &crate::prelude::Tags,
+        _tags: &crate::prelude::Tags,
     ) -> Option<String> {
         get_capture(found, "domain").map(|d| d.to_string())
     }
@@ -76,7 +76,7 @@ impl ExternalFetcher for WikidataIdFetcher {
             })
             .ok()
             .flatten()
-            .unwrap_or(vec![]);
+            .unwrap_or_default();
 
         let urlinner: String = exact_domain_urls
             .iter()
@@ -106,7 +106,7 @@ impl ExternalFetcher for WikidataIdFetcher {
         ) = mutres["results"]["bindings"]
             .as_array()
             .context("unparseable response")?
-            .into_iter()
+            .iter()
             .partition(|e| {
                 e["website_url"]["value"]
                     .as_str()
@@ -121,8 +121,8 @@ impl ExternalFetcher for WikidataIdFetcher {
 
     fn process_data(
         &self,
-        tags: &crate::prelude::Tags,
-        cache_key: &str,
+        _tags: &crate::prelude::Tags,
+        _cache_key: &str,
         data: &str,
     ) -> anyhow::Result<crate::prelude::Tags> {
         let parsed: serde_json::Value = serde_json::from_str(data)?;
@@ -131,7 +131,7 @@ impl ExternalFetcher for WikidataIdFetcher {
 
         let matches = parsed["full_domain_matches"]
             .as_array()
-            .filter(|e| e.len() > 0)
+            .filter(|e| !e.is_empty())
             .or(parsed["main_domain_matches"].as_array())
             .context("internal error?")?;
 
@@ -159,16 +159,16 @@ impl ExternalFetcher for WikidataCategoryFetcher {
 
     fn get_regexes(&self) -> &[Regex] {
         lazy_static::lazy_static! {
-            static ref regexes: Vec<Regex> =
+            static ref REGEXES: Vec<Regex> =
                 vec![Regex::new(r#"^wikidata-id:(?P<id>.*)$"#).unwrap()];
         }
-        &regexes
+        &REGEXES
     }
 
     fn get_cache_key(
         &self,
         found: &[regex::Captures],
-        tags: &crate::prelude::Tags,
+        _tags: &crate::prelude::Tags,
     ) -> Option<String> {
         get_capture(found, "id").map(|d| d.to_string())
     }
@@ -199,8 +199,8 @@ impl ExternalFetcher for WikidataCategoryFetcher {
 
     fn process_data(
         &self,
-        tags: &crate::prelude::Tags,
-        cache_key: &str,
+        _tags: &crate::prelude::Tags,
+        _cache_key: &str,
         data: &str,
     ) -> anyhow::Result<crate::prelude::Tags> {
         // in theory we should use the ids. but eh that's sooo ugly. wikidata should add

@@ -1,13 +1,13 @@
 use std::io::prelude::*;
 use track_pc_usage_rs as trbtt;
 use trbtt::capture::*;
-use trbtt::extract;
+
 use trbtt::prelude::*;
 use trbtt::sampler::Sampler;
 use typescript_definitions::TypeScriptifyTrait;
 
 #[cfg(debug_assertions)]
-const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[
+const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
     // DbEvent::type_script_ify,
     Sampler::type_script_ify,
     EventData::type_script_ify,
@@ -41,7 +41,7 @@ fn main() -> anyhow::Result<()> {
     writeln!(ofile, "type ExternalFetcher = string;")?;
     writeln!(ofile, "type InternalFetcher = string;")?;
     if cfg!(any(debug_assertions, feature = "export-typescript")) {
-        if FS.len() == 0 {
+        if FS.is_empty() {
             println!("Not in debug mode??");
         }
         for f in FS {

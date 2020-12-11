@@ -41,7 +41,7 @@ impl Default for OsInfo {
     }
 }
 impl OsInfo {
-    pub fn to_partial_general_software(&self, tags: &mut Tags) -> () {
+    pub fn to_partial_general_software(&self, tags: &mut Tags) {
         tags.insert(format!("device-os-type:{}", self.os_type));
         tags.insert(format!("device-os-version:{}", self.version));
         tags.insert(format!("device-hostname:{}", self.hostname));
@@ -75,12 +75,12 @@ pub fn get_os_info() -> OsInfo {
             .map(|e| e.to_string_lossy().to_string())
             .unwrap_or("".to_string()),
         machine_id,
-        batteries: batteries,
+        batteries,
     }
 }
 
 pub fn init_logging() {
-    if let Err(_) = std::env::var("RUST_LOG") {
+    if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info");
     }
     pretty_env_logger::init();
