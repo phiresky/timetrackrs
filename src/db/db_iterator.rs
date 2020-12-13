@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::prelude::*;
 use diesel::prelude::*;
 
@@ -21,10 +23,12 @@ impl<'a> Iterator for YieldEventsFromTrbttDatabase<'a> {
                 .filter(timestamp.lt(&self.last_fetched))
                 .order(timestamp.desc());
         }
+        let now = Instant::now();
         let result: Vec<DbEvent> = query
             .limit(self.chunk_size)
             .load::<DbEvent>(self.db)
             .expect("db loading error not handled");
+        log::debug!("fetching from db took {:?}s", now.elapsed());
         log::debug!(
             "iterator fetching events ascending={}, start={:?}, limit={}, found={}",
             self.ascending,

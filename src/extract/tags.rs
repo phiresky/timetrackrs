@@ -27,20 +27,15 @@ fn validate_tag_rules<'a>(rules: impl IntoIterator<Item = &'a TagRule>) {
 }
 pub fn get_default_tag_rule_groups() -> Vec<TagRuleGroup> {
     lazy_static! {
-        static ref RULES: Vec<TagRuleGroupV1> =
+        static ref RULES: Vec<TagRuleGroup> =
             serde_json::from_str(include_str!("../../data/rules/default.json"))
                 .expect("could not parse internal rules");
     }
-    validate_tag_rules(RULES.iter().flat_map(|d| &d.rules).map(|e| &e.rule));
-    RULES
-        .iter()
-        .map(|data| TagRuleGroup {
-            global_id: "<internal>".to_string(),
-            data: TagRuleGroupData::V1 {
-                data: (*data).clone(),
-            },
-        })
-        .collect()
+    let iter = RULES.iter().flat_map(|r| match &r.data {
+        TagRuleGroupData::V1 { data } => data.rules.iter().map(|r| &r.rule),
+    });
+    validate_tag_rules(iter);
+    RULES.clone()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, TypeScriptify)]

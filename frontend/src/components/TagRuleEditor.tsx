@@ -10,6 +10,7 @@ import { useState } from "react"
 import { RegexEditor } from "./RegexEditor"
 import { O_DIRECTORY } from "constants"
 import AutosizeInput from "./AutosizeInput"
+import { Choices, Select } from "./Select"
 
 export function TagRuleEditorPage(): React.ReactElement {
 	return (
@@ -78,6 +79,13 @@ const TagRuleEditor: React.FC = observer(() => {
 	)
 })
 
+const tagRulePrototypes: () => (TagRule | { type: "Add Rule" })[] = () => [
+	{ type: "Add Rule" },
+	{ type: "HasTag", tag: "...", new_tag: "..." },
+	{ type: "ExactTagValue", tag: "...", value: "...", new_tag: "..." },
+	{ type: "TagValuePrefix", tag: "...", prefix: "...", new_tag: "..." },
+	{ type: "TagRegex", regexes: ["^...$"], new_tag: "..." },
+]
 const TagRuleGroupEditor: React.FC<{
 	group: TagRuleGroup
 	save: () => Promise<void>
@@ -116,20 +124,15 @@ const TagRuleGroupEditor: React.FC<{
 					/>
 				))}
 				{g.editable && (
-					<button
-						onClick={(_) =>
-							g.rules.push({
-								enabled: true,
-								rule: {
-									type: "TagRegex",
-									regexes: ["^...$"],
-									new_tag: "",
-								},
-							})
+					<Select
+						getValue={(v) => v.type}
+						getName={(v) => v.type}
+						target={Choices(tagRulePrototypes())}
+						onChange={(v) =>
+							v.type !== "Add Rule" &&
+							g.rules.push({ enabled: true, rule: { ...v } })
 						}
-					>
-						Add Rule
-					</button>
+					/>
 				)}
 			</div>
 		</details>
@@ -141,11 +144,14 @@ type RuleMoppies = { [T in TagRule["type"]]: TagRule & { type: T } }
 function _InputWithTarget<K extends string>(p: {
 	dirty: () => void
 	target: { [k in K]: string }
+	disabled: boolean
 	k: K
 }) {
 	return (
 		<AutosizeInput
-			minWidth={100}
+			className="input-border"
+			minWidth={50}
+			disabled={p.disabled}
 			value={p.target[p.k]}
 			onChange={action((e: React.ChangeEvent<HTMLInputElement>) => {
 				p.target[p.k] = e.currentTarget.value
@@ -164,31 +170,80 @@ const ruleEditors: {
 	}>
 } = {
 	HasTag(p) {
-		return <div className="has-tag-rule"></div>
+		return (
+			<div className="has-tag-rule">
+				If tag{" "}
+				<InputWithTarget
+					disabled={!p.editable}
+					target={p.rule}
+					k="tag"
+					dirty={p.dirty}
+				/>{" "}
+				exists
+				<br />
+				Then add new tag:{" "}
+				<InputWithTarget
+					disabled={!p.editable}
+					target={p.rule}
+					k="new_tag"
+					dirty={p.dirty}
+				/>
+			</div>
+		)
 	},
 	ExactTagValue(p) {
 		return (
 			<div className="exact-tag-value-rule">
 				If tag{" "}
-				<InputWithTarget target={p.rule} k="tag" dirty={p.dirty} /> has
-				value{" "}
-				<InputWithTarget target={p.rule} k="value" dirty={p.dirty} />
+				<InputWithTarget
+					disabled={!p.editable}
+					target={p.rule}
+					k="tag"
+					dirty={p.dirty}
+				/>{" "}
+				has value{" "}
+				<InputWithTarget
+					disabled={!p.editable}
+					target={p.rule}
+					k="value"
+					dirty={p.dirty}
+				/>
 				<br />
 				Then add new tag:{" "}
-				<InputWithTarget target={p.rule} k="new_tag" dirty={p.dirty} />
+				<InputWithTarget
+					disabled={!p.editable}
+					target={p.rule}
+					k="new_tag"
+					dirty={p.dirty}
+				/>
 			</div>
 		)
 	},
 	TagValuePrefix(p) {
 		return (
-			<div className="exact-tag-value-rule">
+			<div className="tag-value-prefix-rule">
 				If tag{" "}
-				<InputWithTarget target={p.rule} k="tag" dirty={p.dirty} /> has
-				prefix{" "}
-				<InputWithTarget target={p.rule} k="prefix" dirty={p.dirty} />
+				<InputWithTarget
+					disabled={!p.editable}
+					target={p.rule}
+					k="tag"
+					dirty={p.dirty}
+				/>{" "}
+				has prefix{" "}
+				<InputWithTarget
+					disabled={!p.editable}
+					target={p.rule}
+					k="prefix"
+					dirty={p.dirty}
+				/>
 				<br />
 				Then add new tag:{" "}
-				<InputWithTarget target={p.rule} k="new_tag" dirty={p.dirty} />
+				<InputWithTarget
+					disabled={!p.editable}
+					target={p.rule}
+					k="new_tag"
+					dirty={p.dirty}
+				/>
 			</div>
 		)
 	},
@@ -214,8 +269,8 @@ const ruleEditors: {
 							}
 						/>
 					)),
-					() => (
-						<> and </>
+					(i) => (
+						<React.Fragment key={`a${i}`}> and </React.Fragment>
 					),
 				)}{" "}
 				<button
@@ -238,6 +293,7 @@ const ruleEditors: {
 				<div>
 					Then add new tag:{" "}
 					<InputWithTarget
+						disabled={!p.editable}
 						target={p.rule}
 						k="new_tag"
 						dirty={p.dirty}
@@ -253,8 +309,11 @@ const ruleEditors: {
 		return <em>[external caching fetcher {p.rule.fetcher_id}]</em>
 	},
 }
-for (const [k, v] of Object.entries(ruleEditors))
-	ruleEditors[k] = observer(v) as any
+for (const [k, v] of Object.entries(ruleEditors) as [
+	keyof typeof ruleEditors,
+	typeof ruleEditors[keyof typeof ruleEditors],
+][])
+	ruleEditors[k] = observer(v) as React.FC<any>
 
 const RuleEditor: React.FC<{
 	index: number

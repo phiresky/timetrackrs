@@ -172,6 +172,7 @@ export function TimelinePage(): ReactElement {
 const detailBy = [
 	{ key: "category", name: "Category" },
 	{ key: "software-executable-basename", name: "Program" },
+	{ key: "project", name: "Project" },
 ]
 @observer
 export class Timeline extends React.Component {
@@ -268,7 +269,7 @@ export class Timeline extends React.Component {
 						<Select
 							target={this.detailBy}
 							getValue={(e) => e.key || "OO"}
-							getName={(e) => e.key || "OO"}
+							getName={(e) => e.name || "OO"}
 						/>
 					</div>
 				</div>

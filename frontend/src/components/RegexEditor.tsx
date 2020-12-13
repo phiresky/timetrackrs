@@ -17,7 +17,7 @@ export const RegexEditor: React.FC<{
 	}
 	const inner = value.slice(1, -1)
 	return (
-		<span className="regex-editor">
+		<span className="regex-editor input-border">
 			^
 			<AutosizeInput
 				minWidth={30}

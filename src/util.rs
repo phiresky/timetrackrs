@@ -26,9 +26,10 @@ pub struct OsInfo {
     pub version: String,
     pub batteries: Option<i32>, // useful for determining pc vs laptop
     pub hostname: String,
+    pub username: Option<String>,
     pub machine_id: Option<String>,
 }
-// remove defaults after rewrite
+// TODO: remove defaults after rewrite
 impl Default for OsInfo {
     fn default() -> OsInfo {
         OsInfo {
@@ -37,6 +38,7 @@ impl Default for OsInfo {
             batteries: Some(0),
             hostname: "phirearch".to_string(),
             machine_id: None,
+            username: Some("".to_string()),
         }
     }
 }
@@ -45,6 +47,9 @@ impl OsInfo {
         tags.insert(format!("device-os-type:{}", self.os_type));
         tags.insert(format!("device-os-version:{}", self.version));
         tags.insert(format!("device-hostname:{}", self.hostname));
+        self.username
+            .as_ref()
+            .map(|m| tags.insert(format!("device-username:{}", m)));
         self.machine_id
             .as_ref()
             .map(|m| tags.insert(format!("device-machine-id:{}", m)));
@@ -76,6 +81,7 @@ pub fn get_os_info() -> OsInfo {
             .unwrap_or_else(|_| "".to_string()),
         machine_id,
         batteries,
+        username: Some(whoami::username()),
     }
 }
 

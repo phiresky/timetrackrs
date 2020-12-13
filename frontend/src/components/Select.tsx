@@ -12,16 +12,18 @@ function _Select<T>(props: {
 	target: Choices<T>
 	getValue: (t: T) => string
 	getName: (t: T) => string
+	onChange: (t: T) => void
 }): React.ReactElement {
-	const { target, getValue, getName } = props
+	const { target, getValue, getName, onChange } = props
 	return (
 		<select
 			value={getValue(target.value)}
-			onChange={(e) =>
-				(target.value = target.choices.find(
+			onChange={(e) => {
+				target.value = target.choices.find(
 					(c) => getValue(c) === e.currentTarget.value,
-				)!)
-			}
+				)!
+				onChange(target.value)
+			}}
 		>
 			{target.choices.map((choice) => (
 				<option value={getValue(choice)} key={getValue(choice)}>

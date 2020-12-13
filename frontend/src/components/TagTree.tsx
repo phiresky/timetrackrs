@@ -39,7 +39,7 @@ function addToTree<T>(t: Tree<T>, path: string[], leaf: T) {
 
 function shortenTree<T>(t: Tree<T>) {
 	for (const [name, tree] of t.children) {
-		if (tree.children.size === 1) {
+		if (tree.children.size === 1 && tree.leaves.length === 0) {
 			const [innerName, innerChildren] = [...tree.children][0]
 			t.children.delete(name)
 			t.children.set(name + "/" + innerName, innerChildren)

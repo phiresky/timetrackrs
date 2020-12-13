@@ -4198,6 +4198,7 @@ dependencies = [
  "typescript-definitions",
  "url 2.2.0",
  "uuid",
+ "whoami",
  "winapi 0.3.9",
  "x11rb",
  "xcb",
@@ -4630,6 +4631,16 @@ dependencies = [
  "block-buffer 0.9.0",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
+]
+
+[[package]]
+name = "whoami"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0b81b8c1996f45197d8aad89b388f0a419afb4c5c876a23006d2d1435cb82d8"
+dependencies = [
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

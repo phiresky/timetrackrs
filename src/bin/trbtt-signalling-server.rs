@@ -6,7 +6,7 @@ use std::{
 use async_channel as chan;
 use futures_util::{future, pin_mut, StreamExt};
 use hyper::StatusCode;
-use serde::{Deserialize, Serialize};
+use track_pc_usage_rs::sync::PeerMsg;
 use tungstenite::{
     handshake::server::{Request, Response},
     Message,
@@ -15,20 +15,6 @@ use uuid::Uuid;
 
 use tokio::net::{TcpListener, TcpStream};
 use tokio::spawn;
-
-use datachannel::{IceCandidate, SessionDescription};
-
-#[derive(Debug, Serialize, Deserialize)]
-struct PeerMsg {
-    dest_id: Uuid,
-    kind: MsgKind,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-enum MsgKind {
-    Description(SessionDescription),
-    Candidate(IceCandidate),
-}
 
 // Server part
 

@@ -75,7 +75,7 @@ pub struct NewDbEvent {
 }
 
 #[derive(
-    Queryable, Identifiable, Insertable, Serialize, Deserialize, TypeScriptify, AsChangeset,
+    Queryable, Identifiable, Insertable, Serialize, Deserialize, TypeScriptify, AsChangeset, Clone,
 )]
 #[primary_key(global_id)]
 #[table_name = "tag_rule_groups"]
@@ -84,7 +84,7 @@ pub struct TagRuleGroup {
     pub data: TagRuleGroupData,
 }
 
-#[derive(AsExpression, FromSqlRow, Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(AsExpression, FromSqlRow, Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 #[sql_type = "Text"]
 #[serde(tag = "version")]
 pub enum TagRuleGroupData {
@@ -99,6 +99,11 @@ impl TagRuleGroupData {
                     .into_iter()
                     .filter_map(|r| if r.enabled { Some(r.rule) } else { None })
             }
+        }
+    }
+    pub fn into_iter_all_rules(self) -> impl Iterator<Item = TagRule> {
+        match self {
+            TagRuleGroupData::V1 { data } => data.rules.into_iter().map(|r| r.rule),
         }
     }
 }

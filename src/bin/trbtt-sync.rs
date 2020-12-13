@@ -5,6 +5,7 @@ use std::time::Duration;
 use async_channel as chan;
 use futures_util::{future, pin_mut, select, FutureExt, StreamExt};
 use serde::{Deserialize, Serialize};
+use track_pc_usage_rs::sync::{MsgKind, PeerMsg};
 use tungstenite::Message;
 use uuid::Uuid;
 
@@ -17,21 +18,7 @@ use datachannel::{
     Reliability, RtcDataChannel, RtcPeerConnection, SessionDescription,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
-struct PeerMsg {
-    dest_id: Uuid,
-    kind: MsgKind,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-enum MsgKind {
-    Description(SessionDescription),
-    Candidate(IceCandidate),
-}
-
 // Server part
-
-type PeerMap = Arc<Mutex<HashMap<Uuid, chan::Sender<Message>>>>;
 
 #[derive(Clone)]
 struct DataPipe {
@@ -126,7 +113,7 @@ async fn run_client(peer_id: Uuid, input: chan::Receiver<Uuid>, output: chan::Se
     let conf = Config::new(ice_servers);
 
     let url = format!("ws://116.203.43.199:48749/{:?}", peer_id);
-    let url = format!("ws://127.0.0.1:48749/{:?}", peer_id);
+    // let url = format!("ws://127.0.0.1:48749/{:?}", peer_id);
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
 
     let (outgoing, mut incoming) = ws_stream.split();

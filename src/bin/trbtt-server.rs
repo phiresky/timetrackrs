@@ -1,5 +1,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
+use std::time::Instant;
+
 use diesel::prelude::*;
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
@@ -51,6 +53,10 @@ fn time_range(
 
     let mut dbsy = DatyBasy::new(&db);
     // println!("jsonifying...");
+    let now = Instant::now();
+
+    let mut total_seen = 0;
+
     let v = mdata
         .into_iter()
         .flatten()
@@ -62,6 +68,7 @@ fn time_range(
             _ => true,
         })
         .filter_map(|a| {
+            total_seen += 1;
             let r = deserialize_captured((&a.data_type, &a.data));
             match r {
                 Ok(r) => {
@@ -88,7 +95,12 @@ fn time_range(
         })
         .take(limit.unwrap_or(10000))
         .collect::<Vec<_>>();
-    log::debug!("after filter: {}", v.len());
+    log::debug!(
+        "after filter: {}/{}. extracting tags took {:?}",
+        v.len(),
+        total_seen,
+        now.elapsed()
+    );
     Ok(Json(json!({ "data": &v })))
 }
 
