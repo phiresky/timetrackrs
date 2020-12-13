@@ -7,13 +7,13 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 pub struct JournaldImportArgs {}
 
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct JournaldEntry {
     os_info: util::OsInfo,
     event: JournaldEvent,
 }
 
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 enum JournaldEvent {
     Powerup,
     Shutdown,
@@ -23,7 +23,7 @@ enum JournaldEvent {
 impl ExtractInfo for JournaldEntry {
     fn extract_info(&self) -> Option<Tags> {
         let mut tags = Tags::new();
-        tags.insert("todo:journald info".to_string());
+        tags.add("todo", "journald info");
         Some(tags)
         /*
         let mut general = self.os_info.to_partial_general_software();

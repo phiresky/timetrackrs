@@ -17,7 +17,7 @@ import * as api from "../api"
 
 @observer
 export class ChooserWithChild extends React.Component<{
-	child: React.ComponentType<{ events: api.Activity[] }>
+	child: React.ComponentType<{ events: SingleExtractedEvent[] }>
 	containerClass?: string
 }> {
 	@observable
@@ -28,7 +28,7 @@ export class ChooserWithChild extends React.Component<{
 		autorun(() => console.log("from", this.timeRange.from))
 	}
 
-	@computed get data(): IPromiseBasedObservable<api.Activity[]> {
+	@computed get data(): IPromiseBasedObservable<SingleExtractedEvent[]> {
 		const params = {
 			after: this.timeRange.from,
 			before: this.timeRange.to,

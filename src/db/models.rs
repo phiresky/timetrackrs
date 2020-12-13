@@ -17,7 +17,7 @@ pub struct DbEvent {
     pub data: String,
 }
 
-#[derive(AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Serialize)]
+#[derive(AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Serialize, Deserialize)]
 #[sql_type = "Text"]
 #[serde(untagged)]
 pub enum Timestamptz {
@@ -75,7 +75,15 @@ pub struct NewDbEvent {
 }
 
 #[derive(
-    Queryable, Identifiable, Insertable, Serialize, Deserialize, TypeScriptify, AsChangeset, Clone,
+    Debug,
+    Queryable,
+    Identifiable,
+    Insertable,
+    Serialize,
+    Deserialize,
+    TypeScriptify,
+    AsChangeset,
+    Clone,
 )]
 #[primary_key(global_id)]
 #[table_name = "tag_rule_groups"]

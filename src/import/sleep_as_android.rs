@@ -1,5 +1,3 @@
-
-
 use crate::prelude::*;
 
 #[derive(StructOpt)]
@@ -7,7 +5,7 @@ pub struct SleepAsAndroidImportArgs {
     filename: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct SleepAsAndroidEntry {
     header_row: Vec<String>, // headers (static headers, then times->movement amount, then events)
     data_row: Vec<String>,
@@ -78,7 +76,9 @@ impl Importable for SleepAsAndroidImportArgs {
             let record = result?;
             if record.get(0) == Some("Id") {
                 offset_from_id_row = 0;
-                if let Some(e) = parse_saa_entry(&mut header_row, &mut data_row, &mut noise_row)? { entries.push(e) }
+                if let Some(e) = parse_saa_entry(&mut header_row, &mut data_row, &mut noise_row)? {
+                    entries.push(e)
+                }
             }
             match offset_from_id_row {
                 0 => header_row = Some(record.iter().map(|e| e.to_string()).collect()),
@@ -90,7 +90,9 @@ impl Importable for SleepAsAndroidImportArgs {
         }
 
         // last row
-        if let Some(e) = parse_saa_entry(&mut header_row, &mut data_row, &mut noise_row)? { entries.push(e) }
+        if let Some(e) = parse_saa_entry(&mut header_row, &mut data_row, &mut noise_row)? {
+            entries.push(e)
+        }
 
         Ok(Box::new(std::iter::once(entries)))
     }
@@ -99,7 +101,7 @@ impl Importable for SleepAsAndroidImportArgs {
 impl ExtractInfo for SleepAsAndroidEntry {
     fn extract_info(&self) -> Option<Tags> {
         let mut tags = Tags::new();
-        tags.insert("physical-activity:sleeping".to_string());
+        tags.add("physical-activity", "sleeping");
         Some(tags)
     }
 }

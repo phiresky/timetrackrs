@@ -24,7 +24,7 @@ use crate::prelude::*;
 use derive_more::Display;
 use num_enum::TryFromPrimitive;
 
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 #[derive(Debug, Display, Serialize, Deserialize, TypeScriptify, Clone)]
 pub enum SoftwareDeviceType {
@@ -72,7 +72,7 @@ impl std::str::FromStr for SoftwareDeviceType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct AppUsageEntry {
     pub device_type: SoftwareDeviceType,
     pub device_name: String,
@@ -82,7 +82,7 @@ pub struct AppUsageEntry {
     pub pid: i64, // -1 when no app
     pub app: Option<AppUsageAppInfo>,
 }
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct AppUsageAppInfo {
     pub pkg_name: String,
     pub app_name: String,
@@ -99,11 +99,11 @@ impl ExtractInfo for AppUsageEntry {
         }
         if UseType::try_from(self.act_type) == Ok(UseType::UseApp) {
             let app = self.app.as_ref().unwrap();
-            tags.insert(format!("device-hostname:{}", self.device_name));
-            tags.insert(format!("device-type:{}", self.device_type));
-            tags.insert(format!("software-id:android:{}", app.pkg_name));
-            tags.insert(format!("software-name:{}", app.app_name));
-            tags.insert("device-os-type:Android".to_string());
+            tags.add("device-hostname", &self.device_name);
+            tags.add("device-type", format!("{}", self.device_type));
+            tags.add("software-id:android", &app.pkg_name);
+            tags.add("software-name", &app.app_name);
+            tags.add("device-os-type", "Android");
             Some(tags)
         } else {
             None

@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use super::tags::Tags;
-use crate::{expand::get_capture, prelude::*};
+use crate::prelude::*;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
@@ -33,10 +33,15 @@ pub fn get_simple_fetcher(id: &str) -> Option<&'static dyn SimpleFetcher> {
 
 pub trait ExternalFetcher: Sync + Send {
     fn get_id(&self) -> &'static str;
-    fn get_regexes(&self) -> &[Regex];
+    fn get_regexes(&self) -> &[TagValueRegex];
     fn get_cache_key(&self, found: &[regex::Captures], tags: &Tags) -> Option<String>;
     fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String>;
-    fn process_data(&self, tags: &Tags, cache_key: &str, data: &str) -> anyhow::Result<Tags>;
+    fn process_data(
+        &self,
+        tags: &Tags,
+        cache_key: &str,
+        data: &str,
+    ) -> anyhow::Result<Vec<TagValue>>;
 }
 
 impl Debug for dyn ExternalFetcher {
@@ -47,8 +52,8 @@ impl Debug for dyn ExternalFetcher {
 
 pub trait SimpleFetcher: Sync + Send {
     fn get_id(&self) -> &'static str;
-    fn get_regexes(&self) -> &[Regex];
-    fn process(&self, found: &[regex::Captures], tags: &Tags) -> anyhow::Result<Tags>;
+    fn get_regexes(&self) -> &[TagValueRegex];
+    fn process(&self, found: &[regex::Captures], tags: &Tags) -> anyhow::Result<Vec<TagValue>>;
 }
 
 impl Debug for dyn SimpleFetcher {
@@ -70,17 +75,19 @@ impl SimpleFetcher for URLDomainMatcher {
     fn get_id(&self) -> &'static str {
         "url-domain-matcher"
     }
-    fn get_regexes(&self) -> &[Regex] {
+    fn get_regexes(&self) -> &[TagValueRegex] {
         lazy_static! {
-            static ref REGEXES: Vec<Regex> =
-                vec![Regex::new(r#"^browse-url:(?P<url>.*)$"#).unwrap()];
+            static ref REGEXES: Vec<TagValueRegex> = vec![TagValueRegex {
+                tag: "browse-url".to_string(),
+                regex: Regex::new(r#"^(?P<url>.*)$"#).unwrap()
+            }];
         }
 
         &REGEXES
     }
-    fn process(&self, found: &[regex::Captures], _tags: &Tags) -> anyhow::Result<Tags> {
+    fn process(&self, found: &[regex::Captures], _tags: &Tags) -> anyhow::Result<Vec<TagValue>> {
         let url = get_capture(found, "url").context("Url match invalid?")?;
-        let mut tags = Tags::new();
+        let mut tags: Vec<TagValue> = Vec::new();
 
         let host = PUBLIC_SUFFIXES
             .parse_url(url)
@@ -88,12 +95,12 @@ impl SimpleFetcher for URLDomainMatcher {
             .with_context(|| format!("parsing url '{}'", url))?;
 
         if let publicsuffix::Host::Domain(domain) = host {
-            tags.insert(format!("browse-full-domain:{}", domain.to_string()));
+            tags.add("browse-full-domain", domain.to_string());
             if let Some(root) = domain.root() {
-                tags.insert(format!("browse-main-domain:{}", root));
+                tags.add("browse-main-domain", root);
             }
             if !domain.has_known_suffix() {
-                tags.insert(format!("error-unknown-domain:{}", domain));
+                tags.add("error-unknown-domain", domain.to_string());
             }
         };
         Ok(tags)

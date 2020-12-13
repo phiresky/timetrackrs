@@ -19,15 +19,14 @@ impl CapturerCreator for WindowsCaptureArgs {
         anyhow::bail!("Not on Linux!")
     }
 }
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct WindowsEventData {
     pub os_info: util::OsInfo,
     pub focused_window: Option<i64>,
     pub windows: Vec<WindowsWindow>,
 }
 
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
-
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct WindowsWindow {
     pub window_id: i64,
     pub title: String,

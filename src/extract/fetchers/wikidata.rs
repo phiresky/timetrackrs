@@ -1,5 +1,5 @@
 use super::ExternalFetcher;
-use crate::{expand::get_capture, prelude::*};
+use crate::prelude::*;
 use itertools::Itertools;
 use regex::Regex;
 
@@ -17,16 +17,17 @@ SELECT distinct ?service ?website_url ?outer_category ?outer_categoryLabel WHERE
     SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en" }}
 }
 "#;*/
+
 pub struct WikidataIdFetcher;
 impl ExternalFetcher for WikidataIdFetcher {
     fn get_id(&self) -> &'static str {
         "wikidata-domain-to-id-v1"
     }
 
-    fn get_regexes(&self) -> &[Regex] {
+    fn get_regexes(&self) -> &[TagValueRegex] {
         lazy_static::lazy_static! {
-            static ref REGEXES: Vec<Regex> =
-                vec![Regex::new(r#"^browse-full-domain:(?P<domain>.*)$"#).unwrap()];
+            static ref REGEXES: Vec<TagValueRegex> =
+                vec![TagValueRegex{tag: "browse-full-domain".to_string(), regex: Regex::new(r#"^(?P<domain>.*)$"#).unwrap()}];
         }
         &REGEXES
     }
@@ -121,13 +122,13 @@ impl ExternalFetcher for WikidataIdFetcher {
 
     fn process_data(
         &self,
-        _tags: &crate::prelude::Tags,
+        _tags: &Tags,
         _cache_key: &str,
         data: &str,
-    ) -> anyhow::Result<crate::prelude::Tags> {
+    ) -> anyhow::Result<Vec<TagValue>> {
         let parsed: serde_json::Value = serde_json::from_str(data)?;
 
-        let mut tags = Tags::new();
+        let mut tags = Vec::new();
 
         let matches = parsed["full_domain_matches"]
             .as_array()
@@ -138,14 +139,18 @@ impl ExternalFetcher for WikidataIdFetcher {
         for matching in matches {
             matching["website_url"]["value"]
                 .as_str()
-                .map(|e| tags.insert(format!("wikidata-website-url:{}", e)));
-            matching["service"]["value"]
-                .as_str()
-                .map(|e| tags.insert(format!("wikidata-id:{}", &e[31..])));
+                .map(|e| tags.push(TagValue::new("wikidata-website-url", e)));
+            matching["service"]["value"].as_str().map(|e| {
+                tags.add(
+                    "wikidata-id",
+                    e.strip_prefix("http://wikidata.org/wiki/entity/")
+                        .unwrap_or("returned id weird?"),
+                )
+            });
 
             matching["serviceLabel"]["value"]
                 .as_str()
-                .map(|e| tags.insert(format!("wikidata-label:{}", e)));
+                .map(|e| tags.add("wikidata-label", e));
         }
         Ok(tags)
     }
@@ -157,10 +162,10 @@ impl ExternalFetcher for WikidataCategoryFetcher {
         "wikidata-id-to-class"
     }
 
-    fn get_regexes(&self) -> &[Regex] {
+    fn get_regexes(&self) -> &[TagValueRegex] {
         lazy_static::lazy_static! {
-            static ref REGEXES: Vec<Regex> =
-                vec![Regex::new(r#"^wikidata-id:(?P<id>.*)$"#).unwrap()];
+            static ref REGEXES: Vec<TagValueRegex> =
+                vec![TagValueRegex{tag: "wikidata-id".to_string(), regex: Regex::new(r#"^wikidata-id:(?P<id>.*)$"#).unwrap()}];
         }
         &REGEXES
     }
@@ -199,20 +204,20 @@ impl ExternalFetcher for WikidataCategoryFetcher {
 
     fn process_data(
         &self,
-        _tags: &crate::prelude::Tags,
+        _tags: &Tags,
         _cache_key: &str,
         data: &str,
-    ) -> anyhow::Result<crate::prelude::Tags> {
+    ) -> anyhow::Result<Vec<TagValue>> {
         // in theory we should use the ids. but eh that's sooo ugly. wikidata should add
         // non-numeric identifiers such as instance_of instead of wdt:P31
         let parsed: Vec<serde_json::Value> = serde_json::from_str(data)?;
 
-        let mut tags = Tags::new();
+        let mut tags = Vec::new();
 
         for matching in parsed {
             matching["categoryLabel"]["value"]
                 .as_str()
-                .map(|v| tags.insert(format!("wikidata-category:{}", v)));
+                .map(|v| tags.add("wikidata-category", v));
         }
         Ok(tags)
     }

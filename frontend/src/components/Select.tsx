@@ -12,7 +12,7 @@ function _Select<T>(props: {
 	target: Choices<T>
 	getValue: (t: T) => string
 	getName: (t: T) => string
-	onChange: (t: T) => void
+	onChange?: (t: T) => void
 }): React.ReactElement {
 	const { target, getValue, getName, onChange } = props
 	return (
@@ -22,7 +22,7 @@ function _Select<T>(props: {
 				target.value = target.choices.find(
 					(c) => getValue(c) === e.currentTarget.value,
 				)!
-				onChange(target.value)
+				onChange?.(target.value)
 			}}
 		>
 			{target.choices.map((choice) => (

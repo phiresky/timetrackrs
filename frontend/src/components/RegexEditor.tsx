@@ -25,7 +25,8 @@ export const RegexEditor: React.FC<{
 				disabled={!editable}
 				onChange={
 					editable
-						? (e) => onChange("^" + e.currentTarget.value + "$")
+						? (e: React.ChangeEvent<HTMLInputElement>) =>
+								onChange("^" + e.currentTarget.value + "$")
 						: undefined
 				}
 			/>

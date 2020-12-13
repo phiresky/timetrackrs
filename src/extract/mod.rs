@@ -4,6 +4,7 @@ use enum_dispatch::enum_dispatch;
 use self::tags::Tags;
 
 pub mod fetchers;
+pub mod tag_rules;
 pub mod tags;
 
 #[enum_dispatch(EventData)]

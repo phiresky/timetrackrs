@@ -9,10 +9,12 @@ impl ExternalFetcher for YoutubeFetcher {
     fn get_id(&self) -> &'static str {
         "youtube-meta-json"
     }
-    fn get_regexes(&self) -> &[Regex] {
+    fn get_regexes(&self) -> &[TagValueRegex] {
         lazy_static! {
-            static ref REGEXES: Vec<Regex> =
-                vec![Regex::new(r#"^browse-main-domain:youtube.com$"#).unwrap()];
+            static ref REGEXES: Vec<TagValueRegex> = vec![TagValueRegex {
+                tag: "browse-main-domain".to_string(),
+                regex: Regex::new(r#"^youtube.com$"#).unwrap()
+            }];
         }
 
         &REGEXES
@@ -83,13 +85,11 @@ impl ExternalFetcher for YoutubeFetcher {
                      $"#
             ).unwrap();
         }
-        for tag in tags {
-            if let Some(url) = tag.strip_prefix("browse-url:") {
-                if let Some(matches) = WATCH_REGEX.captures(url) {
-                    let id = matches.name("id").unwrap().as_str();
-                    log::trace!("url={}, id={}", url, id);
-                    return Some(id.to_string());
-                }
+        for url in tags.get_all_values_of("browse-url") {
+            if let Some(matches) = WATCH_REGEX.captures(url) {
+                let id = matches.name("id").unwrap().as_str();
+                log::trace!("url={}, id={}", url, id);
+                return Some(id.to_string());
             }
         }
         None
@@ -104,31 +104,32 @@ impl ExternalFetcher for YoutubeFetcher {
         Ok(serde_json::to_string(&data).context("serializing ytdl output")?)
     }
 
-    fn process_data(&self, _tags: &Tags, _cache_key: &str, data: &str) -> anyhow::Result<Tags> {
+    fn process_data(
+        &self,
+        _tags: &Tags,
+        _cache_key: &str,
+        data: &str,
+    ) -> anyhow::Result<Vec<TagValue>> {
         use youtube_dl::*;
         let d: YoutubeDlOutput = serde_json::from_str(data).context("serde")?;
-        let mut tags = Tags::new();
+        let mut tags: Vec<TagValue> = Vec::new();
         if let YoutubeDlOutput::SingleVideo(sv) = d {
-            tags.insert(format!("video-title:{}", sv.title));
-            sv.uploader_id
-                .map(|u| tags.insert(format!("youtube-uploader:{}", u)));
-            sv.uploader
-                .map(|u| tags.insert(format!("youtube-uploader-name:{}", u)));
-            sv.channel_id
-                .map(|u| tags.insert(format!("youtube-channel:{}", u)));
-            sv.channel
-                .map(|u| tags.insert(format!("youtube-channel-name:{}", u)));
+            tags.add("video-title", sv.title);
+            sv.uploader_id.map(|u| tags.add("youtube-uploader", u));
+            sv.uploader.map(|u| tags.add("youtube-uploader-name", u));
+            sv.channel_id.map(|u| tags.add("youtube-channel", u));
+            sv.channel.map(|u| tags.add("youtube-channel-name", u));
             if let Some(tg) = sv.tags {
                 for tag in tg {
                     if let Some(tag) = tag {
-                        tags.insert(format!("youtube-tag:{}", tag.to_string()));
+                        tags.add("youtube-tag", tag);
                     }
                 }
             }
             if let Some(tg) = sv.categories {
                 for tag in tg {
                     if let Some(tag) = tag {
-                        tags.insert(format!("youtube-category:{}", tag.to_string()));
+                        tags.add("youtube-category", tag);
                     }
                 }
             }

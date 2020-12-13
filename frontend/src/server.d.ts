@@ -63,16 +63,27 @@ export type OsInfo = {
 	version: string
 	batteries: number | null
 	hostname: string
+	username: string | null
 	machine_id: string | null
 }
 export type TagRuleGroup = { global_id: string; data: TagRuleGroupData }
 export type TagRuleGroupData = { version: "V1"; data: TagRuleGroupV1 }
 export type TagRuleWithMeta = { enabled: boolean; rule: TagRule }
 export type TagRule =
-	| { type: "HasTag"; tag: string; new_tag: string }
-	| { type: "ExactTagValue"; tag: string; value: string; new_tag: string }
-	| { type: "TagValuePrefix"; tag: string; prefix: string; new_tag: string }
-	| { type: "TagRegex"; regexes: Regex[]; new_tag: string }
+	| { type: "HasTag"; tag: string; new_tags: TagValue[] }
+	| {
+			type: "ExactTagValue"
+			tag: string
+			value: string
+			new_tags: TagValue[]
+	  }
+	| {
+			type: "TagValuePrefix"
+			tag: string
+			prefix: string
+			new_tags: TagValue[]
+	  }
+	| { type: "TagRegex"; regexes: TagValueRegex[]; new_tags: TagValue[] }
 	| { type: "InternalFetcher"; fetcher_id: string }
 	| { type: "ExternalFetcher"; fetcher_id: string }
 export type TagRuleGroupV1 = {
@@ -84,4 +95,25 @@ export type TagRuleGroupV1 = {
 }
 export type TagAddReason =
 	| { type: "IntrinsicTag"; raw_data_type: string }
-	| { type: "AddedByRule"; matched_tags: string[]; rule: TagRule }
+	| { type: "AddedByRule"; matched_tags: TagValue[]; rule: TagRule }
+export type ApiTypesTS =
+	| { type: "time_range"; response: SingleExtractedEvent[] }
+	| { type: "single_event"; response: SingleExtractedEventWithRaw | null }
+	| { type: "rule_groups"; response: TagRuleGroup[] }
+	| { type: "update_rule_groups"; response: [] }
+export type SingleExtractedEvent = {
+	id: string
+	timestamp: Timestamptz
+	duration: number
+	tags: Tags
+}
+export type SingleExtractedEventWithRaw = {
+	id: string
+	timestamp: Timestamptz
+	duration: number
+	tags: Tags
+	raw: EventData
+	tags_reasons: { [key: string]: TagAddReason }
+}
+export type ApiResponse<T> = { data: T }
+export type Tags = { map: Partial<Record<string, string[]>> }

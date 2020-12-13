@@ -6,7 +6,6 @@ use diesel::prelude::*;
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
 use serde_json::json;
-use serde_json::Value as J;
 use track_pc_usage_rs as trbtt;
 use track_pc_usage_rs::events::deserialize_captured;
 use track_pc_usage_rs::util::iso_string_to_date;
@@ -16,17 +15,18 @@ use trbtt::prelude::*;
 #[macro_use]
 extern crate rocket_contrib;
 
+use api::*;
+
 #[database("events_database")]
 struct DbConn(diesel::SqliteConnection);
 
-type DebugRes<T> = Result<T, rocket::response::Debug<anyhow::Error>>;
 #[get("/time-range?<after>&<before>&<limit>")]
 fn time_range(
     db: DbConn,
     before: Option<String>,
     after: Option<String>,
     limit: Option<usize>,
-) -> DebugRes<Json<J>> {
+) -> Api::time_range::response {
     // println!("handling...");
     // println!("querying...");
     let before = match before {
@@ -73,15 +73,17 @@ fn time_range(
             match r {
                 Ok(r) => {
                     if let Some(data) = r.extract_info() {
-                        Some(json!({
-                            "id": a.id,
-                            "timestamp": a.timestamp,
-                            "duration": a.sampler.get_duration(),
-                            "tags": tags::get_tags(&mut dbsy, data).map_err(|e| {
-                                log::warn!("get tags of {} error: {:?}", a.id, e);
-                                e
-                            }).ok()?,
-                        }))
+                        Some(SingleExtractedEvent {
+                            id: a.id.clone(),
+                            timestamp: a.timestamp.clone(),
+                            duration: a.sampler.get_duration(),
+                            tags: get_tags(&mut dbsy, data)
+                                .map_err(|e| {
+                                    log::warn!("get tags of {} error: {:?}", a.id, e);
+                                    e
+                                })
+                                .ok()?,
+                        })
                     } else {
                         None
                     }
@@ -101,11 +103,11 @@ fn time_range(
         total_seen,
         now.elapsed()
     );
-    Ok(Json(json!({ "data": &v })))
+    Ok(Json(ApiResponse { data: v }))
 }
 
 #[get("/single-event?<id>")]
-fn single_event(db: DbConn, id: String) -> DebugRes<Json<J>> {
+fn single_event(db: DbConn, id: String) -> Api::single_event::response {
     // println!("handling...");
     // println!("querying...");
     let a = {
@@ -120,16 +122,16 @@ fn single_event(db: DbConn, id: String) -> DebugRes<Json<J>> {
 
     let r = deserialize_captured((&a.data_type, &a.data));
     let v = match r {
-        Ok(r) => {
-            if let Some(data) = r.extract_info() {
-                Some(json!({
-                    "id": a.id,
-                    "timestamp": a.timestamp,
-                    "duration": a.sampler.get_duration(),
-                    "tags_reasons": get_tags_with_reasons(&mut dbsy, data.clone())?,
-                    "tags": get_tags(&mut dbsy, data)?,
-                    "raw": r
-                }))
+        Ok(raw) => {
+            if let Some(data) = raw.extract_info() {
+                Some(SingleExtractedEventWithRaw {
+                    id: a.id,
+                    timestamp: a.timestamp,
+                    duration: a.sampler.get_duration(),
+                    tags_reasons: get_tags_with_reasons(&mut dbsy, data.clone())?,
+                    tags: get_tags(&mut dbsy, data)?,
+                    raw,
+                })
             } else {
                 None
             }
@@ -141,11 +143,11 @@ fn single_event(db: DbConn, id: String) -> DebugRes<Json<J>> {
         }
     };
 
-    Ok(Json(json!({ "data": &v })))
+    Ok(Json(ApiResponse { data: v }))
 }
 
 #[get("/rule-groups")]
-fn rule_groups(db: DbConn) -> DebugRes<Json<J>> {
+fn rule_groups(db: DbConn) -> Api::rule_groups::response {
     // println!("handling...");
     // println!("querying...");
     use trbtt::db::schema::tag_rule_groups::dsl::*;
@@ -156,11 +158,14 @@ fn rule_groups(db: DbConn) -> DebugRes<Json<J>> {
         .chain(get_default_tag_rule_groups())
         .collect::<Vec<_>>();
 
-    Ok(Json(json!({ "data": &groups })))
+    Ok(Json(ApiResponse { data: groups }))
 }
 
 #[post("/rule-groups", format = "json", data = "<input>")]
-fn update_rule_groups(db: DbConn, input: Json<Vec<TagRuleGroup>>) -> DebugRes<Json<J>> {
+fn update_rule_groups(
+    db: DbConn,
+    input: Json<Vec<TagRuleGroup>>,
+) -> Api::update_rule_groups::response {
     // println!("handling...");
     // println!("querying...");
     use trbtt::db::schema::tag_rule_groups::dsl::*;
@@ -181,7 +186,7 @@ fn update_rule_groups(db: DbConn, input: Json<Vec<TagRuleGroup>>) -> DebugRes<Js
         Ok(())
     })?;
 
-    Ok(Json(json!({})))
+    Ok(Json(ApiResponse { data: () }))
 }
 
 fn main() -> anyhow::Result<()> {

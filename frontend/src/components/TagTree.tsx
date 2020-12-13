@@ -5,6 +5,7 @@ import * as React from "react"
 import { useState } from "react"
 import { setTextRange } from "typescript"
 import * as api from "../api"
+import { SingleExtractedEvent } from "../server"
 import { Counter, DefaultMap, durationToString, totalDuration } from "../util"
 import { CategoryChart, CategoryChartModal } from "./CategoryChart"
 import { ChooserWithChild } from "./ChooserWithChild"
@@ -17,7 +18,7 @@ interface Tree<T> {
 	leaves: T[]
 	children: Map<string, Tree<T>>
 }
-type ATree = Tree<api.Activity>
+type ATree = Tree<SingleExtractedEvent>
 
 function rootTree<T>(): Tree<T> {
 	return { children: new Map<string, Tree<T>>(), leaves: [] }
@@ -79,12 +80,12 @@ a -> b -> foo
 
 */
 
-function collectRecurse(tree: ATree, add: (e: api.Activity) => void) {
+function collectRecurse(tree: ATree, add: (e: SingleExtractedEvent) => void) {
 	tree.leaves.forEach(add)
 	for (const c of tree.children.values()) collectRecurse(c, add)
 }
 function collect(tree: ATree) {
-	const map = new Map<string, api.Activity>()
+	const map = new Map<string, SingleExtractedEvent>()
 	collectRecurse(tree, (e) => map.set(e.id, e))
 	return [...map.values()]
 }
@@ -93,7 +94,7 @@ function TotalDuration(props: { tree: ATree }) {
 	return <span>{durationToString(totalDuration(collect(props.tree)))}</span>
 }
 
-const TreeLeaves: React.FC<{ leaves: api.Activity[] }> = observer(
+const TreeLeaves: React.FC<{ leaves: SingleExtractedEvent[] }> = observer(
 	({ leaves }) => {
 		const [children, setChildren] = React.useState(5)
 		const store = useLocalObservable(() => {
@@ -257,7 +258,7 @@ export function TagTreePage(): React.ReactElement {
 }
 @observer
 export class TagTree extends React.Component<{
-	events: api.Activity[]
+	events: SingleExtractedEvent[]
 	tagName?: string
 	chart?: boolean
 }> {
@@ -266,7 +267,7 @@ export class TagTree extends React.Component<{
 		makeObservable(this)
 	}
 	@computed get tagTree(): ATree {
-		const tree = rootTree<api.Activity>()
+		const tree = rootTree<SingleExtractedEvent>()
 		for (const event of this.props.events) {
 			let added = false
 			for (const tag of event.tags) {

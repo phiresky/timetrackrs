@@ -44,23 +44,26 @@ impl Default for OsInfo {
 }
 impl OsInfo {
     pub fn to_partial_general_software(&self, tags: &mut Tags) {
-        tags.insert(format!("device-os-type:{}", self.os_type));
-        tags.insert(format!("device-os-version:{}", self.version));
-        tags.insert(format!("device-hostname:{}", self.hostname));
+        tags.add("device-os-type".to_string(), &self.os_type);
+        tags.add("device-os-version".to_string(), &self.version);
+        tags.add("device-hostname".to_string(), &self.hostname);
         self.username
             .as_ref()
-            .map(|m| tags.insert(format!("device-username:{}", m)));
+            .map(|m| tags.add("device-username".to_string(), m));
         self.machine_id
             .as_ref()
-            .map(|m| tags.insert(format!("device-machine-id:{}", m)));
-        tags.insert(format!(
-            "device-type:{}",
-            if self.batteries.unwrap_or(0) > 0 {
-                SoftwareDeviceType::Laptop
-            } else {
-                SoftwareDeviceType::Desktop
-            }
-        ));
+            .map(|m| tags.add("device-machine-id".to_string(), m));
+        tags.add(
+            "device-type".to_string(),
+            format!(
+                "{}",
+                if self.batteries.unwrap_or(0) > 0 {
+                    SoftwareDeviceType::Laptop
+                } else {
+                    SoftwareDeviceType::Desktop
+                }
+            ),
+        );
     }
 }
 

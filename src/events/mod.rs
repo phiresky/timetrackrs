@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 // todo: auto generate this enum (with dependency injection?)
 #[enum_dispatch]
-#[derive(Serialize, TypeScriptify)]
+#[derive(Serialize, TypeScriptify, Debug, Deserialize, Clone)]
 #[serde(tag = "data_type", content = "data")]
 #[allow(non_camel_case_types)]
 pub enum EventData {

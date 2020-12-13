@@ -29,7 +29,7 @@ impl CapturerCreator for X11CaptureArgs {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct X11EventData {
     #[serde(default)]
     pub os_info: util::OsInfo,
@@ -42,21 +42,21 @@ pub struct X11EventData {
     pub network: Option<NetworkInfo>,
     pub windows: Vec<X11WindowData>,
 }
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct X11WindowData {
     pub window_id: u32,
     pub geometry: X11WindowGeometry,
     pub process: Option<ProcessData>,
     pub window_properties: BTreeMap<String, J>,
 }
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct X11WindowGeometry {
     pub x: i32,
     pub y: i32,
     pub width: i32,
     pub height: i32,
 }
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 #[allow(non_snake_case)]
 pub struct ProcessData {
     pub pid: i32,
@@ -71,7 +71,7 @@ pub struct ProcessData {
     pub cpu_usage: Option<f32>, // can be NaN -> null
 }
 
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct WifiInterface {
     /// Interface essid
     pub ssid: String,
@@ -89,7 +89,7 @@ pub struct WifiInterface {
     pub connected_time: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize, TypeScriptify)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct NetworkInfo {
     pub wifi: Option<WifiInterface>,
 }
@@ -135,7 +135,7 @@ impl ExtractInfo for X11EventData {
         }
         x.os_info.to_partial_general_software(&mut tags);
         if let Some(NetworkInfo { wifi: Some(wifi) }) = &x.network {
-            tags.insert(format!("connected-wifi:{}", wifi.ssid));
+            tags.add("connected-wifi", &wifi.ssid);
         }
         let window = x.windows.iter().find(|e| e.window_id == x.focused_window);
         match window {

@@ -225,6 +225,8 @@ export class Timeline extends React.Component {
 				if (l) this.oldestData = l
 				this.loadState = "loaded"
 			})
+		} catch (e) {
+			this.loadState = `error: ${String(e)}`
 		} finally {
 			this.loading = false
 		}

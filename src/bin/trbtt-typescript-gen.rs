@@ -24,6 +24,11 @@ const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
     TagRule::type_script_ify,
     TagRuleGroupV1::type_script_ify,
     TagAddReason::type_script_ify,
+    api::ApiTypesTS::type_script_ify,
+    api::SingleExtractedEvent::type_script_ify,
+    api::SingleExtractedEventWithRaw::type_script_ify,
+    api::ApiResponse::<String>::type_script_ify,
+    Tags::type_script_ify,
 ];
 
 #[cfg(not(debug_assertions))]

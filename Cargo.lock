@@ -2095,6 +2095,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "multimap"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1255076139a83bb467426e7f8d0134968a8118844faa755985e077cf31850333"
+dependencies = [
+ "serde 1.0.118",
+]
+
+[[package]]
 name = "nanoid"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2427,6 +2436,12 @@ checksum = "c705f256449c60da65e11ff6626e0c16a0a0b96aaa348de61376b249bc340f41"
 dependencies = [
  "regex",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5d65c4d95931acda4498f675e332fcbdc9a06705cd07086c510e9b6009cd1c1"
 
 [[package]]
 name = "pear"
@@ -4170,10 +4185,12 @@ dependencies = [
  "lazy_static",
  "log 0.4.11",
  "mediawiki",
+ "multimap",
  "nl80211",
  "num_enum",
  "openssl",
  "os_info",
+ "paste",
  "pretty_env_logger",
  "publicsuffix",
  "rand 0.7.3",

@@ -42,23 +42,23 @@ pub fn match_software(
     executable_path: Option<&str>,
     cwd: Option<&str>,
     cmdline: Option<&[String]>,
-) -> Tags {
+) -> Vec<TagValue> {
     use crate::extract::tags::*;
 
-    let mut tags = Tags::new();
+    let mut tags = Vec::new();
 
-    tags.insert(format!("software-window-title:{}", window_title));
+    tags.add("software-window-title", window_title);
 
     if let Some(exe) = executable_path {
-        tags.insert(format!("software-executable-path:{}", exe));
+        tags.add("software-executable-path", exe);
     }
     if let Some(cls) = window_class {
-        tags.insert(format!("software-window-class:{}.{}", cls.0, cls.1));
+        tags.add("software-window-class", format!("{}.{}", cls.0, cls.1));
     }
     if let Some(cwd) = cwd {
         if let Some(cmdline) = cmdline {
             if let Ok(path) = match_cmdline_to_filepath(cwd, cmdline) {
-                tags.insert(format!("software-opened-file:{}", path));
+                tags.add("software-opened-file", path);
             }
         }
     }
@@ -79,7 +79,7 @@ pub fn match_software(
             kv
         };
         for (k, v) in &kv {
-            tags.insert(format!("title-match-{}-{}:{}", category, k, v));
+            tags.add(format!("title-match-{}-{}", category, k), v);
         }
     }
     if let Some(m) = JSON_TITLE.find(window_title) {
@@ -96,7 +96,7 @@ pub fn match_software(
                         J::String(s) => s.to_string(),
                         any => format!("{}", any),
                     };
-                    tags.insert(format!("title-match-{}-{}:{}", category, k, txtv));
+                    tags.add(format!("title-match-{}-{}", category, k), txtv);
                 }
             }
         }

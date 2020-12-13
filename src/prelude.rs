@@ -1,4 +1,5 @@
 // just lots of imports cause i'm lazy
+pub use crate::api;
 pub use crate::capture::linux::types::*;
 pub use crate::capture::windows::types::*;
 pub use crate::capture::*;
@@ -6,6 +7,9 @@ pub use crate::db::datybasy::*;
 pub use crate::db::db_iterator::YieldEventsFromTrbttDatabase;
 pub use crate::db::models::*;
 pub use crate::events::*;
+pub use crate::expand::*;
+pub use crate::extract::fetchers::*;
+pub use crate::extract::tag_rules::*;
 pub use crate::extract::tags::*;
 pub use crate::extract::*;
 pub use crate::import::app_usage_sqlite::*;

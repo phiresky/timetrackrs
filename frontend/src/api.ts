@@ -1,12 +1,13 @@
-import { EventData, TagAddReason, TagRuleGroup } from "./server"
-export type Activity = {
-	id: string
-	timestamp: string
-	duration: number
-	tags: string[]
-	tags_reasons: { [tag: string]: TagAddReason }
-	raw?: EventData
-}
+import {
+	EventData,
+	TagAddReason,
+	TagRuleGroup,
+	SingleExtractedEvent,
+	ApiTypesTS,
+	ApiResponse,
+} from "./server"
+
+type ApiTypes = { [T in ApiTypesTS["type"]]: ApiTypesTS & { type: T } }
 
 const backend =
 	new URLSearchParams(location.search).get("server") ||
@@ -31,7 +32,7 @@ export async function getTimeRange(info: {
 	before?: Date
 	limit: number
 	after?: Date
-}): Promise<Activity[]> {
+}): Promise<ApiTypes["time_range"]["response"]> {
 	const url = new URL(backend + "/time-range")
 	if (info.before) url.searchParams.set("before", info.before.toISOString())
 	if (info.limit) url.searchParams.set("limit", String(info.limit))
@@ -40,30 +41,38 @@ export async function getTimeRange(info: {
 	if (!resp.ok) {
 		return await handleError(resp)
 	}
-	const { data } = (await resp.json()) as { data: Activity[] }
+	const { data } = (await resp.json()) as ApiResponse<
+		ApiTypes["time_range"]["response"]
+	>
 	return data
 }
 
 export async function getSingleEvent(info: {
 	id: string
-}): Promise<Activity | null> {
+}): Promise<ApiTypes["single_event"]["response"]> {
 	const url = new URL(backend + "/single-event")
 	url.searchParams.set("id", info.id)
 	const resp = await fetch(url.toString())
 	if (!resp.ok) {
 		return await handleError(resp)
 	}
-	const { data } = (await resp.json()) as { data: Activity }
+	const { data } = (await resp.json()) as ApiResponse<
+		ApiTypes["single_event"]["response"]
+	>
 	return data
 }
 
-export async function getTagRules(): Promise<TagRuleGroup[]> {
+export async function getTagRules(): Promise<
+	ApiTypes["rule_groups"]["response"]
+> {
 	const url = new URL(backend + "/rule-groups")
 	const resp = await fetch(url.toString())
 	if (!resp.ok) {
 		return await handleError(resp)
 	}
-	const { data } = (await resp.json()) as { data: TagRuleGroup[] }
+	const { data } = (await resp.json()) as ApiResponse<
+		ApiTypes["rule_groups"]["response"]
+	>
 	return data
 }
 
