@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useContext } from "react"
 import { CategoryChart } from "./components/CategoryChart"
 import { ChooserWithChild } from "./components/ChooserWithChild"
 import { PlotPage } from "./components/Plot"
@@ -13,6 +13,7 @@ const rootQueryArgs = asQueryArgs({
 })
 
 export const routes = {
+	root: Route.create("/").withQueryArgs(rootQueryArgs),
 	plot: Route.create("/plot").withQueryArgs(rootQueryArgs),
 	timeline: Route.create("/timeline").withQueryArgs(rootQueryArgs),
 	tagTree: Route.create("/tag-tree").withQueryArgs(rootQueryArgs),
@@ -26,6 +27,12 @@ export const routes = {
 export const timeline = Route.create("/timeline").withQueryArgs(rootQueryArgs)
 
 export const router = Router.create<React.ComponentType>()
+	.with(routes.root, () => () => {
+		// TODO: this redirect be ugly
+		const c = useContext(RouterContext)
+		c?.replace(routes.timeline, {}, {})
+		return <></>
+	})
 	.with(routes.plot, (p) => PlotPage)
 	.with(routes.timeline, (p) => TimelinePage)
 	.with(routes.tagTree, (p) => TagTreePage)

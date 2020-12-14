@@ -29,14 +29,14 @@ async function handleError(resp: Response): Promise<never> {
 	)
 }
 export async function getTimeRange(info: {
-	before?: Date
-	limit: number
-	after?: Date
+	before: Date
+	after: Date
 }): Promise<ApiTypes["time_range"]["response"]> {
-	const url = new URL(backend + "/time-range")
-	if (info.before) url.searchParams.set("before", info.before.toISOString())
-	if (info.limit) url.searchParams.set("limit", String(info.limit))
-	if (info.after) url.searchParams.set("after", info.after.toISOString())
+	const url = new URL(
+		backend +
+			"/time-range?" +
+			new URLSearchParams(JSON.parse(JSON.stringify(info))).toString(),
+	)
 	const resp = await fetch(url.toString())
 	if (!resp.ok) {
 		return await handleError(resp)

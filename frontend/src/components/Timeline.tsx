@@ -9,6 +9,7 @@ import { Page } from "./Page"
 import { TagTree } from "./TagTree"
 import { Choices, Select } from "./Select"
 import { SingleExtractedEvent, Tags } from "../server"
+import { subDays } from "date-fns"
 
 export function getTag(
 	tags: Tags,
@@ -207,8 +208,9 @@ export class Timeline extends React.Component {
 			const now = new Date()
 			const data = await api.getTimeRange({
 				before: this.oldestData,
-				limit: 1000,
+				after: subDays(this.oldestData, 1),
 			})
+			data.sort((a, b) => -a.timestamp.localeCompare(b.timestamp))
 			runInAction(() => {
 				let l = null
 				for (const d of data) {

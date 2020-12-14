@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, iter::FromIterator};
 
 use crate::prelude::*;
 
@@ -73,8 +73,26 @@ impl Tags {
     pub fn iter(&self) -> multimap::Iter<String, String> {
         self.map.iter()
     }
+    pub fn into_iter(
+        self,
+    ) -> std::collections::hash_map::IntoIter<std::string::String, Vec<std::string::String>> {
+        self.map.into_iter()
+    }
     pub fn total_value_count(&self) -> usize {
         self.iter().count()
+    }
+    pub fn tag_count(&self) -> usize {
+        self.map.len()
+    }
+}
+
+impl FromIterator<(String, String)> for Tags {
+    fn from_iter<I: IntoIterator<Item = (String, String)>>(iter: I) -> Self {
+        let mut c = Tags::new();
+        for (k, v) in iter {
+            c.add(k, v);
+        }
+        c
     }
 }
 

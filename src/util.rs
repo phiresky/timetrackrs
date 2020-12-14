@@ -11,8 +11,17 @@ pub fn unix_epoch_millis_to_date(timestamp: i64) -> DateTime<Utc> {
     unix_epoch_millis_to_date(timestamp).to_rfc3339()
 }*/
 
-pub fn iso_string_to_date(s: &str) -> anyhow::Result<DateTime<Utc>> {
-    Ok(DateTime::<chrono::FixedOffset>::parse_from_rfc3339(s)?.with_timezone(&chrono::Utc))
+pub fn iso_string_to_datetime(s: &str) -> anyhow::Result<DateTime<Utc>> {
+    Ok(DateTime::<chrono::FixedOffset>::parse_from_rfc3339(s)
+        .context("iso_string_to_datetime")?
+        .with_timezone(&chrono::Utc))
+}
+
+pub fn iso_string_to_date(s: &str) -> anyhow::Result<Date<Utc>> {
+    Ok(Date::from_utc(
+        NaiveDate::parse_from_str(s, "%F").context("iso_string_to_date")?,
+        Utc,
+    ))
 }
 
 pub fn random_uuid() -> String {
@@ -47,10 +56,12 @@ impl OsInfo {
         tags.add("device-os-type".to_string(), &self.os_type);
         tags.add("device-os-version".to_string(), &self.version);
         tags.add("device-hostname".to_string(), &self.hostname);
-        if let Some(m) = self.username
-            .as_ref() { tags.add("device-username".to_string(), m) }
-        if let Some(m) = self.machine_id
-            .as_ref() { tags.add("device-machine-id".to_string(), m) }
+        if let Some(m) = self.username.as_ref() {
+            tags.add("device-username".to_string(), m)
+        }
+        if let Some(m) = self.machine_id.as_ref() {
+            tags.add("device-machine-id".to_string(), m)
+        }
         tags.add(
             "device-type".to_string(),
             format!(

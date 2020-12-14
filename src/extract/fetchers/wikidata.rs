@@ -137,16 +137,20 @@ impl ExternalFetcher for WikidataIdFetcher {
             .context("internal error?")?;
 
         for matching in matches {
-            if let Some(e) = matching["website_url"]["value"]
-                .as_str() { tags.push(TagValue::new("wikidata-website-url", e)) }
-            if let Some(e) = matching["service"]["value"].as_str() { tags.add(
+            if let Some(e) = matching["website_url"]["value"].as_str() {
+                tags.push(TagValue::new("wikidata-website-url", e))
+            }
+            if let Some(e) = matching["service"]["value"].as_str() {
+                tags.add(
                     "wikidata-id",
-                    e.strip_prefix("http://wikidata.org/wiki/entity/")
+                    e.strip_prefix("http://www.wikidata.org/entity/")
                         .unwrap_or("returned id weird?"),
-                ) }
+                )
+            }
 
-            if let Some(e) = matching["serviceLabel"]["value"]
-                .as_str() { tags.add("wikidata-label", e) }
+            if let Some(e) = matching["serviceLabel"]["value"].as_str() {
+                tags.add("wikidata-label", e)
+            }
         }
         Ok(tags)
     }
@@ -211,8 +215,9 @@ impl ExternalFetcher for WikidataCategoryFetcher {
         let mut tags = Vec::new();
 
         for matching in parsed {
-            if let Some(v) = matching["categoryLabel"]["value"]
-                .as_str() { tags.add("wikidata-category", v) }
+            if let Some(v) = matching["categoryLabel"]["value"].as_str() {
+                tags.add("wikidata-category", v)
+            }
         }
         Ok(tags)
     }

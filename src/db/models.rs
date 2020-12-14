@@ -1,4 +1,5 @@
 use crate::db::schema::config::*;
+use crate::db::schema::extracted::*;
 use crate::db::schema::raw_events::*;
 use crate::prelude::*;
 use diesel::deserialize::{self, FromSql};
@@ -18,34 +19,50 @@ pub struct DbEvent {
     pub data: String,
 }
 
-#[derive(AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Serialize, Deserialize)]
-#[sql_type = "Text"]
-#[serde(untagged)]
-pub enum Timestamptz {
-    N(DateTime<Utc>),
-}
-impl Timestamptz {
-    pub fn new(d: DateTime<Utc>) -> Timestamptz {
-        Timestamptz::N(d)
+impl DbEvent {
+    pub fn deserialize_data(&self) -> anyhow::Result<EventData> {
+        deserialize_captured((&self.data_type, &self.data))
+            .with_context(|| format!("deserialization of event {}", self.id))
     }
 }
+
+#[derive(
+    AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Eq, Hash, Serialize, Deserialize,
+)]
+#[sql_type = "Text"]
+pub struct Timestamptz(pub DateTime<Utc>);
 
 impl FromSql<Text, Sqlite> for Timestamptz {
     fn from_sql(
         bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
     ) -> deserialize::Result<Self> {
         let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
-        Ok(Timestamptz::new(util::iso_string_to_date(&s)?))
+        Ok(Timestamptz(util::iso_string_to_datetime(&s)?))
     }
 }
 impl ToSql<Text, Sqlite> for Timestamptz {
     fn to_sql<W: Write>(&self, out: &mut Output<W, Sqlite>) -> serialize::Result {
-        match &self {
-            Timestamptz::N(d) => {
-                let s = d.to_rfc3339();
-                <String as ToSql<Text, Sqlite>>::to_sql(&s, out)
-            }
-        }
+        let s = self.0.to_rfc3339();
+        <String as ToSql<Text, Sqlite>>::to_sql(&s, out)
+    }
+}
+
+#[derive(AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Eq, Hash)]
+#[sql_type = "Text"]
+pub struct DateUtc(pub Date<Utc>);
+
+impl FromSql<Text, Sqlite> for DateUtc {
+    fn from_sql(
+        bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
+    ) -> deserialize::Result<Self> {
+        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
+        Ok(DateUtc(util::iso_string_to_date(&s)?))
+    }
+}
+impl ToSql<Text, Sqlite> for DateUtc {
+    fn to_sql<W: Write>(&self, out: &mut Output<W, Sqlite>) -> serialize::Result {
+        let s = format!("{}", self.0.format("%F"));
+        <String as ToSql<Text, Sqlite>>::to_sql(&s, out)
     }
 }
 
@@ -73,6 +90,39 @@ pub struct NewDbEvent {
     pub sampler: Sampler,
     pub sampler_sequence_id: String,
     pub data: String,
+}
+
+#[derive(
+    Debug, Queryable, Insertable, Serialize, Deserialize, TypeScriptify, AsChangeset, Clone,
+)]
+#[table_name = "extracted_events"]
+pub struct InExtractedTag {
+    pub timestamp: Timestamptz,
+    pub duration: f64,
+    pub event_id: String,
+    pub tag: String,
+    pub value: String,
+}
+#[derive(
+    Debug,
+    Queryable,
+    Identifiable,
+    Insertable,
+    Serialize,
+    Deserialize,
+    TypeScriptify,
+    AsChangeset,
+    Clone,
+)]
+#[primary_key(rowid)]
+#[table_name = "extracted_events"]
+pub struct OutExtractedTag {
+    pub rowid: i64,
+    pub timestamp: Timestamptz,
+    pub duration: f64,
+    pub event_id: String,
+    pub tag: String,
+    pub value: String,
 }
 
 #[derive(

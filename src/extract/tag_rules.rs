@@ -284,13 +284,13 @@ fn validate_tag_regex(regex: &Regex) -> anyhow::Result<()> {
     }
     Ok(())
 }
-pub fn get_tags(db: &DatyBasy, intrinsic_tags: Tags) -> anyhow::Result<Tags> {
+pub fn get_tags(db: &DatyBasy, intrinsic_tags: Tags) -> Tags {
     let mut tags = intrinsic_tags;
-    apply_tag_rules(db, &mut tags)?;
-    Ok(tags)
+    apply_tag_rules(db, &mut tags);
+    tags
 }
 
-pub fn apply_tag_rules(db: &DatyBasy, tags: &mut Tags) -> anyhow::Result<()> {
+pub fn apply_tag_rules(db: &DatyBasy, tags: &mut Tags) -> () {
     let mut last_length = tags.total_value_count();
     let mut settled = false;
     let mut iterations = 0;
@@ -314,7 +314,6 @@ pub fn apply_tag_rules(db: &DatyBasy, tags: &mut Tags) -> anyhow::Result<()> {
     if !settled {
         log::warn!("warning: tags did not settle");
     }
-    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]

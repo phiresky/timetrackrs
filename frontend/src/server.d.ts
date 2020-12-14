@@ -103,6 +103,7 @@ export type ApiTypesTS =
 	| { type: "single_event"; response: SingleExtractedEventWithRaw | null }
 	| { type: "rule_groups"; response: TagRuleGroup[] }
 	| { type: "update_rule_groups"; response: [] }
+	| { type: "get_known_tags"; response: string[] }
 export type SingleExtractedEvent = {
 	id: string
 	timestamp: Timestamptz

@@ -36,7 +36,7 @@ impl std::convert::TryFrom<CreateNewDbEvent> for NewDbEvent {
         };
         Ok(NewDbEvent {
             id: value.id,
-            timestamp: Timestamptz::new(value.timestamp),
+            timestamp: Timestamptz(value.timestamp),
             sampler: value.sampler,
             sampler_sequence_id: value.sampler_sequence_id,
             data_type: data_type.to_string(),

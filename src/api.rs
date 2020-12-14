@@ -27,7 +27,7 @@ pub struct SingleExtractedEventWithRaw {
 
 macro_rules! make_thingois {
     (pub enum $name:ident {
-        $($r:ident { response: $resp:ty })+
+        $($r:ident { response: $resp:ty }),+
     }) => (
         #[allow(non_camel_case_types)]
         #[derive(TypeScriptify, Serialize)]
@@ -56,15 +56,18 @@ make_thingois! {
     pub enum ApiTypesTS {
         time_range {
             response: Vec<SingleExtractedEvent>
-        }
+        },
         single_event {
             response: Option<SingleExtractedEventWithRaw>
-        }
+        },
         rule_groups {
             response: Vec<TagRuleGroup>
-        }
+        },
         update_rule_groups {
             response: ()
+        },
+        get_known_tags {
+            response: Vec<String>
         }
     }
 }

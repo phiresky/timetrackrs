@@ -1,14 +1,13 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-use std::time::Instant;
+use std::{collections::HashSet, time::Instant};
 
 use diesel::prelude::*;
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
 
 use track_pc_usage_rs as trbtt;
-use track_pc_usage_rs::events::deserialize_captured;
-use track_pc_usage_rs::util::iso_string_to_date;
+use track_pc_usage_rs::util::iso_string_to_datetime;
 use trbtt::db::models::{DbEvent, Timestamptz};
 use trbtt::extract::ExtractInfo;
 use trbtt::prelude::*;
@@ -17,89 +16,46 @@ extern crate rocket_contrib;
 
 use api::*;
 
-#[get("/time-range?<after>&<before>&<limit>")]
-fn time_range(
-    db: DatyBasy,
-    before: Option<String>,
-    after: Option<String>,
-    limit: Option<usize>,
-) -> Api::time_range::response {
-    // println!("handling...");
-    // println!("querying...");
-    let before = match before {
-        Some(before) => Some(iso_string_to_date(&before).context("could not parse before date")?),
-        None => None,
-    };
-    let after = match after {
-        Some(after) => Some(iso_string_to_date(&after).context("could not parse after date")?),
-        None => None,
-    };
-
-    // if we get events before date X then we need to sort descending
-    // if both before and after are set either would be ok
+#[get("/get-known-tags")]
+fn get_known_tags(db: DatyBasy) -> Api::get_known_tags::response {
     let mdata = YieldEventsFromTrbttDatabase {
         db: &db.db_events,
-        chunk_size: 1000,
-        last_fetched: Timestamptz::new(
-            before
-                .or(after)
-                .context("one of after and before must be specified")?,
-        ),
-        ascending: before.is_none(),
+        chunk_size: 10000,
+        last_fetched: Timestamptz(Utc::now()),
+        ascending: false,
     };
-
-    // println!("jsonifying...");
-    let now = Instant::now();
-
-    let mut total_seen = 0;
-
-    let v = mdata
-        .into_iter()
+    let s: HashSet<String> = mdata
+        .take(1)
         .flatten()
-        .take_while(|a| match (before, after) {
-            (Some(_before), Some(after)) => {
-                // both limits exist, we are fetching descending,
-                a.timestamp >= Timestamptz::new(after)
-            }
-            _ => true,
-        })
-        .filter_map(|a| {
-            total_seen += 1;
-            let r = deserialize_captured((&a.data_type, &a.data));
-            match r {
-                Ok(r) => {
-                    if let Some(data) = r.extract_info() {
-                        Some(SingleExtractedEvent {
-                            id: a.id.clone(),
-                            timestamp: a.timestamp.clone(),
-                            duration: a.sampler.get_duration(),
-                            tags: get_tags(&db, data)
-                                .map_err(|e| {
-                                    log::warn!("get tags of {} error: {:?}", a.id, e);
-                                    e
-                                })
-                                .ok()?,
-                        })
-                    } else {
-                        None
-                    }
-                }
-                Err(e) => {
-                    log::warn!("deser of {} error: {:?}", a.id, e);
-                    // println!("data=||{}", a.data);
-                    None
+        .flat_map(|e| -> Vec<String> {
+            let data = e.deserialize_data();
+            if let Ok(d) = data {
+                let e = d.extract_info();
+                if let Some(o) = e {
+                    return o.into_iter().map(|(tag, _)| tag).collect();
                 }
             }
+            vec![]
         })
-        .take(limit.unwrap_or(10000))
-        .collect::<Vec<_>>();
-    log::debug!(
-        "after filter: {}/{}. extracting tags took {:?}",
-        v.len(),
-        total_seen,
-        now.elapsed()
-    );
-    Ok(Json(ApiResponse { data: v }))
+        .collect();
+
+    let mut o = Vec::new();
+    o.extend(s);
+    Ok(Json(ApiResponse { data: o }))
+}
+
+#[get("/time-range?<after>&<before>")]
+fn time_range(db: DatyBasy, before: String, after: String) -> Api::time_range::response {
+    // println!("handling...");
+    // println!("querying...");
+    let before = iso_string_to_datetime(&before).context("could not parse before date")?;
+    let after = iso_string_to_datetime(&after).context("could not parse after date")?;
+
+    Ok(Json(ApiResponse {
+        data: db
+            .get_extracted_for_time_range(&Timestamptz(after), &Timestamptz(before))
+            .context("get extracted events")?,
+    }))
 }
 
 #[get("/single-event?<id>")]
@@ -114,7 +70,7 @@ fn single_event(db: DatyBasy, id: String) -> Api::single_event::response {
             .context("fetching from db")?
     };
 
-    let r = deserialize_captured((&a.data_type, &a.data));
+    let r = a.deserialize_data();
     let v = match r {
         Ok(raw) => {
             if let Some(data) = raw.extract_info() {
@@ -123,7 +79,7 @@ fn single_event(db: DatyBasy, id: String) -> Api::single_event::response {
                     timestamp: a.timestamp,
                     duration: a.sampler.get_duration(),
                     tags_reasons: get_tags_with_reasons(&db, data.clone())?,
-                    tags: get_tags(&db, data)?,
+                    tags: get_tags(&db, data),
                     raw,
                 })
             } else {
@@ -240,7 +196,13 @@ fn main() -> anyhow::Result<()> {
     rocket::custom(config)
         .mount(
             "/api",
-            routes![time_range, single_event, rule_groups, update_rule_groups],
+            routes![
+                get_known_tags,
+                time_range,
+                single_event,
+                rule_groups,
+                update_rule_groups
+            ],
         )
         .attach(cors)
         .attach(DbEvents::fairing())
