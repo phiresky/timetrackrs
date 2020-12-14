@@ -2,17 +2,17 @@
 
 ![plot screenshot](docs/screenshots/2020-12-14-15-15-11.png)
 
-**Get more detail**
-
-![detailed plot screenshot](docs/screenshots/2020-12-14-15-15-20.png)
-
 **Track which projects you are working on and how much**
 
 ![timeline example](docs/screenshots/2020-12-14-15-15-48.png)
 
-**Add your own custom classification rules**
+**Add your own custom classification rules...**
 
 ![custom rules](docs/screenshots/2020-12-14-15-27-01.png)
+
+**...to get more detail**
+
+![detailed plot screenshot](docs/screenshots/2020-12-14-15-15-20.png)
 
 # Automatic Time Tracker
 
