@@ -1,5 +1,6 @@
 import * as React from "react"
-import { NavLink } from "react-router-dom"
+import { routes } from "../routes"
+import { NavLink } from "../router-lib/components/NavLink"
 
 export const Page: React.FC<{
 	headerChildren?: React.ReactNode
@@ -12,13 +13,21 @@ export const Page: React.FC<{
 			<div className={`header ${headerClass || ""}`}>
 				<h1>TRBTT</h1>
 				<span className="nav-bar">
-					<NavLink to="/timeline">Timeline</NavLink>
+					<NavLink route={routes.timeline} args={{}} query={{}}>
+						Timeline
+					</NavLink>
 					{" • "}
-					<NavLink to="/tag-tree">Tag Tree</NavLink>
+					<NavLink route={routes.tagTree} args={{}} query={{}}>
+						Tag Tree
+					</NavLink>
 					{" • "}
-					<NavLink to="/plot">Plot</NavLink>
+					<NavLink route={routes.plot} args={{}} query={{}}>
+						Plot
+					</NavLink>
 					{" • "}
-					<NavLink to="/tag-rule-editor">Rule Editor</NavLink>
+					<NavLink route={routes.ruleEditor} args={{}} query={{}}>
+						Rule Editor
+					</NavLink>
 				</span>
 				{headerChildren}
 			</div>

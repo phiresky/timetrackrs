@@ -26,7 +26,6 @@ export class ChooserWithChild extends React.Component<{
 	constructor(p: ChooserWithChild["props"]) {
 		super(p)
 		makeObservable(this)
-		autorun(() => console.log("from", this.timeRange.from))
 	}
 
 	@computed get data(): IPromiseBasedObservable<SingleExtractedEvent[]> {

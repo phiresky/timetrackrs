@@ -13,6 +13,8 @@ export interface RouteInformation<TData, TArgs> {
 }
 
 export class Router<TData, TArgs> {
+	_tdata!: TData
+	_targs!: TArgs
 	public static create<TData>(): Router<TData, {}> {
 		return new Router(undefined, undefined)
 	}

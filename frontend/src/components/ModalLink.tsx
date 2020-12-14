@@ -1,62 +1,76 @@
-import React, { useContext, useEffect } from "react"
-import { Link, StaticRouter } from "react-router-dom"
-import { Routes } from "./Routes"
-import Modal from "react-modal"
+import { createHashHistory } from "history"
 import { observer, useLocalObservable } from "mobx-react"
-import { reaction } from "mobx"
+import React, { createContext, useContext } from "react"
+import Modal from "react-modal"
+import {
+	LocationService,
+	QueryArgs,
+	QueryArgsToType,
+	Route,
+	RouteArgs,
+	RouteArgsToType,
+	Routing,
+} from "../router-lib"
+import { Link } from "../router-lib/components/Link"
+import { router, RouterContext, RoutingType } from "../routes"
+import { Routes } from "./Routes"
 
-type ModalContextType = { currentLink: string | null }
-
-const ModalContext = React.createContext<ModalContextType>({
-	currentLink: null,
-})
-
-export const ModalLink: React.FC<{ to: string }> = ({ to, children }) => {
+const ModalContext = createContext(
+	null as null | { routing: RoutingType; isOpen: boolean },
+)
+export function ModalLink<A extends RouteArgs, Q extends QueryArgs>(p: {
+	route: Route<A, Q>
+	args: RouteArgsToType<A>
+	query: QueryArgsToType<Q>
+	children?: React.ReactNode
+	aProps?: { className: string }
+}): React.ReactElement {
 	const context = useContext(ModalContext)
+	if (!context) return <a>[no modal context found]</a>
 	return (
 		<Link
-			to={to}
-			onClick={(e) => {
-				e.preventDefault()
-				context.currentLink = to
-			}}
+			route={p.route}
+			args={p.args}
+			query={p.query}
+			routing={context.routing}
 		>
-			{children}
+			{p.children}
 		</Link>
 	)
 }
 
 export const MaybeModal: React.FC<{ appElement: HTMLElement }> = observer(
 	({ appElement, children }) => {
-		const store = useLocalObservable<ModalContextType>(() => {
-			const x = new URLSearchParams(location.hash.substr(1))
-			const currentLink = x.get("modal") || null
-			return { currentLink }
-		})
-		useEffect(() =>
-			reaction(
-				() => store.currentLink,
-				(link) => {
-					const x = new URLSearchParams(location.hash.substr(1))
-					if (link) x.set("modal", link)
-					else x.delete("modal")
-					location.hash = x.toString()
+		const store = useLocalObservable(() => {
+			const history = createHashHistory()
+			const routing = new Routing(router, new LocationService(history))
+			// modal is open if hash router path is not /
+			return {
+				history,
+				routing,
+				get isOpen() {
+					return (
+						routing.locationService.currentLocation.path.length > 0
+					)
 				},
-			),
-		)
+				close() {
+					this.history.push("/")
+				},
+			}
+		})
 
 		return (
 			<ModalContext.Provider value={store}>
 				{children}
-				{store.currentLink && (
+				{store.isOpen && (
 					<Modal
 						isOpen={true}
 						appElement={appElement}
-						onRequestClose={(e) => (store.currentLink = null)}
+						onRequestClose={(_) => store.close()}
 					>
-						<StaticRouter location={store.currentLink}>
+						<RouterContext.Provider value={store.routing}>
 							<Routes />
-						</StaticRouter>
+						</RouterContext.Provider>
 					</Modal>
 				)}
 			</ModalContext.Provider>

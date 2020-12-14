@@ -20,5 +20,6 @@ module.exports = {
 		"import/extensions": "off",
 		"@typescript-eslint/camelcase": "off",
 		"react/prop-types": "off",
+		"react/display-name": "off",
 	},
 }

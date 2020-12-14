@@ -7,7 +7,10 @@ import { setTextRange } from "typescript"
 import * as api from "../api"
 import { SingleExtractedEvent } from "../server"
 import { Counter, DefaultMap, durationToString, totalDuration } from "../util"
-import { CategoryChart, CategoryChartModal } from "./CategoryChart"
+import {
+	CategoryChart,
+	CategoryChartModal as CategoryChartModalLink,
+} from "./CategoryChart"
 import { ChooserWithChild } from "./ChooserWithChild"
 import { Entry } from "./Entry"
 import { ModalLink } from "./ModalLink"
@@ -305,10 +308,10 @@ export class TagTree extends React.Component<{
 						<h3>
 							{kind}{" "}
 							{!chart && (
-								<CategoryChartModal
+								<CategoryChartModalLink
 									events={collect(tree)}
 									deep={false}
-									tagName={kind + ":"}
+									tagName={kind}
 								/>
 							)}
 						</h3>

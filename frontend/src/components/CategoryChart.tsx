@@ -5,6 +5,7 @@ import { DefaultMap, KeyedSet, totalDuration } from "../util"
 import { ModalLink } from "./ModalLink"
 import { AiOutlineBarChart } from "react-icons/ai"
 import { SingleExtractedEvent } from "../server"
+import { routes } from "../routes"
 
 type CategoryChartProps = {
 	events: SingleExtractedEvent[]
@@ -14,7 +15,11 @@ type CategoryChartProps = {
 
 export function CategoryChartModal(p: CategoryChartProps): React.ReactElement {
 	return (
-		<ModalLink to={`/category-chart/${p.tagName}`}>
+		<ModalLink
+			route={routes.categoryChart}
+			args={{ tagName: p.tagName }}
+			query={{}}
+		>
 			<AiOutlineBarChart />
 		</ModalLink>
 	)

@@ -14,12 +14,16 @@ import { LocationInfo } from "./LocationInfo"
 export class Routing<TData, TArgs> {
 	public constructor(
 		private readonly router: Router<TData, TArgs>,
-		private readonly locationService: LocationService,
+		public readonly locationService: LocationService,
 	) {}
 
 	@computed get currentRouteInformation():
 		| RouteInformation<TData, TArgs>
 		| undefined {
+		console.log(
+			"computing current route",
+			this.locationService.currentLocation,
+		)
 		return this.router.route(this.locationService.currentLocation)
 	}
 
@@ -43,7 +47,7 @@ export class Routing<TData, TArgs> {
 		}
 	}
 
-	public locationToOnClick(location: LocationInfo) {
+	public locationToOnClick(location: LocationInfo): ClickInfo {
 		const information = this.router.route(location)
 		const i = information
 			? this.castRouteInformation(information)

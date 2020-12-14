@@ -1,5 +1,4 @@
-import { observable, runInAction } from "mobx"
-import { Disposable } from "@hediet/std/disposable"
+import { action, makeObservable, observable, runInAction } from "mobx"
 import { LocationInfo } from "./LocationInfo"
 import { History, createBrowserHistory } from "history"
 
@@ -9,8 +8,6 @@ export interface ClickInfo {
 }
 
 export class LocationService {
-	public readonly dispose = Disposable.fn()
-
 	@observable private _currentLocation: LocationInfo
 	public get currentLocation(): LocationInfo {
 		return this._currentLocation
@@ -18,15 +15,20 @@ export class LocationService {
 
 	private readonly history: History
 
-	constructor() {
-		this.history = createBrowserHistory()
-		this.dispose.track({
-			dispose: this.history.listen((e) => {
-				runInAction("Update current location", () => {
-					this._currentLocation = LocationInfo.fromHistoryLocation(e)
-				})
-			}),
+	constructor(history: History = createBrowserHistory()) {
+		makeObservable(this)
+
+		this.history = history
+		// todo: dispose
+		this.history.listen((e) => {
+			console.log("hist change!!")
+			this.updateLocationFromHistory()
 		})
+
+		this.updateLocationFromHistory()
+	}
+	@action
+	private updateLocationFromHistory() {
 		this._currentLocation = LocationInfo.fromHistoryLocation(
 			this.history.location,
 		)

@@ -1,6 +1,7 @@
 import * as history from "history"
 
-function searchToObj(search: string): Record<string, string> {
+function searchToObj(search: string | undefined): Record<string, string> {
+	if (!search) return {}
 	const p = new URLSearchParams(search)
 	return Object.fromEntries(p)
 }
@@ -19,7 +20,8 @@ export class LocationInfo {
 		return LocationInfo.fromHistoryLocation(p)
 	}
 
-	private static parsePath(path: string): string[] {
+	private static parsePath(path: string | undefined): string[] {
+		if (!path) return []
 		if (!path.startsWith("/")) {
 			throw new Error(`Expected pathname "${path}" to start with "/"`)
 		}
@@ -29,19 +31,26 @@ export class LocationInfo {
 	}
 
 	public static fromHistoryLocation(
-		location: history.Location,
+		location: history.PartialPath | history.Location,
 	): LocationInfo {
 		const path = LocationInfo.parsePath(location.pathname)
 		return new LocationInfo(
 			path,
 			searchToObj(location.search),
-			location.hash,
-			location.state,
+			location.hash || "",
+			"state" in location
+				? (location.state as Record<string, unknown>)
+				: null,
 		)
 	}
 
 	public static deserialize(data: string): LocationInfo {
-		const obj = JSON.parse(data)
+		const obj = JSON.parse(data) as {
+			path: string[]
+			search: SearchData
+			hash: string
+			state: Record<string, unknown> | null
+		}
 		return new LocationInfo(obj.path, obj.search, obj.hash, obj.state)
 	}
 
@@ -50,7 +59,7 @@ export class LocationInfo {
 		public readonly search: SearchData,
 		public readonly hash: string,
 		/** Has to serialize/deserialize to/from json */
-		public readonly state: unknown,
+		public readonly state: Record<string, unknown> | null,
 	) {}
 
 	public getPathString(): string {
@@ -59,9 +68,10 @@ export class LocationInfo {
 
 	public toHistoryLocation(): history.Location {
 		return {
+			key: "default",
 			pathname: this.getPathString(),
 			hash: this.hash,
-			state: this.state as any,
+			state: this.state,
 			search: objToSearch(this.search),
 		}
 	}
