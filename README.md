@@ -1,10 +1,10 @@
 **How did you spend your day?**
 
-![plot screenshot](docs/screenshot/2020-12-14-15-15-11.png)
+![plot screenshot](docs/screenshots/2020-12-14-15-15-11.png)
 
 **Get more detail**
 
-![detailed plot screenshot](docs/screenshot/2020-12-14-15-15-20.png)
+![detailed plot screenshot](docs/screenshots/2020-12-14-15-15-20.png)
 
 **Track which projects you are working on and how much**
 
