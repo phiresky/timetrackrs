@@ -23,6 +23,8 @@ const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
     TagRuleWithMeta::type_script_ify,
     TagRule::type_script_ify,
     TagRuleGroupV1::type_script_ify,
+    TagValue::type_script_ify,
+    TagValueRegex::type_script_ify,
     TagAddReason::type_script_ify,
     api::ApiTypesTS::type_script_ify,
     api::SingleExtractedEvent::type_script_ify,

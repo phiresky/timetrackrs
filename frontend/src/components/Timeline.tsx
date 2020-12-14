@@ -3,21 +3,19 @@ import { observer } from "mobx-react"
 import React, { ReactElement } from "react"
 import * as api from "../api"
 import { durationToString, totalDuration } from "../util"
-import { Activity } from "../api"
 import { EntriesTime } from "./EntriesTime"
 import { Entry } from "./Entry"
 import { Page } from "./Page"
 import { TagTree } from "./TagTree"
 import { Choices, Select } from "./Select"
+import { SingleExtractedEvent, Tags } from "../server"
 
 export function getTag(
-	tags: string[],
+	tags: Tags,
 	tag: string,
 	deep = true,
 ): string | undefined {
-	const value = tags
-		.find((t) => t.startsWith(tag + ":"))
-		?.slice(tag.length + 1)
+	const value = tags.map[tag]?.[0]
 	if (!deep) {
 		return value?.split("/")[0]
 	}
@@ -28,8 +26,11 @@ type Filter = { tagName: string }
 
 interface Grouper {
 	name: string
-	shouldGroup(a: Activity, b: Activity): boolean
-	component: React.ComponentType<{ entries: Activity[]; filter: Filter }>
+	shouldGroup(a: SingleExtractedEvent, b: SingleExtractedEvent): boolean
+	component: React.ComponentType<{
+		entries: SingleExtractedEvent[]
+		filter: Filter
+	}>
 }
 const groupers: Grouper[] = [
 	{
@@ -95,9 +96,12 @@ const groupers: Grouper[] = [
 	},
 ]
 
-function group(grouper: Grouper, entries: Activity[]): Activity[][] {
-	const res: Activity[][] = []
-	let last: Activity | null = null
+function group(
+	grouper: Grouper,
+	entries: SingleExtractedEvent[],
+): SingleExtractedEvent[][] {
+	const res: SingleExtractedEvent[][] = []
+	let last: SingleExtractedEvent | null = null
 	let start = 0
 	for (const [i, entry] of entries.entries()) {
 		if (!last || grouper.shouldGroup(last, entry)) {
@@ -137,7 +141,7 @@ export const timeFmt = new Intl.DateTimeFormat("en-US", {
 	return bg[inx].g
 }*/
 function RenderGroup(props: {
-	entries: Activity[]
+	entries: SingleExtractedEvent[]
 	filter: Filter
 	grouper: Grouper
 }) {
@@ -176,7 +180,7 @@ const detailBy = [
 ]
 @observer
 export class Timeline extends React.Component {
-	@observable data = new Map<string, Activity[]>()
+	@observable data = new Map<string, SingleExtractedEvent[]>()
 	@observable loading = false
 	@observable loadState = "unloaded"
 	@observable oldestData = new Date()

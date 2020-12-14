@@ -1,4 +1,5 @@
-use crate::db::schema::*;
+use crate::db::schema::config::*;
+use crate::db::schema::raw_events::*;
 use crate::prelude::*;
 use diesel::deserialize::{self, FromSql};
 use diesel::serialize::{self, Output, ToSql};

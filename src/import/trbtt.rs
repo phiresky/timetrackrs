@@ -15,7 +15,7 @@ struct YieldAllEventsFromTrbttDatabase {
 impl Iterator for YieldAllEventsFromTrbttDatabase {
     type Item = Vec<NewDbEvent>;
     fn next(&mut self) -> Option<Self::Item> {
-        use crate::db::schema::events::dsl::*;
+        use crate::db::schema::raw_events::events::dsl::*;
         let result: Vec<DbEvent> = events
             .filter(insertion_sequence.gt(self.last_id))
             .order(insertion_sequence.asc())
@@ -46,7 +46,7 @@ impl Iterator for YieldAllEventsFromTrbttDatabase {
 }
 impl Importable for TrbttImportArgs {
     fn import(&self) -> ImportResult {
-        let db = crate::db::connect_file(&self.filename)?;
+        let db = crate::db::raw_events::connect_file(&self.filename)?;
 
         Ok(Box::new(YieldAllEventsFromTrbttDatabase {
             db,

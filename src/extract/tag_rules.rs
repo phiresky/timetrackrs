@@ -284,18 +284,17 @@ fn validate_tag_regex(regex: &Regex) -> anyhow::Result<()> {
     }
     Ok(())
 }
-pub fn get_tags(db: &mut DatyBasy, intrinsic_tags: Tags) -> anyhow::Result<Tags> {
+pub fn get_tags(db: &DatyBasy, intrinsic_tags: Tags) -> anyhow::Result<Tags> {
     let mut tags = intrinsic_tags;
     apply_tag_rules(db, &mut tags)?;
     Ok(tags)
 }
 
-pub fn apply_tag_rules(db: &mut DatyBasy, tags: &mut Tags) -> anyhow::Result<()> {
+pub fn apply_tag_rules(db: &DatyBasy, tags: &mut Tags) -> anyhow::Result<()> {
     let mut last_length = tags.total_value_count();
     let mut settled = false;
     let mut iterations = 0;
-    db.fetch_all_tag_rules_if_thoink()?;
-    let rules = db.get_all_tag_rules()?;
+    let rules = db.get_all_tag_rules();
     while !settled && iterations < 50 {
         for rule in rules {
             match rule
@@ -331,7 +330,7 @@ pub enum TagAddReason {
 }
 
 pub fn get_tags_with_reasons(
-    db: &mut DatyBasy,
+    db: &DatyBasy,
     intrinsic_tags: Tags,
 ) -> anyhow::Result<HashMap<String, TagAddReason>> {
     let mut tags: HashMap<String, TagAddReason> = intrinsic_tags
@@ -348,15 +347,14 @@ pub fn get_tags_with_reasons(
     let mut last_length = tags.len();
     let mut settled = false;
     let mut iterations = 0;
-    db.fetch_all_tag_rules_if_thoink()?;
-    let rules = db.get_all_tag_rules()?;
+    let rules = db.get_all_tag_rules();
     while !settled && iterations < 50 {
         for rule in rules {
             match rule
                 .apply(
                     db,
                     &tags.iter().fold(Tags::new(), |mut tags, (tag, _why)| {
-                        let x: Vec<_> = tag.splitn(1, ":").collect();
+                        let x: Vec<_> = tag.splitn(1, ':').collect();
                         tags.add(x[0], x[1]);
                         tags
                     }),

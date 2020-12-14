@@ -104,11 +104,13 @@ const TreeLeaves: React.FC<{ leaves: SingleExtractedEvent[] }> = observer(
 				() => new Counter(),
 			)
 			for (const l of leaves) {
-				for (const t of l.tags) {
-					const sI = t.indexOf(":")
-					const [tagKey, tagValue] = [t.slice(0, sI), t.slice(sI + 1)]
-					totalCounts.add(tagKey)
-					valueCounter.get(tagKey).add(tagValue)
+				for (const [tagKey, tagValues = []] of Object.entries(
+					l.tags.map,
+				)) {
+					for (const value of tagValues) {
+						totalCounts.add(tagKey)
+						valueCounter.get(tagKey).add(value)
+					}
 				}
 			}
 			// somewhat incorrect: the total counts differ on each tags because events can have multiple tags
@@ -270,17 +272,20 @@ export class TagTree extends React.Component<{
 		const tree = rootTree<SingleExtractedEvent>()
 		for (const event of this.props.events) {
 			let added = false
-			for (const tag of event.tags) {
-				const inx = tag.indexOf(":")
-				const tagName = tag.slice(0, inx)
-				if (this.props.tagName && this.props.tagName !== tagName)
-					continue
-				addToTree(
-					tree,
-					[tagName, ...tag.slice(inx + 1).split("/")],
-					event,
-				)
-				added = true
+			let toIter: [string, string[] | undefined][]
+			if (this.props.tagName) {
+				toIter = [
+					[this.props.tagName, event.tags.map[this.props.tagName]],
+				]
+			} else {
+				toIter = Object.entries(event.tags.map)
+			}
+			for (const [tagName, tagValues = []] of toIter) {
+				for (const tagValue of tagValues) {
+					addToTree(tree, [tagName, ...tagValue.split("/")], event)
+
+					added = true
+				}
 			}
 			if (this.props.tagName && !added) {
 				addToTree(tree, [this.props.tagName, "[untagged]"], event)

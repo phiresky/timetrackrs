@@ -9,8 +9,8 @@ fn main() -> anyhow::Result<()> {
     let opt = ImportArgs::from_args();
     let data = opt.import()?;
     log::info!("inserting...");
-    use track_pc_usage_rs::db::schema::events;
-    let db = track_pc_usage_rs::db::connect()?;
+    use track_pc_usage_rs::db::schema::raw_events::events;
+    let db = track_pc_usage_rs::db::raw_events::connect()?;
 
     let mut total_updated = 0;
     let mut total_seen = 0;

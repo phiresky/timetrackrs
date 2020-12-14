@@ -1,0 +1,10 @@
+# For documentation on how to configure this file,
+# see diesel.rs/guides/configuring-diesel-cli
+
+[print_schema]
+file = "src/db/schema/raw_events.rs"
+import_types = ["diesel::sql_types::*", "crate::db::hack::Integer"]
+with_docs = true
+
+[migrations_directory]
+dir = "raw_events_migrations"

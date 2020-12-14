@@ -11,10 +11,10 @@ fn main() -> anyhow::Result<()> {
     let args = CaptureArgs::from_args();
 
     let mut c = args.create_capturer()?;
-    let db = trbtt::db::connect()?;
+    let db = trbtt::db::raw_events::connect()?;
 
     use trbtt::db::models::*;
-    use trbtt::db::schema::events;
+    use trbtt::db::schema::raw_events::events;
 
     // println!("{}", serde_json::to_string_pretty(&data)?);
     let sampler = Sampler::Explicit { duration: 30.0 }; //Sampler::RandomSampler { avg_time: 30.0 };

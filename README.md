@@ -1,16 +1,28 @@
-# track pc usage
+**How did you spend your day?**
+
+![plot screenshot](docs/screenshot/2020-12-14-15-15-11.png)
+
+**Get more detail**
+
+![detailed plot screenshot](docs/screenshot/2020-12-14-15-15-20.png)
+
+**Track which projects you are working on and how much**
+
+![timeline example](docs/screenshots/2020-12-14-15-15-48.png)
+
+**Add your own custom classification rules**
+
+![custom rules](docs/screenshots/2020-12-14-15-27-01.png)
+
+# Automatic Time Tracker
 
 track which programs is used how much and stores data in database. Inspired by [arbtt](https://arbtt.nomeata.de/), which I used previously.
 
 ## todo
 
--   analyse data (ui / graphs etc)
 -   autoimport more detailed / other data
-    -   (phone usage via [App Usage](https://play.google.com/store/apps/details?id=com.a0soft.gphone.uninstaller&hl=en))
     -   browser usage via own firefox/chrome `permanent-history-webextension`, tbd
     -   mpv usage via own mpv tracking lua script `.config/mpv/scripts/logall.lua` tbu
-    -   shell usage via zsh-histdb
--   make non-crap
 -   look at similar tools, e.g. https://www.raymond.cc/blog/check-application-usage-times-personal-activity-monitor/
 
 ## Ideas for getting program metadata
@@ -94,7 +106,7 @@ Install https://chrome.google.com/webstore/detail/url-in-title/ignpacbgnbnkaiook
 
 ### VS Code
 
-Open your user settings and set `window.title` to `${dirty}${activeEditorShort}${separator}${rootName}${separator}🛤sd🠚proj=${rootPath}🙰file=${activeEditorMedium}🠘 VSCode`
+Open your user settings and set `window.title` to `${dirty}${activeEditorShort}${separator}${rootName}${separator}${appName}} 🛤sd🠚proj=${rootPath}🙰file=${activeEditorMedium}🠘 `
 
 ### Shell / Zsh
 

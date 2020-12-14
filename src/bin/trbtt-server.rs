@@ -5,7 +5,7 @@ use std::time::Instant;
 use diesel::prelude::*;
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
-use serde_json::json;
+
 use track_pc_usage_rs as trbtt;
 use track_pc_usage_rs::events::deserialize_captured;
 use track_pc_usage_rs::util::iso_string_to_date;
@@ -17,12 +17,9 @@ extern crate rocket_contrib;
 
 use api::*;
 
-#[database("events_database")]
-struct DbConn(diesel::SqliteConnection);
-
 #[get("/time-range?<after>&<before>&<limit>")]
 fn time_range(
-    db: DbConn,
+    db: DatyBasy,
     before: Option<String>,
     after: Option<String>,
     limit: Option<usize>,
@@ -41,7 +38,7 @@ fn time_range(
     // if we get events before date X then we need to sort descending
     // if both before and after are set either would be ok
     let mdata = YieldEventsFromTrbttDatabase {
-        db: &db.0,
+        db: &db.db_events,
         chunk_size: 1000,
         last_fetched: Timestamptz::new(
             before
@@ -51,7 +48,6 @@ fn time_range(
         ascending: before.is_none(),
     };
 
-    let mut dbsy = DatyBasy::new(&db);
     // println!("jsonifying...");
     let now = Instant::now();
 
@@ -77,7 +73,7 @@ fn time_range(
                             id: a.id.clone(),
                             timestamp: a.timestamp.clone(),
                             duration: a.sampler.get_duration(),
-                            tags: get_tags(&mut dbsy, data)
+                            tags: get_tags(&db, data)
                                 .map_err(|e| {
                                     log::warn!("get tags of {} error: {:?}", a.id, e);
                                     e
@@ -107,18 +103,16 @@ fn time_range(
 }
 
 #[get("/single-event?<id>")]
-fn single_event(db: DbConn, id: String) -> Api::single_event::response {
+fn single_event(db: DatyBasy, id: String) -> Api::single_event::response {
     // println!("handling...");
     // println!("querying...");
     let a = {
-        use trbtt::db::schema::events::dsl;
+        use trbtt::db::schema::raw_events::events::dsl;
         dsl::events
             .filter(dsl::id.eq(id))
-            .first::<DbEvent>(&*db)
+            .first::<DbEvent>(&*db.db_events)
             .context("fetching from db")?
     };
-    // println!("jsonifying...");
-    let mut dbsy = DatyBasy::new(&db);
 
     let r = deserialize_captured((&a.data_type, &a.data));
     let v = match r {
@@ -128,8 +122,8 @@ fn single_event(db: DbConn, id: String) -> Api::single_event::response {
                     id: a.id,
                     timestamp: a.timestamp,
                     duration: a.sampler.get_duration(),
-                    tags_reasons: get_tags_with_reasons(&mut dbsy, data.clone())?,
-                    tags: get_tags(&mut dbsy, data)?,
+                    tags_reasons: get_tags_with_reasons(&db, data.clone())?,
+                    tags: get_tags(&db, data)?,
                     raw,
                 })
             } else {
@@ -147,12 +141,12 @@ fn single_event(db: DbConn, id: String) -> Api::single_event::response {
 }
 
 #[get("/rule-groups")]
-fn rule_groups(db: DbConn) -> Api::rule_groups::response {
+fn rule_groups(db: DatyBasy) -> Api::rule_groups::response {
     // println!("handling...");
     // println!("querying...");
-    use trbtt::db::schema::tag_rule_groups::dsl::*;
+    use trbtt::db::schema::config::tag_rule_groups::dsl::*;
     let groups = tag_rule_groups
-        .load::<TagRuleGroup>(&*db)
+        .load::<TagRuleGroup>(&*db.db_config)
         .context("fetching from db")?
         .into_iter()
         .chain(get_default_tag_rule_groups())
@@ -163,23 +157,23 @@ fn rule_groups(db: DbConn) -> Api::rule_groups::response {
 
 #[post("/rule-groups", format = "json", data = "<input>")]
 fn update_rule_groups(
-    db: DbConn,
+    db: DatyBasy,
     input: Json<Vec<TagRuleGroup>>,
 ) -> Api::update_rule_groups::response {
     // println!("handling...");
     // println!("querying...");
-    use trbtt::db::schema::tag_rule_groups::dsl::*;
-    db.transaction::<(), anyhow::Error, _>(|| {
+    use trbtt::db::schema::config::tag_rule_groups::dsl::*;
+    db.db_config.transaction::<(), anyhow::Error, _>(|| {
         for g in input.into_inner() {
             let q = diesel::update(&g).set(&g);
             log::info!("query: {}", diesel::debug_query(&q));
-            let updated = q.execute(&*db).context("updating in db")?;
+            let updated = q.execute(&*db.db_config).context("updating in db")?;
 
             if updated == 0 {
                 log::info!("inserting new group");
                 diesel::insert_into(tag_rule_groups)
                     .values(g)
-                    .execute(&*db)
+                    .execute(&*db.db_config)
                     .context("inserting into db")?;
             }
         }
@@ -196,17 +190,40 @@ fn main() -> anyhow::Result<()> {
     use rocket::config::{Config, Environment, Value};
     use std::collections::HashMap;
 
-    let mut database_config = HashMap::new();
     let mut databases = HashMap::new();
 
-    let database_url = trbtt::db::get_database_location();
+    let database_url = trbtt::db::get_database_dir_location();
 
     // This is the same as the following TOML:
     // my_db = { url = "database.sqlite" }
-    database_config.insert("url", Value::from(database_url));
-    databases.insert("events_database", Value::from(database_config));
+
+    databases.insert(
+        "raw_events_database",
+        Value::from({
+            let mut database_config = HashMap::new();
+            database_config.insert("url", Value::from(trbtt::db::raw_events::get_filename()));
+            database_config
+        }),
+    );
+    databases.insert(
+        "config_database",
+        Value::from({
+            let mut database_config = HashMap::new();
+            database_config.insert("url", Value::from(trbtt::db::config::get_filename()));
+            database_config
+        }),
+    );
+    databases.insert(
+        "extracted_database",
+        Value::from({
+            let mut database_config = HashMap::new();
+            database_config.insert("url", Value::from(trbtt::db::extracted::get_filename()));
+            database_config
+        }),
+    );
 
     let config = Config::build(Environment::Development)
+        .port(52714)
         .extra("databases", databases)
         .finalize()
         .unwrap();
@@ -226,7 +243,9 @@ fn main() -> anyhow::Result<()> {
             routes![time_range, single_event, rule_groups, update_rule_groups],
         )
         .attach(cors)
-        .attach(DbConn::fairing())
+        .attach(DbEvents::fairing())
+        .attach(DbConfig::fairing())
+        .attach(DbExtracted::fairing())
         .launch();
 
     Ok(())

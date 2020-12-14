@@ -6,10 +6,55 @@ pub mod models;
 pub mod schema;
 use anyhow::Context;
 use diesel::prelude::*;
-use diesel_migrations::embed_migrations;
-use dotenv::dotenv;
-use std::env;
-embed_migrations!();
+use std::{env, path::PathBuf};
+
+macro_rules! kot {
+    () => {
+        use super::*;
+        use diesel::SqliteConnection;
+        use diesel_migrations::embed_migrations;
+        pub fn migrate(conn: &SqliteConnection) -> anyhow::Result<()> {
+            Ok(embedded_migrations::run_with_output(
+                conn,
+                &mut std::io::stdout(),
+            )?)
+        }
+        pub fn connect_file(filename: &str) -> anyhow::Result<SqliteConnection> {
+            let db = SqliteConnection::establish(&filename).context("Establishing connection")?;
+            set_pragmas(&db).with_context(|| format!("set pragmas for {}", &filename))?;
+            migrate(&db).context("run migrations")?;
+            Ok(db)
+        }
+        pub fn get_filename() -> String {
+            let mut file = get_database_dir_location();
+            file.push(format!("{}.sqlite3", DB_NAME));
+            log::info!("get filename {:?}", file);
+            file.to_string_lossy().to_string()
+        }
+
+        pub fn connect() -> anyhow::Result<SqliteConnection> {
+            let file = get_filename();
+            log::debug!("Connecting to db at {}", file);
+            connect_file(&file)
+        }
+    };
+}
+
+pub mod raw_events {
+    static DB_NAME: &str = "raw_events";
+    embed_migrations!("diesel/raw_events_migrations");
+    kot! {}
+}
+pub mod config {
+    static DB_NAME: &str = "config";
+    embed_migrations!("diesel/config_migrations");
+    kot! {}
+}
+pub mod extracted {
+    static DB_NAME: &str = "extracted";
+    embed_migrations!("diesel/extracted_migrations");
+    kot! {}
+}
 
 pub fn set_pragmas(db: &SqliteConnection) -> anyhow::Result<()> {
     db.execute("pragma page_size = 32768;")
@@ -31,28 +76,14 @@ pub fn set_pragmas(db: &SqliteConnection) -> anyhow::Result<()> {
     // db.execute("pragma optimize;")?;
     Ok(())
 }
-pub fn connect_file(filename: &str) -> anyhow::Result<SqliteConnection> {
-    let db = SqliteConnection::establish(&filename).context("Establishing connection")?;
-    set_pragmas(&db).with_context(|| format!("set pragmas for {}", &filename))?;
-    embedded_migrations::run_with_output(&db, &mut std::io::stdout()).context("migrations")?;
-    Ok(db)
-}
-pub fn get_database_location() -> String {
-    env::var("DATABASE_URL").unwrap_or_else(|_| {
+
+pub fn get_database_dir_location() -> PathBuf {
+    let dir = env::var("TRBTT_DATA_DIR").unwrap_or_else(|_| {
         let dirs =
             directories_next::ProjectDirs::from("", "", "trbtt").expect("No HOME directory found");
         let dir = dirs.data_dir();
         std::fs::create_dir_all(dir).expect("could not create data dir");
-        dir.join("events.sqlite3")
-            .to_str()
-            .expect("user data dir is invalid unicode")
-            .to_string()
-    })
-}
-
-pub fn connect() -> anyhow::Result<SqliteConnection> {
-    dotenv().ok();
-    let database_location = get_database_location();
-    log::debug!("Connecting to db at {}", database_location);
-    connect_file(&database_location)
+        dir.to_string_lossy().into()
+    });
+    PathBuf::from(dir)
 }

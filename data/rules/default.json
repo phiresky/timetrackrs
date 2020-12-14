@@ -186,8 +186,8 @@
                             ],
                             "new_tags": [
                                 {
-                                    "tag": "software-identifier",
-                                    "value": "${class}"
+                                    "tag": "software-id",
+                                    "value": "class:${class}"
                                 }
                             ]
                         }

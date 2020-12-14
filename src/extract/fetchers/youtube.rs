@@ -115,10 +115,10 @@ impl ExternalFetcher for YoutubeFetcher {
         let mut tags: Vec<TagValue> = Vec::new();
         if let YoutubeDlOutput::SingleVideo(sv) = d {
             tags.add("video-title", sv.title);
-            sv.uploader_id.map(|u| tags.add("youtube-uploader", u));
-            sv.uploader.map(|u| tags.add("youtube-uploader-name", u));
-            sv.channel_id.map(|u| tags.add("youtube-channel", u));
-            sv.channel.map(|u| tags.add("youtube-channel-name", u));
+            if let Some(u) = sv.uploader_id { tags.add("youtube-uploader", u) }
+            if let Some(u) = sv.uploader { tags.add("youtube-uploader-name", u) }
+            if let Some(u) = sv.channel_id { tags.add("youtube-channel", u) }
+            if let Some(u) = sv.channel { tags.add("youtube-channel-name", u) }
             if let Some(tg) = sv.tags {
                 for tag in tg {
                     if let Some(tag) = tag {

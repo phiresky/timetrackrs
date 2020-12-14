@@ -5,7 +5,7 @@ use crate::prelude::*;
 // TODO: maybe use IndexMap<String, IndexSet<String>
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct Tags {
-    #[ts(ts_type = "Partial<Record<string, string[]>>")]
+    #[ts(ts_type = "{[key in string]?: string[]}")]
     map: multimap::MultiMap<String, String>,
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]

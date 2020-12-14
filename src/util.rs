@@ -47,12 +47,10 @@ impl OsInfo {
         tags.add("device-os-type".to_string(), &self.os_type);
         tags.add("device-os-version".to_string(), &self.version);
         tags.add("device-hostname".to_string(), &self.hostname);
-        self.username
-            .as_ref()
-            .map(|m| tags.add("device-username".to_string(), m));
-        self.machine_id
-            .as_ref()
-            .map(|m| tags.add("device-machine-id".to_string(), m));
+        if let Some(m) = self.username
+            .as_ref() { tags.add("device-username".to_string(), m) }
+        if let Some(m) = self.machine_id
+            .as_ref() { tags.add("device-machine-id".to_string(), m) }
         tags.add(
             "device-type".to_string(),
             format!(

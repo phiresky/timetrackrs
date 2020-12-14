@@ -12,7 +12,7 @@ pub struct YieldEventsFromTrbttDatabase<'a> {
 impl<'a> Iterator for YieldEventsFromTrbttDatabase<'a> {
     type Item = Vec<DbEvent>;
     fn next(&mut self) -> Option<Self::Item> {
-        use crate::db::schema::events::dsl::*;
+        use crate::db::schema::raw_events::events::dsl::*;
         let mut query = events.into_boxed();
         if self.ascending {
             query = query

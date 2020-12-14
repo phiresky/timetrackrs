@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use async_channel as chan;
 use futures_util::{future, pin_mut, select, FutureExt, StreamExt};
-use serde::{Deserialize, Serialize};
+
 use track_pc_usage_rs::sync::{MsgKind, PeerMsg};
 use tungstenite::Message;
 use uuid::Uuid;

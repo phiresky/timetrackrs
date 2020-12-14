@@ -3,11 +3,11 @@ import _ from "lodash"
 import { action, computed, makeObservable, observable } from "mobx"
 import { observer } from "mobx-react"
 import React from "react"
-import { Activity } from "../api"
 import { ChooserWithChild } from "./ChooserWithChild"
 import { Page } from "./Page"
 import { getTag } from "./Timeline"
 import Plotly from "react-plotly.js"
+import { SingleExtractedEvent } from "../server"
 
 export function PlotPage(): React.ReactElement {
 	return (
@@ -18,7 +18,7 @@ export function PlotPage(): React.ReactElement {
 }
 
 @observer
-export class Plot extends React.Component<{ events: Activity[] }> {
+export class Plot extends React.Component<{ events: SingleExtractedEvent[] }> {
 	r = React.createRef<HTMLDivElement>()
 
 	plot: Plotly.PlotlyHTMLElement | null = null
@@ -47,7 +47,7 @@ export class Plot extends React.Component<{ events: Activity[] }> {
 										maxEventSeconds,
 										e.duration - maxEventSeconds * i,
 									),
-								} as Activity),
+								} as SingleExtractedEvent),
 						)
 				} else return e
 			})

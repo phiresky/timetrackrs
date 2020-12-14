@@ -93,6 +93,8 @@ export type TagRuleGroupV1 = {
 	enabled: boolean
 	rules: TagRuleWithMeta[]
 }
+export type TagValue = { tag: string; value: string }
+export type TagValueRegex = { tag: string; regex: Regex }
 export type TagAddReason =
 	| { type: "IntrinsicTag"; raw_data_type: string }
 	| { type: "AddedByRule"; matched_tags: TagValue[]; rule: TagRule }
@@ -116,4 +118,4 @@ export type SingleExtractedEventWithRaw = {
 	tags_reasons: { [key: string]: TagAddReason }
 }
 export type ApiResponse<T> = { data: T }
-export type Tags = { map: Partial<Record<string, string[]>> }
+export type Tags = { map: { [key in string]?: string[] } }

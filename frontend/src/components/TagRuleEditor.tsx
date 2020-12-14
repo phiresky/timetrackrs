@@ -79,12 +79,13 @@ const TagRuleEditor: React.FC = observer(() => {
 	)
 })
 
+const new_tags = [{ tag: "...", value: "..." }]
 const tagRulePrototypes: () => (TagRule | { type: "Add Rule" })[] = () => [
 	{ type: "Add Rule" },
-	{ type: "HasTag", tag: "...", new_tag: "..." },
-	{ type: "ExactTagValue", tag: "...", value: "...", new_tag: "..." },
-	{ type: "TagValuePrefix", tag: "...", prefix: "...", new_tag: "..." },
-	{ type: "TagRegex", regexes: ["^...$"], new_tag: "..." },
+	{ type: "HasTag", tag: "...", new_tags },
+	{ type: "ExactTagValue", tag: "...", value: "...", new_tags },
+	{ type: "TagValuePrefix", tag: "...", prefix: "...", new_tags },
+	{ type: "TagRegex", regexes: [{ tag: "...", regex: "^...$" }], new_tags },
 ]
 const TagRuleGroupEditor: React.FC<{
 	group: TagRuleGroup
@@ -162,6 +163,32 @@ function _InputWithTarget<K extends string>(p: {
 }
 const InputWithTarget = observer(_InputWithTarget)
 
+function NewTag(p: {
+	rule: TagRule & {
+		type: "HasTag" | "ExactTagValue" | "TagValuePrefix" | "TagRegex"
+	}
+	editable: boolean
+	dirty: () => void
+}) {
+	return (
+		<>
+			Then add new tag:{" "}
+			<InputWithTarget
+				disabled={!p.editable}
+				target={p.rule.new_tags[0]}
+				k="tag"
+				dirty={p.dirty}
+			/>
+			:{" "}
+			<InputWithTarget
+				disabled={!p.editable}
+				target={p.rule.new_tags[0]}
+				k="value"
+				dirty={p.dirty}
+			/>
+		</>
+	)
+}
 const ruleEditors: {
 	[k in keyof RuleMoppies]: React.FC<{
 		rule: RuleMoppies[k]
@@ -181,13 +208,7 @@ const ruleEditors: {
 				/>{" "}
 				exists
 				<br />
-				Then add new tag:{" "}
-				<InputWithTarget
-					disabled={!p.editable}
-					target={p.rule}
-					k="new_tag"
-					dirty={p.dirty}
-				/>
+				<NewTag {...p} />
 			</div>
 		)
 	},
@@ -209,13 +230,7 @@ const ruleEditors: {
 					dirty={p.dirty}
 				/>
 				<br />
-				Then add new tag:{" "}
-				<InputWithTarget
-					disabled={!p.editable}
-					target={p.rule}
-					k="new_tag"
-					dirty={p.dirty}
-				/>
+				Then add new tag: <NewTag {...p} />
 			</div>
 		)
 	},
@@ -237,13 +252,7 @@ const ruleEditors: {
 					dirty={p.dirty}
 				/>
 				<br />
-				Then add new tag:{" "}
-				<InputWithTarget
-					disabled={!p.editable}
-					target={p.rule}
-					k="new_tag"
-					dirty={p.dirty}
-				/>
+				<NewTag {...p} />
 			</div>
 		)
 	},
@@ -257,17 +266,26 @@ const ruleEditors: {
 				:{" "}
 				{intersperse(
 					p.rule.regexes.map((r, i) => (
-						<RegexEditor
-							key={i}
-							editable={p.editable}
-							value={r}
-							onChange={(r) =>
-								runInAction(() => {
-									p.rule.regexes[i] = r
-									p.dirty()
-								})
-							}
-						/>
+						<>
+							<InputWithTarget
+								disabled={!p.editable}
+								target={r}
+								k="tag"
+								dirty={p.dirty}
+							/>
+							:
+							<RegexEditor
+								key={i}
+								editable={p.editable}
+								value={r.regex}
+								onChange={(v) =>
+									runInAction(() => {
+										r.regex = v
+										p.dirty()
+									})
+								}
+							/>
+						</>
 					)),
 					(i) => (
 						<React.Fragment key={`a${i}`}> and </React.Fragment>
@@ -275,7 +293,7 @@ const ruleEditors: {
 				)}{" "}
 				<button
 					onClick={() => {
-						p.rule.regexes.push("^...$")
+						p.rule.regexes.push({ tag: "...", regex: "^...$" })
 					}}
 				>
 					+
@@ -291,13 +309,7 @@ const ruleEditors: {
 					</button>
 				)}
 				<div>
-					Then add new tag:{" "}
-					<InputWithTarget
-						disabled={!p.editable}
-						target={p.rule}
-						k="new_tag"
-						dirty={p.dirty}
-					/>
+					<NewTag {...p} />
 				</div>
 			</div>
 		)
