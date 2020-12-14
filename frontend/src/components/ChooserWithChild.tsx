@@ -14,6 +14,7 @@ import {
 } from "./TimeRangeSelector"
 import * as dfn from "date-fns"
 import * as api from "../api"
+import { SingleExtractedEvent } from "../server"
 
 @observer
 export class ChooserWithChild extends React.Component<{
@@ -38,7 +39,6 @@ export class ChooserWithChild extends React.Component<{
 	}
 
 	render(): React.ReactNode {
-		console.log(this.data.value)
 		return (
 			<div className={`container ${this.props.containerClass || ""}`}>
 				Time Range: <TimeRangeSelector target={this.timeRange} />

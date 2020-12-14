@@ -1,37 +1,34 @@
 import { computed } from "mobx"
 import React from "react"
 import Plot from "react-plotly.js"
-import { Activity } from "../api"
 import { DefaultMap, KeyedSet, totalDuration } from "../util"
 import { ModalLink } from "./ModalLink"
 import { AiOutlineBarChart } from "react-icons/ai"
+import { SingleExtractedEvent } from "../server"
 
 type CategoryChartProps = {
-	events: Activity[]
-	tagPrefix: string
+	events: SingleExtractedEvent[]
+	tagName: string
 	deep: boolean
 }
 
 export function CategoryChartModal(p: CategoryChartProps): React.ReactElement {
 	return (
-		<ModalLink to={`/category-chart/${p.tagPrefix}`}>
+		<ModalLink to={`/category-chart/${p.tagName}`}>
 			<AiOutlineBarChart />
 		</ModalLink>
 	)
 }
 export class CategoryChart extends React.Component<CategoryChartProps> {
 	@computed get data() {
-		const prefix = this.props.tagPrefix
-		const groups = new DefaultMap<string, KeyedSet<Activity>>(
+		const prefix = this.props.tagName
+		const groups = new DefaultMap<string, KeyedSet<SingleExtractedEvent>>(
 			() => new KeyedSet((e) => e.id),
 		)
 		for (const event of this.props.events) {
-			for (const tag of event.tags) {
-				if (tag.startsWith(prefix)) {
-					let cat = tag.slice(prefix.length)
-					if (!this.props.deep) cat = cat.split("/")[0]
-					groups.get(cat).add(event)
-				}
+			for (let cat of event.tags.map[prefix] || []) {
+				if (!this.props.deep) cat = cat.split("/")[0]
+				groups.get(cat).add(event)
 			}
 		}
 		const x = [...groups.keys()]
@@ -57,7 +54,7 @@ export class CategoryChart extends React.Component<CategoryChartProps> {
 							title: "Hours",
 						},
 						height: 400,
-						title: `Time spent per ${this.props.tagPrefix}`,
+						title: `Time spent per ${this.props.tagName}`,
 					}}
 				/>
 			</div>

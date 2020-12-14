@@ -293,7 +293,6 @@ export class TagTree extends React.Component<{
 		}
 		for (const c of tree.children) shortenTree(c[1])
 		sortTree(tree)
-		console.log(tree)
 		return tree
 	}
 
@@ -309,7 +308,7 @@ export class TagTree extends React.Component<{
 								<CategoryChartModal
 									events={collect(tree)}
 									deep={false}
-									tagPrefix={kind + ":"}
+									tagName={kind + ":"}
 								/>
 							)}
 						</h3>
@@ -317,7 +316,7 @@ export class TagTree extends React.Component<{
 							<CategoryChart
 								events={collect(tree)}
 								deep={false}
-								tagPrefix={kind + ":"}
+								tagName={kind + ":"}
 							/>
 						)}
 						<ShowTreeChildren tree={tree} noSlash />

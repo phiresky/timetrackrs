@@ -1,7 +1,7 @@
 import React from "react"
 import { Switch, Route, Redirect, RouteComponentProps } from "react-router-dom"
-import { TagTree, TagTreePage } from "./TagTree"
-import { Timeline, TimelinePage } from "./Timeline"
+import { TagTreePage } from "./TagTree"
+import { TimelinePage } from "./Timeline"
 import { SingleEventInfo } from "./SingleEventInfo"
 import { ChooserWithChild } from "./ChooserWithChild"
 import { CategoryChart } from "./CategoryChart"
@@ -18,10 +18,10 @@ export function Routes(): React.ReactElement {
 				<TimelinePage />
 			</Route>
 			<Route
-				path="/category-chart-deep/:prefix"
+				path="/category-chart-deep/:tag"
 				render={(
 					r: RouteComponentProps<{
-						prefix: string
+						tag: string
 					}>,
 				) => (
 					<ChooserWithChild
@@ -29,7 +29,7 @@ export function Routes(): React.ReactElement {
 							<CategoryChart
 								{...p}
 								deep
-								tagPrefix={r.match.params.prefix}
+								tagName={r.match.params.tag}
 							/>
 						)}
 					/>
@@ -41,17 +41,21 @@ export function Routes(): React.ReactElement {
 					r: RouteComponentProps<{
 						prefix: string
 					}>,
-				) => (
-					<ChooserWithChild
-						child={(p) => (
-							<CategoryChart
-								{...p}
-								deep={false}
-								tagPrefix={r.match.params.prefix}
-							/>
-						)}
-					/>
-				)}
+				) => {
+					console.log(r)
+					r.location.search
+					return (
+						<ChooserWithChild
+							child={(p) => (
+								<CategoryChart
+									{...p}
+									deep={false}
+									tagName={r.match.params.prefix}
+								/>
+							)}
+						/>
+					)
+				}}
 			/>
 			<Route path="/tag-tree">
 				<TagTreePage />
@@ -67,9 +71,7 @@ export function Routes(): React.ReactElement {
 			></Route>
 			<Route
 				path="/tag-rule-editor"
-				render={(p: RouteComponentProps<{ id: string }>) => (
-					<TagRuleEditorPage />
-				)}
+				render={(p: RouteComponentProps) => <TagRuleEditorPage />}
 			></Route>
 
 			<div>Error 404</div>
