@@ -2,10 +2,13 @@ use crate::db::schema::config::*;
 use crate::db::schema::extracted::*;
 use crate::db::schema::raw_events::*;
 use crate::prelude::*;
-use diesel::deserialize::{self, FromSql};
 use diesel::serialize::{self, Output, ToSql};
 use diesel::sql_types::Text;
 use diesel::sqlite::Sqlite;
+use diesel::{
+    deserialize::{self, FromSql},
+    sql_types::{BigInt, Double},
+};
 use std::io::Write;
 
 #[derive(Queryable, Serialize, TypeScriptify)]
@@ -44,6 +47,36 @@ impl ToSql<Text, Sqlite> for Timestamptz {
     fn to_sql<W: Write>(&self, out: &mut Output<W, Sqlite>) -> serialize::Result {
         let s = self.0.to_rfc3339();
         <String as ToSql<Text, Sqlite>>::to_sql(&s, out)
+    }
+}
+
+#[derive(
+    AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Eq, Hash, Serialize, Deserialize,
+)]
+#[sql_type = "BigInt"]
+pub struct TimestamptzI(pub DateTime<Utc>);
+impl FromSql<BigInt, Sqlite> for TimestamptzI {
+    fn from_sql(
+        bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
+    ) -> deserialize::Result<Self> {
+        let i = <i64 as FromSql<BigInt, Sqlite>>::from_sql(bytes)?;
+        Ok(TimestamptzI(util::unix_epoch_millis_to_date(i)))
+    }
+}
+impl ToSql<BigInt, Sqlite> for TimestamptzI {
+    fn to_sql<W: Write>(&self, out: &mut Output<W, Sqlite>) -> serialize::Result {
+        let s = self.0.timestamp_millis();
+        <i64 as ToSql<BigInt, Sqlite>>::to_sql(&s, out)
+    }
+}
+impl From<&Timestamptz> for TimestamptzI {
+    fn from(t: &Timestamptz) -> Self {
+        Self(t.0)
+    }
+}
+impl From<&TimestamptzI> for Timestamptz {
+    fn from(t: &TimestamptzI) -> Self {
+        Self(t.0)
     }
 }
 
@@ -97,31 +130,23 @@ pub struct NewDbEvent {
 )]
 #[table_name = "extracted_events"]
 pub struct InExtractedTag {
-    pub timestamp: Timestamptz,
+    pub timestamp: TimestamptzI,
     pub duration: f64,
-    pub event_id: String,
-    pub tag: String,
-    pub value: String,
+    pub event_id: i64,
+    pub tag: i64,
+    pub value: i64,
 }
-#[derive(
-    Debug,
-    Queryable,
-    Identifiable,
-    Insertable,
-    Serialize,
-    Deserialize,
-    TypeScriptify,
-    AsChangeset,
-    Clone,
-)]
-#[primary_key(rowid)]
-#[table_name = "extracted_events"]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone, QueryableByName)]
 pub struct OutExtractedTag {
-    pub rowid: i64,
-    pub timestamp: Timestamptz,
-    pub duration: f64,
+    #[sql_type = "BigInt"]
+    pub timestamp: TimestamptzI,
+    #[sql_type = "Text"]
     pub event_id: String,
+    #[sql_type = "Double"]
+    pub duration: f64,
+    #[sql_type = "Text"]
     pub tag: String,
+    #[sql_type = "Text"]
     pub value: String,
 }
 

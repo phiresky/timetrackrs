@@ -74,12 +74,14 @@ fn single_event(db: DatyBasy, id: String) -> Api::single_event::response {
     let v = match r {
         Ok(raw) => {
             if let Some(data) = raw.extract_info() {
+                let tags_reasons = get_tags_with_reasons(&db, data.clone())?;
+                let (tags, iterations) = get_tags(&db, data);
                 Some(SingleExtractedEventWithRaw {
                     id: a.id,
                     timestamp: a.timestamp,
                     duration: a.sampler.get_duration(),
-                    tags_reasons: get_tags_with_reasons(&db, data.clone())?,
-                    tags: get_tags(&db, data),
+                    tags_reasons,
+                    tags,
                     raw,
                 })
             } else {

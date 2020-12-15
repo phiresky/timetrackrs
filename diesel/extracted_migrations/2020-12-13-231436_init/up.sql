@@ -1,14 +1,27 @@
 -- Your SQL goes here
-CREATE TABLE IF NOT EXISTS extracted_events (
-    rowid integer PRIMARY KEY NOT NULL,
-    timestamp text NOT NULL,
-    duration double NOT NULL,
-    event_id text NOT NULL,
-    tag text NOT NULL,
-    value text NOT NULL
+CREATE TABLE IF NOT EXISTS tags (
+    id integer PRIMARY KEY NOT NULL,
+    text text NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS ee_event_id_idx ON extracted_events (event_id);
+CREATE TABLE IF NOT EXISTS tag_values (
+    id integer PRIMARY KEY NOT NULL,
+    text text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS event_ids (
+    id integer PRIMARY KEY NOT NULL,
+    text text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS extracted_events (
+    rowid integer PRIMARY KEY NOT NULL,
+    event_id bigint NOT NULL REFERENCES event_ids (id),
+    timestamp bigint NOT NULL,
+    duration double NOT NULL,
+    tag bigint NOT NULL REFERENCES tags (id),
+    value bigint NOT NULL REFERENCES tag_values (id)
+);
 
 CREATE INDEX IF NOT EXISTS ee_timestamp_idx ON extracted_events (timestamp);
 

@@ -28,14 +28,12 @@ export const TimeRangeSelector: React.FC<{
 			if (mode === "day") {
 				target.from = dfn.startOfDay(target.from)
 				target.to = dfn.endOfDay(target.from)
-			}
-			if (mode === "week") {
+			} else if (mode === "week") {
 				const s = dfn.subDays(new Date(), 7)
 				const d = dfn.min([target.from, s])
 				target.from = dfn.startOfDay(d)
 				target.to = dfn.endOfDay(dfn.addDays(d, 6))
-			}
-			if (mode === "month") {
+			} else if (mode === "month") {
 				target.from = dfn.startOfMonth(target.from)
 				target.to = dfn.endOfMonth(target.from)
 			}
@@ -48,6 +46,24 @@ export const TimeRangeSelector: React.FC<{
 			else if (this.mode === "week")
 				target.to = dfn.endOfDay(dfn.addDays(d, 6))
 			else if (this.mode === "month") target.to = dfn.endOfMonth(d)
+		},
+		back() {
+			if (this.mode === "day") {
+				this.setDate(dfn.addDays(target.from, -1))
+			} else if (this.mode === "week") {
+				this.setDate(dfn.addDays(target.from, -7))
+			} else if (this.mode === "month") {
+				this.setDate(dfn.startOfMonth(dfn.addDays(target.from, -1)))
+			}
+		},
+		forward() {
+			if (this.mode === "day") {
+				this.setDate(dfn.addDays(target.from, 1))
+			} else if (this.mode === "week") {
+				this.setDate(dfn.addDays(target.from, 7))
+			} else if (this.mode === "month") {
+				this.setDate(dfn.startOfMonth(dfn.addDays(target.to, 1)))
+			}
 		},
 	}))
 	const commonProps = {
@@ -109,7 +125,7 @@ export const TimeRangeSelector: React.FC<{
 			<button
 				title="day before"
 				className="caretbutton"
-				onClick={() => state.setDate(dfn.subDays(target.from, 1))}
+				onClick={() => state.back()}
 			>
 				{"<"}
 			</button>
@@ -128,7 +144,7 @@ export const TimeRangeSelector: React.FC<{
 				<button
 					className="caretbutton"
 					title="day after"
-					onClick={() => state.setDate(dfn.addDays(target.from, 1))}
+					onClick={() => state.forward()}
 				>
 					{">"}
 				</button>

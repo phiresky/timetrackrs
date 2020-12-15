@@ -6,23 +6,27 @@ pub mod models;
 pub mod schema;
 use anyhow::Context;
 use diesel::prelude::*;
+use diesel::sql_types::{BigInt, Text};
 use std::{env, path::PathBuf};
-
 macro_rules! kot {
     () => {
         use super::*;
         use diesel::SqliteConnection;
         use diesel_migrations::embed_migrations;
-        pub fn migrate(conn: &SqliteConnection) -> anyhow::Result<()> {
+        fn migrate(conn: &SqliteConnection) -> anyhow::Result<()> {
             Ok(embedded_migrations::run_with_output(
                 conn,
                 &mut std::io::stdout(),
             )?)
         }
+        pub fn set_pragmas_migrate(db: &SqliteConnection) -> anyhow::Result<()> {
+            set_pragmas(&db).with_context(|| format!("set pragmas for db"))?;
+            migrate(&db).context("run migrations")?;
+            Ok(())
+        }
         pub fn connect_file(filename: &str) -> anyhow::Result<SqliteConnection> {
             let db = SqliteConnection::establish(&filename).context("Establishing connection")?;
-            set_pragmas(&db).with_context(|| format!("set pragmas for {}", &filename))?;
-            migrate(&db).context("run migrations")?;
+            set_pragmas_migrate(&db)?;
             Ok(db)
         }
         pub fn get_filename() -> String {
@@ -56,8 +60,19 @@ pub mod extracted {
     kot! {}
 }
 
+#[derive(Debug, QueryableByName)]
+struct P {
+    #[sql_type = "BigInt"]
+    page_size: i64,
+}
+#[derive(Debug, QueryableByName)]
+struct P2 {
+    #[sql_type = "Text"]
+    journal_mode: String,
+}
 pub fn set_pragmas(db: &SqliteConnection) -> anyhow::Result<()> {
-    db.execute("pragma page_size = 32768;")
+    let want_page_size = 32768;
+    db.execute(&format!("pragma page_size = {};", want_page_size))
         .context("setup pragma 1")?;
     db.execute("pragma foreign_keys = on;")
         .context("setup pragma 2")?;
@@ -71,6 +86,14 @@ pub fn set_pragmas(db: &SqliteConnection) -> anyhow::Result<()> {
         .context("setup pragma 5")?;
     db.execute("pragma mmap_size = 30000000000;")
         .context("setup pragma 6")?;
+    let P { page_size } = diesel::sql_query("pragma page_size;").get_result(db)?;
+    let P2 { journal_mode } = diesel::sql_query("pragma journal_mode;").get_result(db)?;
+    if page_size != want_page_size || journal_mode != "wal" {
+        log::info!("vaccuuming db to ensure page size and journal mode");
+        db.execute("pragma journal_mode = DELETE;")?;
+        db.execute("vacuum")?;
+        db.execute("pragma journal_mode = WAL;")?;
+    }
     //db.execute("pragma auto_vacuum = incremental")
     //    .context("setup pragma 7")?;
     // db.execute("pragma optimize;")?;

@@ -1,26 +1,101 @@
-use std::{collections::HashSet, time::Instant};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    sync::{Arc, Mutex, RwLock},
+    thread_local,
+    time::{Duration, Instant},
+};
 
+use crate::diesel::OptionalExtension;
 use crate::{api::SingleExtractedEvent, prelude::*};
-use diesel::SqliteConnection;
 use diesel::{prelude::*, sql_types::Text};
+use diesel::{sql_types::BigInt, SqliteConnection};
 use itertools::Itertools;
+use lru::LruCache;
+use owning_ref::{OwningHandle, OwningRef};
 use rocket::request::FromRequest;
 use rocket_contrib::database;
-
 use std::iter::FromIterator;
 #[database("raw_events_database")]
-pub struct DbEvents(diesel::SqliteConnection);
+pub struct DbEvents(SqliteConnection);
 
 #[database("config_database")]
-pub struct DbConfig(diesel::SqliteConnection);
+pub struct DbConfig(SqliteConnection);
 
 #[database("extracted_database")]
-pub struct DbExtracted(diesel::SqliteConnection);
+pub struct DbExtracted(SqliteConnection);
 
+struct Stmts<'a> {
+    get: rusqlite::Statement<'a>,
+}
+/*
+https://stackoverflow.com/questions/41665345/borrow-problems-with-compiled-sql-statements
+https://stackoverflow.com/questions/32209391/how-to-store-rusqlite-connection-and-statement-objects-in-the-same-struct-in-rus
+https://stackoverflow.com/questions/27552670/how-to-store-sqlite-prepared-statements-for-later
+*/
+struct CachingIntMap {
+    lru: Arc<RwLock<LruCache<String, i64>>>,
+    conn: rusqlite::Connection,
+    get: String,
+    put: String,
+}
+use rusqlite::OptionalExtension as OE;
+impl CachingIntMap {
+    fn new(db_path: &str, table: &str) -> CachingIntMap {
+        lazy_static! {
+            static ref lrus: Arc<RwLock<HashMap<String, Arc<RwLock<LruCache<String, i64>>>>>> =
+                Arc::new(RwLock::new(HashMap::new()));
+        }
+        let conn = rusqlite::Connection::open(db_path).unwrap();
+        CachingIntMap {
+            lru: (*lrus)
+                .write()
+                .unwrap()
+                .entry(table.to_string())
+                .or_insert_with(|| Arc::new(RwLock::new(LruCache::new(10_000))))
+                .clone(),
+            get: format!("select id from {} where text = ?1", table),
+            put: format!("insert into {} (text) values (?1)", table),
+            conn,
+        }
+    }
+    fn get(&self, text: &str) -> i64 {
+        let i: Option<i64> = self.lru.write().unwrap().get(text).map(|e| *e);
+
+        match i {
+            Some(i) => i,
+            None => {
+                let n = match self
+                    .conn
+                    .prepare_cached(&self.get)
+                    .expect("NOCA")
+                    .query_row(rusqlite::params![text], |row| row.get(0))
+                    .optional()
+                    .unwrap()
+                {
+                    Some(n) => n,
+                    None => {
+                        self.conn
+                            .prepare_cached(&self.put)
+                            .unwrap()
+                            .execute(rusqlite::params![text])
+                            .unwrap();
+                        self.conn.last_insert_rowid()
+                    }
+                };
+
+                self.lru.write().unwrap().put(text.to_string(), n);
+                n
+            }
+        }
+    }
+}
 pub struct DatyBasy {
     pub db_events: DbEvents,
     pub db_config: DbConfig,
     pub db_extracted: DbExtracted,
+    tags_cache: CachingIntMap,
+    values_cache: CachingIntMap,
     enabled_tag_rules: Vec<TagRule>,
 }
 
@@ -29,7 +104,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for DatyBasy {
 
     fn from_request(request: &'a rocket::Request<'r>) -> rocket::request::Outcome<Self, ()> {
         let db_extracted = DbExtracted::from_request(request)?;
-        if let Err(e) = crate::db::extracted::migrate(&db_extracted) {
+        if let Err(e) = crate::db::extracted::set_pragmas_migrate(&db_extracted) {
             log::error!("{:#?}", e);
             return rocket::request::Outcome::Failure((
                 rocket::http::Status::InternalServerError,
@@ -37,7 +112,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for DatyBasy {
             ));
         };
         let db_events = DbEvents::from_request(request)?;
-        if let Err(e) = crate::db::raw_events::migrate(&db_events) {
+        if let Err(e) = crate::db::raw_events::set_pragmas_migrate(&db_events) {
             log::error!("{:#?}", e);
             return rocket::request::Outcome::Failure((
                 rocket::http::Status::InternalServerError,
@@ -45,7 +120,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for DatyBasy {
             ));
         };
         let db_config = DbConfig::from_request(request)?;
-        if let Err(e) = crate::db::config::migrate(&db_config) {
+        if let Err(e) = crate::db::config::set_pragmas_migrate(&db_config) {
             log::error!("{:#?}", e);
             return rocket::request::Outcome::Failure((
                 rocket::http::Status::InternalServerError,
@@ -66,6 +141,8 @@ impl<'a, 'r> FromRequest<'a, 'r> for DatyBasy {
             db_events,
             db_extracted,
             db_config,
+            tags_cache: CachingIntMap::new(&crate::db::extracted::get_filename(), "tags"),
+            values_cache: CachingIntMap::new(&crate::db::extracted::get_filename(), "tag_values"),
         })
     }
 }
@@ -132,13 +209,22 @@ impl DatyBasy {
     ) -> anyhow::Result<Vec<SingleExtractedEvent>> {
         self.ensure_time_range_extracted_valid(from, to)
             .context("updating extracted results")?;
-        use crate::db::schema::extracted::extracted_events::dsl::*;
 
         let now = Instant::now();
-        let q = extracted_events
-            .filter(timestamp.ge(from))
-            .filter(timestamp.lt(to))
+        let q = /*extracted_events
+            .filter(timestamp.ge(TimestamptzI::from(from)))
+            .filter(timestamp.lt(TimestamptzI::from(to)))
+            .inner_join(tags::table)
             .order(rowid.asc())
+            .select((timestamp, event_id, duration, tags::dsl::text.as(tag), value))*/
+            diesel::sql_query("
+            select timestamp, duration, tags.text as tag, tag_values.text as value
+            from extracted_events e
+            join tags on tags.id = e.tag join tag_values on tag_values.id = e.value
+            where timestamp >= ?1 and timestamp < ?2
+            ")
+            .bind::<BigInt, _>(TimestamptzI::from(from))
+            .bind::<BigInt, _>(TimestamptzI::from(to))
             .load::<OutExtractedTag>(&*self.db_extracted)
             .context("querying extracted db")?;
         let ee = q.into_iter().group_by(|e| e.event_id.clone());
@@ -148,7 +234,7 @@ impl DatyBasy {
                 let mut group = group.peekable();
                 SingleExtractedEvent {
                     id: id.clone(),
-                    timestamp: group.peek().unwrap().timestamp.clone(),
+                    timestamp: (&group.peek().unwrap().timestamp).into(),
                     duration: group.peek().unwrap().duration,
                     tags: group.map(|e| (e.tag, e.value)).collect(),
                 }
@@ -243,6 +329,8 @@ impl DatyBasy {
         let mut total_extracted = 0;
         let mut total_tags = 0;
         let mut total_tag_values = 0;
+        let mut total_extract_iterations = 0;
+        let mut total_extract_dur = Duration::from_secs(0);
         let extracted = raws
             .flatten()
             .take_while(|a| &a.timestamp < to)
@@ -252,7 +340,10 @@ impl DatyBasy {
                     .deserialize_data()
                     .map_err(|e| log::warn!("{:#?}", e))
                     .ok()?;
-                Some((a, r.extract_info()?))
+
+                let ex = r.extract_info()?;
+
+                Some((a, ex))
             })
             .flat_map(|(a, r)| {
                 total_extracted += 1;
@@ -261,18 +352,21 @@ impl DatyBasy {
                 let timestamp = a.timestamp.clone();
                 let id = a.id.clone();
                 let duration = a.sampler.get_duration();
-                let tags = get_tags(&self, r);
+                let now = Instant::now();
+                let (tags, iterations) = get_tags(&self, r);
+                total_extract_dur += now.elapsed();
+                total_extract_iterations += iterations;
 
                 tags.into_iter().flat_map(move |(tag, values)| {
-                    let tag = tag.clone();
+                    let tag = self.tags_cache.get(&tag);
                     let timestamp = timestamp.clone();
                     let id = id.clone();
                     values.into_iter().map(move |value| InExtractedTag {
-                        timestamp: (&timestamp).clone(),
+                        timestamp: (&timestamp).into(),
                         duration,
                         event_id: (&id).clone(),
-                        tag: tag.clone(),
-                        value,
+                        tag,
+                        value: self.values_cache.get(&value),
                     })
                 })
             })
@@ -287,14 +381,19 @@ impl DatyBasy {
                 .context("inserting new extracted events into db")?;
             log::info!("inserted {}", updated);
         }
-        log::debug!(
-            "extraction yielded {} of {} seen events with {} tags with {} values total. extracting tags took {:?}",
-            total_extracted,
-            total_raw,
-            total_tags,
-            total_tag_values,
-            now.elapsed()
-        );
+        if total_extracted > 0 && total_raw > 0 {
+            log::debug!(
+                "extraction yielded {} extracted of {} raw events with {} tags with {} values total. extracting tags took {:?} total, avg. {} it/ev, avg. {:?} per ele, extracting avg. {:?} per ele",
+                total_extracted,
+                total_raw,
+                total_tags,
+                total_tag_values,
+                now.elapsed(),
+                total_extract_iterations / total_extracted,
+                now.elapsed().div_f32(total_extracted as f32),
+                total_extract_dur.div_f32(total_raw as f32),
+            );
+        }
 
         Ok(())
     }

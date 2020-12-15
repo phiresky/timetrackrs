@@ -1,3 +1,4 @@
+#![feature(in_band_lifetimes)]
 #![warn(clippy::print_stdout)]
 #[macro_use]
 extern crate diesel;
