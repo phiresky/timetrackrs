@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS tag_values (
 
 CREATE TABLE IF NOT EXISTS event_ids (
     id integer PRIMARY KEY NOT NULL,
-    text text NOT NULL
+    raw_id text NOT NULL,
+    timestamp bigint NOT NULL,
+    duration double NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS extracted_events (

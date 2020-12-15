@@ -31,6 +31,7 @@ async function handleError(resp: Response): Promise<never> {
 export async function getTimeRange(info: {
 	before: Date
 	after: Date
+	tag?: string
 }): Promise<ApiTypes["time_range"]["response"]> {
 	const url = new URL(
 		backend +

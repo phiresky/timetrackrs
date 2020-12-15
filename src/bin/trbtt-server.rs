@@ -44,8 +44,13 @@ fn get_known_tags(db: DatyBasy) -> Api::get_known_tags::response {
     Ok(Json(ApiResponse { data: o }))
 }
 
-#[get("/time-range?<after>&<before>")]
-fn time_range(db: DatyBasy, before: String, after: String) -> Api::time_range::response {
+#[get("/time-range?<after>&<before>&<tag>")]
+fn time_range(
+    db: DatyBasy,
+    before: String,
+    after: String,
+    tag: Option<String>,
+) -> Api::time_range::response {
     // println!("handling...");
     // println!("querying...");
     let before = iso_string_to_datetime(&before).context("could not parse before date")?;
@@ -53,7 +58,11 @@ fn time_range(db: DatyBasy, before: String, after: String) -> Api::time_range::r
 
     Ok(Json(ApiResponse {
         data: db
-            .get_extracted_for_time_range(&Timestamptz(after), &Timestamptz(before))
+            .get_extracted_for_time_range(
+                &Timestamptz(after),
+                &Timestamptz(before),
+                tag.as_ref().map(|e| e.as_str()),
+            )
             .context("get extracted events")?,
     }))
 }

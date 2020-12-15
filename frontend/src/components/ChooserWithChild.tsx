@@ -32,6 +32,7 @@ export class ChooserWithChild extends React.Component<{
 		const params = {
 			after: this.timeRange.from,
 			before: this.timeRange.to,
+			tag: "category",
 			limit: 100000,
 		}
 		return fromPromise(api.getTimeRange(params))
