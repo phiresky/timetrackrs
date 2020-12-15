@@ -2,6 +2,7 @@ import React, { useContext } from "react"
 import { CategoryChart } from "./components/CategoryChart"
 import { ChooserWithChild } from "./components/ChooserWithChild"
 import { PlotPage } from "./components/Plot"
+import { SingleEventInfo } from "./components/SingleEventInfo"
 import { TagRuleEditorPage } from "./components/TagRuleEditor"
 // import { Switch, Route, Redirect, RouteComponentProps } from "react-router-dom"
 import { TagTreePage } from "./components/TagTree"
@@ -12,17 +13,29 @@ const rootQueryArgs = asQueryArgs({
 	server: "string",
 })
 
+const chooserQueryArgs = asQueryArgs({
+	from: "string",
+	to: "string",
+	tag: "string",
+})
+
 export const routes = {
 	root: Route.create("/").withQueryArgs(rootQueryArgs),
-	plot: Route.create("/plot").withQueryArgs(rootQueryArgs),
-	timeline: Route.create("/timeline").withQueryArgs(rootQueryArgs),
-	tagTree: Route.create("/tag-tree").withQueryArgs(rootQueryArgs),
-	ruleEditor: Route.create("/rule-editor").withQueryArgs(rootQueryArgs),
-	categoryChart: Route.create("/category-chart/:tagName", {
-		tagName: "string",
-	})
+	plot: Route.create("/plot")
 		.withQueryArgs(rootQueryArgs)
+		.withQueryArgs(chooserQueryArgs),
+	timeline: Route.create("/timeline").withQueryArgs(rootQueryArgs),
+	tagTree: Route.create("/tag-tree")
+		.withQueryArgs(rootQueryArgs)
+		.withQueryArgs(chooserQueryArgs),
+	ruleEditor: Route.create("/rule-editor").withQueryArgs(rootQueryArgs),
+	categoryChart: Route.create("/category-chart")
+		.withQueryArgs(rootQueryArgs)
+		.withQueryArgs(chooserQueryArgs)
 		.withQueryArgs({ deep: "boolean" }),
+	singleEvent: Route.create("/single-event/:id", {
+		id: "string",
+	}).withQueryArgs(rootQueryArgs),
 }
 export const timeline = Route.create("/timeline").withQueryArgs(rootQueryArgs)
 
@@ -33,96 +46,24 @@ export const router = Router.create<React.ComponentType>()
 		c?.replace(routes.timeline, {}, {})
 		return <></>
 	})
-	.with(routes.plot, (p) => PlotPage)
+	.with(routes.plot, (p) => () => <PlotPage routeMatch={p} />)
 	.with(routes.timeline, (p) => TimelinePage)
-	.with(routes.tagTree, (p) => TagTreePage)
+	.with(routes.tagTree, (p) => () => <TagTreePage routeMatch={p} />)
 	.with(routes.ruleEditor, (p) => TagRuleEditorPage)
-	.with(routes.categoryChart, (p1) => () => {
-		console.log("foo", p1)
+	.with(routes.categoryChart, (p) => () => {
 		return (
 			<ChooserWithChild
+				routeMatch={p}
 				child={(p2) => (
-					<CategoryChart
-						{...p2}
-						deep={!!p1.queryArgs.deep}
-						tagName={p1.args.tagName}
-					/>
+					<CategoryChart {...p2} deep={!!p.queryArgs.deep} />
 				)}
 			/>
 		)
 	})
+	.with(routes.singleEvent, (p) => () => <SingleEventInfo id={p.args.id} />)
 
 export type RoutingType = Routing<
 	typeof router["_tdata"],
 	typeof router["_targs"]
 >
 export const RouterContext = React.createContext<null | RoutingType>(null)
-
-/*return (
-		<Switch>
-			<Route path="/plot">
-				<PlotPage />
-			</Route>
-			<Route path="/timeline">
-				<TimelinePage />
-			</Route>
-			<Route
-				path="/category-chart-deep/:tag"
-				render={(
-					r: RouteComponentProps<{
-						tag: string
-					}>,
-				) => (
-					<ChooserWithChild
-						child={(p) => (
-							<CategoryChart
-								{...p}
-								deep
-								tagName={r.match.params.tag}
-							/>
-						)}
-					/>
-				)}
-			/>
-			<Route
-				path="/category-chart/:prefix"
-				render={(
-					r: RouteComponentProps<{
-						prefix: string
-					}>,
-				) => {
-					console.log(r)
-					r.location.search
-					return (
-						<ChooserWithChild
-							child={(p) => (
-								<CategoryChart
-									{...p}
-									deep={false}
-									tagName={r.match.params.prefix}
-								/>
-							)}
-						/>
-					)
-				}}
-			/>
-			<Route path="/tag-tree">
-				<TagTreePage />
-			</Route>
-			<Route exact path="/">
-				<Redirect to="/timeline"></Redirect>
-			</Route>
-			<Route
-				path="/single-event/:id"
-				render={(p: RouteComponentProps<{ id: string }>) => (
-					<SingleEventInfo id={p.match.params.id}></SingleEventInfo>
-				)}
-			></Route>
-			<Route
-				path="/tag-rule-editor"
-				render={(p: RouteComponentProps) => <TagRuleEditorPage />}
-			></Route>
-
-			<div>Error 404</div>
-		</Switch>
-	)*/

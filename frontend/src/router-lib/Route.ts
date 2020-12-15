@@ -1,8 +1,9 @@
-import { LocationInfo } from "./LocationInfo"
+import { LocationInfo, SearchData } from "./LocationInfo"
 import { compile, match } from "path-to-regexp"
+import { Routing } from "./Routing"
 
 export interface Matcher<T> {
-	matches(location: LocationInfo): T | undefined
+	matches(location: LocationInfo, routing: Routing<any, any>): T | undefined
 }
 
 export type RouteArgs = Record<string, "string" | "number">
@@ -33,6 +34,11 @@ export interface MatcherArgs<
 > {
 	args: RouteArgsToType<TArgs>
 	queryArgs: QueryArgsToType<TQueryArgs>
+	replace: (
+		route: Route<TArgs, TQueryArgs> | undefined,
+		args: RouteArgsToType<TArgs> | undefined,
+		queryArgs: QueryArgsToType<TQueryArgs> | undefined,
+	) => void
 }
 
 export class Route<TArgs extends RouteArgs, TQueryArgs extends QueryArgs>
@@ -76,27 +82,39 @@ export class Route<TArgs extends RouteArgs, TQueryArgs extends QueryArgs>
 		queryArgs?: QueryArgsToType<TQueryArgs>,
 	): LocationInfo {
 		const path = this.compileFn(data)
-		return LocationInfo.parse(path)
+		return new LocationInfo(
+			LocationInfo.parsePath(path),
+			queryArgs as SearchData,
+			"",
+			null,
+		)
 	}
 
 	public matches(
 		location: LocationInfo,
-	):
-		| {
-				args: RouteArgsToType<TArgs>
-				queryArgs: QueryArgsToType<TQueryArgs>
-		  }
-		| undefined {
-		const r = this.matchFn(location.getPathString())
+		routing: Routing<any, any>,
+	): MatcherArgs<TArgs, TQueryArgs> | undefined {
+		const r = this.matchFn(location.getPathString()) as
+			| { params: RouteArgsToType<TArgs> }
+			| false
 		if (r) {
 			const params = new URLSearchParams(location.search)
 			const args: Record<string, any> = {}
 			for (const [key, value] of params) {
-				args[key] = value // TODO
+				args[key] = value // TODO deserialize
 			}
+			const Oroute = this
 			return {
-				args: r.params as RouteArgsToType<TArgs>,
-				queryArgs: args as any,
+				args: r.params,
+				queryArgs: args as QueryArgsToType<TQueryArgs>,
+				replace(route, args, queryArgs) {
+					console.log("routing replace", route, args, queryArgs)
+					routing.replace(
+						route || Oroute,
+						args || this.args,
+						queryArgs || this.queryArgs,
+					)
+				},
 			}
 		} else {
 			return undefined

@@ -7,7 +7,9 @@ function searchToObj(search: string | undefined): Record<string, string> {
 }
 
 function objToSearch(obj: Record<string, string>): string {
-	return new URLSearchParams(obj).toString()
+	const str = new URLSearchParams(obj).toString()
+	if (str) return "?" + str
+	return str
 }
 
 export interface SearchData {
@@ -15,12 +17,7 @@ export interface SearchData {
 }
 
 export class LocationInfo {
-	public static parse(path: string): LocationInfo {
-		const p = history.parsePath(path)
-		return LocationInfo.fromHistoryLocation(p)
-	}
-
-	private static parsePath(path: string | undefined): string[] {
+	public static parsePath(path: string | undefined): string[] {
 		if (!path) return []
 		if (!path.startsWith("/")) {
 			throw new Error(`Expected pathname "${path}" to start with "/"`)
@@ -103,12 +100,7 @@ export class LocationInfo {
 	}
 
 	public toString(): string {
-		let str = this.getPathString()
-		const search = objToSearch(this.search)
-		if (search !== "") {
-			str += `?${search}`
-		}
-		return str
+		return this.getPathString() + objToSearch(this.search)
 	}
 }
 

@@ -10,21 +10,17 @@ import {
 } from "react-dates"
 import moment from "moment"
 
-export function TimeRangeSelectorDefault() {
-	return { from: dfn.startOfDay(new Date()), to: new Date() }
-}
-export const TimeRangeSelector: React.FC<{
-	target: { from: Date; to: Date }
-}> = observer(({ target }) => {
-	const Modes = ["day", "week", "month"] as const
-	type Mode = typeof Modes[number]
+const Modes = ["day", "week", "month"] as const
+export type TimeRangeMode = typeof Modes[number]
 
+export const TimeRangeSelector: React.FC<{
+	target: { from: Date; to: Date; mode: TimeRangeMode }
+}> = observer(({ target }) => {
 	const state = useLocalObservable(() => ({
-		mode: "day" as Mode,
 		focusedW: null as "startDate" | "endDate" | null,
 		focused: false,
-		setMode(mode: Mode) {
-			this.mode = mode
+		setMode(mode: TimeRangeMode) {
+			target.mode = mode
 			if (mode === "day") {
 				target.from = dfn.startOfDay(target.from)
 				target.to = dfn.endOfDay(target.from)
@@ -42,37 +38,37 @@ export const TimeRangeSelector: React.FC<{
 			console.log("set date", d)
 			if (!d) d = new Date()
 			target.from = dfn.startOfDay(d)
-			if (this.mode === "day") target.to = dfn.endOfDay(d)
-			else if (this.mode === "week")
+			if (target.mode === "day") target.to = dfn.endOfDay(d)
+			else if (target.mode === "week")
 				target.to = dfn.endOfDay(dfn.addDays(d, 6))
-			else if (this.mode === "month") target.to = dfn.endOfMonth(d)
+			else if (target.mode === "month") target.to = dfn.endOfMonth(d)
 		},
 		back() {
-			if (this.mode === "day") {
+			if (target.mode === "day") {
 				this.setDate(dfn.addDays(target.from, -1))
-			} else if (this.mode === "week") {
+			} else if (target.mode === "week") {
 				this.setDate(dfn.addDays(target.from, -7))
-			} else if (this.mode === "month") {
+			} else if (target.mode === "month") {
 				this.setDate(dfn.startOfMonth(dfn.addDays(target.from, -1)))
 			}
 		},
 		forward() {
-			if (this.mode === "day") {
+			if (target.mode === "day") {
 				this.setDate(dfn.addDays(target.from, 1))
-			} else if (this.mode === "week") {
+			} else if (target.mode === "week") {
 				this.setDate(dfn.addDays(target.from, 7))
-			} else if (this.mode === "month") {
+			} else if (target.mode === "month") {
 				this.setDate(dfn.startOfMonth(dfn.addDays(target.to, 1)))
 			}
 		},
 	}))
 	const commonProps = {
-		key: state.mode,
+		key: target.mode,
 		displayFormat: "YYYY-MM-DD",
 		showDefaultInputIcon: true,
 	}
 	let picker
-	if (state.mode === "day")
+	if (target.mode === "day")
 		picker = (
 			<SingleDatePicker
 				{...commonProps}
@@ -85,7 +81,7 @@ export const TimeRangeSelector: React.FC<{
 				isOutsideRange={(d) => d.isAfter(new Date())}
 			/>
 		)
-	if (state.mode === "week")
+	if (target.mode === "week")
 		picker = (
 			<DateRangePicker
 				{...commonProps}
@@ -102,7 +98,7 @@ export const TimeRangeSelector: React.FC<{
 				isOutsideRange={(d) => d.isAfter(new Date())}
 			/>
 		)
-	if (state.mode === "month")
+	if (target.mode === "month")
 		picker = (
 			<DateRangePicker
 				{...commonProps}
@@ -130,8 +126,10 @@ export const TimeRangeSelector: React.FC<{
 				{"<"}
 			</button>
 			<select
-				value={state.mode}
-				onChange={(e) => state.setMode(e.currentTarget.value as Mode)}
+				value={target.mode}
+				onChange={(e) =>
+					state.setMode(e.currentTarget.value as TimeRangeMode)
+				}
 			>
 				{Modes.map((mode) => (
 					<option key={mode} value={mode}>

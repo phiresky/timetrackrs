@@ -48,6 +48,24 @@ export async function getTimeRange(info: {
 	return data
 }
 
+export async function getKnownTags(): Promise<
+	ApiTypes["get_known_tags"]["response"]
+> {
+	const url = new URL(
+		backend +
+			"/get-known-tags?" +
+			new URLSearchParams(JSON.parse(JSON.stringify({}))).toString(),
+	)
+	const resp = await fetch(url.toString())
+	if (!resp.ok) {
+		return await handleError(resp)
+	}
+	const { data } = (await resp.json()) as ApiResponse<
+		ApiTypes["get_known_tags"]["response"]
+	>
+	return data
+}
+
 export async function getSingleEvent(info: {
 	id: string
 }): Promise<ApiTypes["single_event"]["response"]> {

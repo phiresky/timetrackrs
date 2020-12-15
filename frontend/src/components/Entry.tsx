@@ -1,14 +1,15 @@
 import { formatRelative } from "date-fns"
 import React from "react"
-import { Activity } from "../api"
+import { routes } from "../routes"
+import { SingleExtractedEvent } from "../server"
 import { ModalLink } from "./ModalLink"
 
-export class Entry extends React.Component<Activity> {
+export class Entry extends React.Component<SingleExtractedEvent> {
 	render(): React.ReactNode {
 		const { id, timestamp } = this.props
 		return (
 			<span>
-				<ModalLink to={`/single-event/${id}`}>
+				<ModalLink route={routes.singleEvent} args={{ id }} query={{}}>
 					Event at {formatRelative(new Date(timestamp), new Date())}
 				</ModalLink>
 			</span>

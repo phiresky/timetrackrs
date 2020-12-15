@@ -21,14 +21,14 @@ export class LocationService {
 		this.history = history
 		// todo: dispose
 		this.history.listen((e) => {
-			console.log("hist change!!")
-			this.updateLocationFromHistory()
+			console.log("hist change, now at", e.action, e.location)
+			this.updateLocationFromHistory(e.location)
 		})
 
 		this.updateLocationFromHistory()
 	}
 	@action
-	private updateLocationFromHistory() {
+	private updateLocationFromHistory(e = this.history.location) {
 		this._currentLocation = LocationInfo.fromHistoryLocation(
 			this.history.location,
 		)

@@ -1,5 +1,6 @@
+import { Routing } from "."
 import { LocationInfo } from "./LocationInfo"
-import { Matcher } from "./Route"
+import { Matcher, Route } from "./Route"
 
 interface AddedRoute<TData> {
 	matcher: Matcher<{}>
@@ -33,9 +34,10 @@ export class Router<TData, TArgs> {
 
 	public route(
 		locationInfo: LocationInfo,
+		routing: Routing<TData, TArgs>,
 	): RouteInformation<TData, TArgs> | undefined {
 		if (this.addedRoute) {
-			const args = this.addedRoute.matcher.matches(locationInfo)
+			const args = this.addedRoute.matcher.matches(locationInfo, routing)
 			if (args) {
 				return {
 					args: args as any,
@@ -45,7 +47,7 @@ export class Router<TData, TArgs> {
 			}
 		}
 		if (this.parent) {
-			return this.parent.route(locationInfo)
+			return this.parent.route(locationInfo, routing)
 		}
 		return undefined
 	}

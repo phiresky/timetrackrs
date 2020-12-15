@@ -20,11 +20,7 @@ export class Routing<TData, TArgs> {
 	@computed get currentRouteInformation():
 		| RouteInformation<TData, TArgs>
 		| undefined {
-		console.log(
-			"computing current route",
-			this.locationService.currentLocation,
-		)
-		return this.router.route(this.locationService.currentLocation)
+		return this.router.route(this.locationService.currentLocation, this)
 	}
 
 	private castRouteInformation(
@@ -48,7 +44,7 @@ export class Routing<TData, TArgs> {
 	}
 
 	public locationToOnClick(location: LocationInfo): ClickInfo {
-		const information = this.router.route(location)
+		const information = this.router.route(location, this)
 		const i = information
 			? this.castRouteInformation(information)
 			: undefined
@@ -72,7 +68,7 @@ export class Routing<TData, TArgs> {
 
 		const curLoc = this.locationService.currentLocation
 		for (const [key, val] of Object.entries(curLoc.search)) {
-			if (key in route.queryArgs) {
+			if (key in route.queryArgs && !(key in search)) {
 				search[key] = val
 			}
 		}

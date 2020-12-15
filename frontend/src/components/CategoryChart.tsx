@@ -9,7 +9,7 @@ import { routes } from "../routes"
 
 type CategoryChartProps = {
 	events: SingleExtractedEvent[]
-	tagName: string
+	tag: string
 	deep: boolean
 }
 
@@ -17,7 +17,7 @@ export function CategoryChartModal(p: CategoryChartProps): React.ReactElement {
 	return (
 		<ModalLink
 			route={routes.categoryChart}
-			args={{ tagName: p.tagName }}
+			args={{ tagName: p.tag }}
 			query={{}}
 		>
 			<AiOutlineBarChart />
@@ -26,7 +26,7 @@ export function CategoryChartModal(p: CategoryChartProps): React.ReactElement {
 }
 export class CategoryChart extends React.Component<CategoryChartProps> {
 	@computed get data() {
-		const prefix = this.props.tagName
+		const prefix = this.props.tag
 		const groups = new DefaultMap<string, KeyedSet<SingleExtractedEvent>>(
 			() => new KeyedSet((e) => e.id),
 		)
@@ -59,7 +59,7 @@ export class CategoryChart extends React.Component<CategoryChartProps> {
 							title: "Hours",
 						},
 						height: 400,
-						title: `Time spent per ${this.props.tagName}`,
+						title: `Time spent per ${this.props.tag}`,
 					}}
 				/>
 			</div>

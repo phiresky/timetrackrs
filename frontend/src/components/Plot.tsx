@@ -4,7 +4,7 @@ import _ from "lodash"
 import { action, computed, makeObservable, observable, toJS } from "mobx"
 import { observer } from "mobx-react"
 import React from "react"
-import { ChooserWithChild } from "./ChooserWithChild"
+import { ChooserWithChild, CWCRouteMatch } from "./ChooserWithChild"
 import { Page } from "./Page"
 import { getTag } from "./Timeline"
 import Plotly from "react-plotly.js"
@@ -12,12 +12,12 @@ import { SingleExtractedEvent } from "../server"
 import { differenceInDays, getTime } from "date-fns"
 import { Choices, Select } from "./Select"
 
-export function PlotPage(): React.ReactElement {
+export function PlotPage(p: { routeMatch: CWCRouteMatch }): React.ReactElement {
 	return (
 		<Page title="Plot">
 			<ChooserWithChild
-				tag="project"
-				child={(p) => <Plot events={p.events} tag="project" />}
+				routeMatch={p.routeMatch}
+				child={Plot}
 				containerClass="centerbody"
 			/>
 		</Page>

@@ -11,7 +11,7 @@ import {
 	CategoryChart,
 	CategoryChartModal as CategoryChartModalLink,
 } from "./CategoryChart"
-import { ChooserWithChild } from "./ChooserWithChild"
+import { ChooserWithChild, CWCRouteMatch } from "./ChooserWithChild"
 import { Entry } from "./Entry"
 import { ModalLink } from "./ModalLink"
 import { Page } from "./Page"
@@ -245,7 +245,9 @@ function ShowTreeChildren({
 	)
 }
 
-export function TagTreePage(): React.ReactElement {
+export function TagTreePage(p: {
+	routeMatch: CWCRouteMatch
+}): React.ReactElement {
 	const [tag, setTag] = useState("")
 	return (
 		<Page title="Category Trees">
@@ -256,6 +258,7 @@ export function TagTreePage(): React.ReactElement {
 				onChange={(e) => setTag(e.currentTarget.value)}
 			/>
 			<ChooserWithChild
+				routeMatch={p.routeMatch}
 				child={(e) => <TagTree tagName={tag || undefined} {...e} />}
 			/>
 		</Page>
@@ -311,7 +314,7 @@ export class TagTree extends React.Component<{
 								<CategoryChartModalLink
 									events={collect(tree)}
 									deep={false}
-									tagName={kind}
+									tag={kind}
 								/>
 							)}
 						</h3>
@@ -319,7 +322,7 @@ export class TagTree extends React.Component<{
 							<CategoryChart
 								events={collect(tree)}
 								deep={false}
-								tagName={kind + ":"}
+								tag={kind + ":"}
 							/>
 						)}
 						<ShowTreeChildren tree={tree} noSlash />

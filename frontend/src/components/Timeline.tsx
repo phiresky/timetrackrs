@@ -183,6 +183,8 @@ const detailBy = [
 export class Timeline extends React.Component {
 	@observable data = new Map<string, SingleExtractedEvent[]>()
 	@observable loading = false
+
+	@observable errored = false
 	@observable loadState = "unloaded"
 	@observable oldestData = new Date()
 	@observable gotOldestEver = false
@@ -233,6 +235,8 @@ export class Timeline extends React.Component {
 			})
 		} catch (e) {
 			this.loadState = `error: ${String(e)}`
+			this.errored = true
+			throw e
 		} finally {
 			this.loading = false
 		}
@@ -245,7 +249,7 @@ export class Timeline extends React.Component {
 	}
 
 	onScroll = async (): Promise<void> => {
-		if (this.gotOldestEver) return
+		if (this.gotOldestEver || this.errored) return
 		const element = this.scrollDiv.current
 		if (!element) return
 		let i = 0

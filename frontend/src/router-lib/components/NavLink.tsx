@@ -18,5 +18,8 @@ export function NavLink<A extends RouteArgs, Q extends QueryArgs>(p: {
 }): React.ReactElement {
 	const routing = useContext(RouterContext)
 	if (!routing) return <a>[router gone]</a>
-	return <Link {...p} />
+	const isCurrent = routing.currentRouteInformation?.matcher === p.route
+	return (
+		<Link {...p} aProps={{ className: isCurrent ? "active" : undefined }} />
+	)
 }
