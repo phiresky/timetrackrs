@@ -18,30 +18,14 @@ use api::*;
 
 #[get("/get-known-tags")]
 fn get_known_tags(db: DatyBasy) -> Api::get_known_tags::response {
-    let mdata = YieldEventsFromTrbttDatabase {
-        db: &db.db_events,
-        chunk_size: 10000,
-        last_fetched: Timestamptz(Utc::now()),
-        ascending: false,
-    };
-    let s: HashSet<String> = mdata
-        .take(1)
-        .flatten()
-        .flat_map(|e| -> Vec<String> {
-            let data = e.deserialize_data();
-            if let Ok(d) = data {
-                let e = d.extract_info();
-                if let Some(o) = e {
-                    return o.into_iter().map(|(tag, _)| tag).collect();
-                }
-            }
-            vec![]
-        })
-        .collect();
+    use trbtt::db::schema::extracted::tags::dsl::*;
 
-    let mut o = Vec::new();
-    o.extend(s);
-    Ok(Json(ApiResponse { data: o }))
+    let all_tags = tags
+        .select(text)
+        .load(&*db.db_extracted)
+        .context("loading tag names from db")?;
+
+    Ok(Json(ApiResponse { data: all_tags }))
 }
 
 #[get("/time-range?<after>&<before>&<tag>")]

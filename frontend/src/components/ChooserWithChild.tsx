@@ -20,6 +20,7 @@ import { SingleExtractedEvent } from "../server"
 export class ChooserWithChild extends React.Component<{
 	child: React.ComponentType<{ events: SingleExtractedEvent[] }>
 	containerClass?: string
+	tag?: string
 }> {
 	@observable
 	timeRange = TimeRangeSelectorDefault()
@@ -32,7 +33,7 @@ export class ChooserWithChild extends React.Component<{
 		const params = {
 			after: this.timeRange.from,
 			before: this.timeRange.to,
-			tag: "category",
+			tag: this.props.tag || "category",
 			limit: 100000,
 		}
 		return fromPromise(api.getTimeRange(params))
