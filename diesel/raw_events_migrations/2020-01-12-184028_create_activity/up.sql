@@ -1,6 +1,6 @@
 CREATE TABLE events (
     -- declared autoincrement to prevent id reuse for synchronization (otherwise sqlite will reuse old ids on e.g. vacuum)
-    insertion_sequence integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+    insertion_sequence integer PRIMARY KEY AUTOINCREMENT,
     -- for captured events, the id is generated randomly (uuidv4)
     -- for imported events, the id must be an id taken based on
     -- a combination of data_type and something from the import

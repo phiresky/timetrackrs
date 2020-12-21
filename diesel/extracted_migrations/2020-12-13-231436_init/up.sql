@@ -30,7 +30,7 @@ CREATE INDEX IF NOT EXISTS ee_timestamp_idx ON extracted_events (timestamp);
 CREATE INDEX IF NOT EXISTS ee_tag_timestamp_idx ON extracted_events (tag, timestamp);
 
 CREATE TABLE IF NOT EXISTS fetcher_cache (
-    key text NOT NULL PRIMARY KEY,
+    key text PRIMARY KEY NOT NULL,
     timestamp text NOT NULL,
     value text NOT NULL
 );
