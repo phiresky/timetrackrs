@@ -105,7 +105,37 @@ impl PeerConnection for WsConn {
 type ConnectionMap = Arc<Mutex<HashMap<Uuid, Box<RtcPeerConnection<WsConn, DataPipe>>>>>;
 type ChannelMap = Arc<Mutex<HashMap<Uuid, Box<RtcDataChannel<DataPipe>>>>>;
 
-async fn run_client(peer_id: Uuid, input: chan::Receiver<Uuid>, output: chan::Sender<String>) {
+struct SyncClient {
+    conns: ConnectionMap,
+    chans: ChannelMap,
+    own_id: Uuid,
+    
+}
+impl SyncClient {
+    fn new(own_id: Uuid, ) {
+        SyncClient {
+            conns: ConnectionMap::new(Mutex::new(HashMap::new())),
+            chans: ConnectionMap::new(Mutex::new(HashMap::new())),
+            own_id,target_id
+        }
+    }
+    async fn establish_signalling_server() {
+        let url = format!("ws://116.203.43.199:48749/{:?}", peer_id);
+    // let url = format!("ws://127.0.0.1:48749/{:?}", peer_id);
+    let (ws_stream, _) = connect_async(url)
+        .await
+        .context("Failed to connect to websocket server");
+    }
+    async fn try_connect(target_id: Uuid) {
+
+    }
+}
+
+async fn run_client(
+    peer_id: Uuid,
+    input: chan::Receiver<Uuid>,
+    output: chan::Sender<String>,
+) -> anyhow::Result<()> {
     let conns = ConnectionMap::new(Mutex::new(HashMap::new()));
     let chans = ChannelMap::new(Mutex::new(HashMap::new()));
 
@@ -114,7 +144,9 @@ async fn run_client(peer_id: Uuid, input: chan::Receiver<Uuid>, output: chan::Se
 
     let url = format!("ws://116.203.43.199:48749/{:?}", peer_id);
     // let url = format!("ws://127.0.0.1:48749/{:?}", peer_id);
-    let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
+    let (ws_stream, _) = connect_async(url)
+        .await
+        .context("Failed to connect to websocket server");
 
     let (outgoing, mut incoming) = ws_stream.split();
     let (tx_ws, rx_ws) = chan::unbounded();
@@ -155,10 +187,6 @@ async fn run_client(peer_id: Uuid, input: chan::Receiver<Uuid>, output: chan::Se
 
     let receive = async {
         while let Some(Ok(msg)) = incoming.next().await {
-            if !msg.is_binary() {
-                continue;
-            }
-
             let peer_msg = match serde_json::from_slice::<PeerMsg>(&msg.into_data()) {
                 Ok(peer_msg) => peer_msg,
                 Err(err) => {
@@ -243,7 +271,7 @@ fn main() -> anyhow::Result<()> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .unwrap()
+        .context("building tokio runtime")?
         .block_on(go())?;
     Ok(())
 }
