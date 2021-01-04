@@ -72,6 +72,8 @@ struct P2 {
 }
 pub fn set_pragmas(db: &SqliteConnection) -> anyhow::Result<()> {
     let want_page_size = 32768;
+    db.execute(&format!("pragma busy_timeout = 5000;"))
+        .context("setup pragma 1")?;
     db.execute(&format!("pragma page_size = {};", want_page_size))
         .context("setup pragma 1")?;
     db.execute("pragma foreign_keys = on;")
@@ -94,8 +96,8 @@ pub fn set_pragmas(db: &SqliteConnection) -> anyhow::Result<()> {
         db.execute("vacuum")?;
         db.execute("pragma journal_mode = WAL;")?;
     }
-    //db.execute("pragma auto_vacuum = incremental")
-    //    .context("setup pragma 7")?;
+    db.execute("pragma auto_vacuum = full")
+        .context("setup pragma 7")?;
     // db.execute("pragma optimize;")?;
     Ok(())
 }
