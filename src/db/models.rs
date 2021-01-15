@@ -15,10 +15,9 @@ use std::io::Write;
 pub struct DbEvent {
     pub insertion_sequence: i64,
     pub id: String,
-    pub timestamp: Timestamptz,
+    pub timestamp_unix_ms: Timestamptz,
     pub data_type: String,
-    pub sampler: Sampler,
-    pub sampler_sequence_id: String,
+    pub duration_ms: i64,
     pub data: String,
 }
 
@@ -32,50 +31,24 @@ impl DbEvent {
 #[derive(
     AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Eq, Hash, Serialize, Deserialize,
 )]
-#[sql_type = "Text"]
-pub struct Timestamptz(pub DateTime<Utc>);
-
-impl FromSql<Text, Sqlite> for Timestamptz {
-    fn from_sql(
-        bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
-    ) -> deserialize::Result<Self> {
-        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
-        Ok(Timestamptz(util::iso_string_to_datetime(&s)?))
-    }
-}
-impl ToSql<Text, Sqlite> for Timestamptz {
-    fn to_sql<W: Write>(&self, out: &mut Output<W, Sqlite>) -> serialize::Result {
-        let s = self.0.to_rfc3339();
-        <String as ToSql<Text, Sqlite>>::to_sql(&s, out)
-    }
-}
-
-#[derive(
-    AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Eq, Hash, Serialize, Deserialize,
-)]
 #[sql_type = "BigInt"]
-pub struct TimestamptzI(pub DateTime<Utc>);
-impl FromSql<BigInt, Sqlite> for TimestamptzI {
+pub struct Timestamptz(pub DateTime<Utc>);
+impl FromSql<BigInt, Sqlite> for Timestamptz {
     fn from_sql(
         bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
     ) -> deserialize::Result<Self> {
         let i = <i64 as FromSql<BigInt, Sqlite>>::from_sql(bytes)?;
-        Ok(TimestamptzI(util::unix_epoch_millis_to_date(i)))
+        Ok(Timestamptz(util::unix_epoch_millis_to_date(i)))
     }
 }
-impl ToSql<BigInt, Sqlite> for TimestamptzI {
+impl ToSql<BigInt, Sqlite> for Timestamptz {
     fn to_sql<W: Write>(&self, out: &mut Output<W, Sqlite>) -> serialize::Result {
         let s = self.0.timestamp_millis();
         <i64 as ToSql<BigInt, Sqlite>>::to_sql(&s, out)
     }
 }
-impl From<&Timestamptz> for TimestamptzI {
+impl From<&Timestamptz> for Timestamptz {
     fn from(t: &Timestamptz) -> Self {
-        Self(t.0)
-    }
-}
-impl From<&TimestamptzI> for Timestamptz {
-    fn from(t: &TimestamptzI) -> Self {
         Self(t.0)
     }
 }
@@ -99,29 +72,13 @@ impl ToSql<Text, Sqlite> for DateUtc {
     }
 }
 
-impl FromSql<Text, Sqlite> for Sampler {
-    fn from_sql(
-        bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
-    ) -> deserialize::Result<Self> {
-        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
-        Ok(serde_json::from_str(&s)?)
-    }
-}
-impl ToSql<Text, Sqlite> for Sampler {
-    fn to_sql<W: Write>(&self, out: &mut Output<W, Sqlite>) -> serialize::Result {
-        let s = serde_json::to_string(&self)?;
-        <String as ToSql<Text, Sqlite>>::to_sql(&s, out)
-    }
-}
-
 #[derive(Insertable)]
 #[table_name = "events"]
 pub struct NewDbEvent {
     pub id: String,
-    pub timestamp: Timestamptz,
+    pub timestamp_unix_ms: Timestamptz,
     pub data_type: String,
-    pub sampler: Sampler,
-    pub sampler_sequence_id: String,
+    pub duration_ms: i64,
     pub data: String,
 }
 
@@ -130,8 +87,8 @@ pub struct NewDbEvent {
 )]
 #[table_name = "extracted_events"]
 pub struct InExtractedTag {
-    pub timestamp: TimestamptzI,
-    pub duration: f64,
+    pub timestamp_unix_ms: Timestamptz,
+    pub duration_ms: i64,
     pub event_id: i64,
     pub tag: i64,
     pub value: i64,
@@ -139,11 +96,11 @@ pub struct InExtractedTag {
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone, QueryableByName)]
 pub struct OutExtractedTag {
     #[sql_type = "BigInt"]
-    pub timestamp: TimestamptzI,
+    pub timestamp_unix_ms: Timestamptz,
     #[sql_type = "Text"]
     pub event_id: String,
-    #[sql_type = "Double"]
-    pub duration: f64,
+    #[sql_type = "BigInt"]
+    pub duration_ms: i64,
     #[sql_type = "Text"]
     pub tag: String,
     #[sql_type = "Text"]

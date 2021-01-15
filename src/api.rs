@@ -10,16 +10,16 @@ pub struct ApiResponse<T> {
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct SingleExtractedEvent {
     pub id: String,
-    pub timestamp: Timestamptz,
-    pub duration: f64,
+    pub timestamp_unix_ms: Timestamptz,
+    pub duration_ms: i64,
     pub tags: Tags,
 }
 
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct SingleExtractedEventWithRaw {
     pub id: String,
-    pub timestamp: Timestamptz,
-    pub duration: f64,
+    pub timestamp_unix_ms: Timestamptz,
+    pub duration_ms: i64,
     pub tags: Tags,
     pub raw: EventData,
     pub tags_reasons: HashMap<String, TagAddReason>,

@@ -17,20 +17,18 @@ fn main() -> anyhow::Result<()> {
     use trbtt::db::schema::raw_events::events;
 
     // println!("{}", serde_json::to_string_pretty(&data)?);
-    let sampler = Sampler::Explicit { duration: 30.0 }; //Sampler::RandomSampler { avg_time: 30.0 };
+    let duration_ms: i64 = 30000;
     let sampler_sequence_id = util::random_uuid();
 
     loop {
-        let sample = sampler.get_sample();
-        log::info!("sleeping {}s", sample);
-        std::thread::sleep(std::time::Duration::from_secs_f64(sample));
+        log::info!("sleeping {}s", duration_ms / 1000);
+        std::thread::sleep(std::time::Duration::from_millis(duration_ms as u64));
 
         let data = c.capture()?;
         let act = CreateNewDbEvent {
             id: util::random_uuid(),
             timestamp: Utc::now(),
-            sampler: sampler.clone(),
-            sampler_sequence_id: sampler_sequence_id.clone(),
+            duration_ms,
             data,
         };
         let ins: NewDbEvent = act.try_into()?;

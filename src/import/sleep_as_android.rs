@@ -48,10 +48,7 @@ fn parse_saa_entry(
                     noise_row: noise,
                 }),
                 timestamp: from.with_timezone(&chrono::Utc),
-                sampler: Sampler::Explicit {
-                    duration: (to.signed_duration_since(from).num_milliseconds() as f64) / 1000.0,
-                },
-                sampler_sequence_id: "".to_string(),
+                duration_ms: to.signed_duration_since(from).num_milliseconds()
             }
             .try_into()?,
         ))

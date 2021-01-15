@@ -71,8 +71,8 @@ fn single_event(db: DatyBasy, id: String) -> Api::single_event::response {
                 let (tags, iterations) = get_tags(&db, data);
                 Some(SingleExtractedEventWithRaw {
                     id: a.id,
-                    timestamp: a.timestamp,
-                    duration: a.sampler.get_duration(),
+                    timestamp_unix_ms: a.timestamp_unix_ms,
+                    duration_ms: a.duration_ms,
                     tags_reasons,
                     tags,
                     raw,

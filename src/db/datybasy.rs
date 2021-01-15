@@ -160,7 +160,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for DatyBasy {
             events_cache: CachingIntMap::new(
                 &crate::db::extracted::get_filename(),
                 "event_ids",
-                "(raw_id, timestamp, duration) values (?1, ?2, ?3)",
+                "(raw_id, timestamp_unix_ms, duration_ms) values (?1, ?2, ?3)",
                 "raw_id",
             ),
         })
@@ -209,7 +209,7 @@ impl DatyBasy {
         diesel::insert_into(fetcher_cache)
             .values((
                 key.eq(cache_key),
-                timestamp.eq(Timestamptz(Utc::now())),
+                timestamp_unix_ms.eq(Timestamptz(Utc::now())),
                 value.eq(cache_value),
             ))
             .execute(&*self.db_extracted)
@@ -233,26 +233,26 @@ impl DatyBasy {
 
         let now = Instant::now();
         let q1 = "
-            select e.timestamp, e.duration, tags.text as tag, tag_values.text as value, event_ids.id as event_id
+            select e.timestamp_unix_ms, e.duration_ms, tags.text as tag, tag_values.text as value, event_ids.id as event_id
             from extracted_events e
             join tags on tags.id = e.tag
             join tag_values on tag_values.id = e.value
             join event_ids on event_ids.id = e.event_id
-            where e.timestamp >= ?1 and e.timestamp < ?2";
+            where e.timestamp_unix_ms >= ?1 and e.timestamp_unix_ms < ?2";
         let q = if let Some(tag) = tag {
             diesel::sql_query(format!(
                 "{} and e.tag = (select id from tags where text = ?3)",
                 q1
             ))
-            .bind::<BigInt, _>(TimestamptzI::from(from))
-            .bind::<BigInt, _>(TimestamptzI::from(to))
+            .bind::<BigInt, _>(Timestamptz::from(from))
+            .bind::<BigInt, _>(Timestamptz::from(to))
             .bind::<Text, _>(tag)
             .load::<OutExtractedTag>(&*self.db_extracted)
             .context("querying extracted db")?
         } else {
             diesel::sql_query(q1)
-                .bind::<BigInt, _>(TimestamptzI::from(from))
-                .bind::<BigInt, _>(TimestamptzI::from(to))
+                .bind::<BigInt, _>(Timestamptz::from(from))
+                .bind::<BigInt, _>(Timestamptz::from(to))
                 .load::<OutExtractedTag>(&*self.db_extracted)
                 .context("querying extracted db")?
         };
@@ -263,8 +263,8 @@ impl DatyBasy {
                 let mut group = group.peekable();
                 SingleExtractedEvent {
                     id: id.clone(),
-                    timestamp: (&group.peek().unwrap().timestamp).into(),
-                    duration: group.peek().unwrap().duration,
+                    timestamp_unix_ms: (&group.peek().unwrap().timestamp_unix_ms).into(),
+                    duration_ms: group.peek().unwrap().duration_ms,
                     tags: group.map(|e| (e.tag, e.value)).collect(),
                 }
             })
@@ -282,7 +282,7 @@ impl DatyBasy {
             use crate::db::schema::extracted::extracted_current::dsl::*;
             let doesnt_need_update = extracted_current
                 .filter(utc_date.eq_any(&days))
-                .filter(extracted_timestamp.gt(raw_events_changed_timestamp))
+                .filter(extracted_timestamp_unix_ms.gt(raw_events_changed_timestamp_unix_ms))
                 .select(utc_date)
                 .load::<DateUtc>(&*self.db_extracted)
                 .context("fetching currents")?;
@@ -300,7 +300,7 @@ impl DatyBasy {
                 )
                 .with_context(|| format!("extracting tags for day {:?}", day))?;
                 let updated = diesel::update(extracted_current.filter(utc_date.eq(&day)))
-                    .set(extracted_timestamp.eq(&now))
+                    .set(extracted_timestamp_unix_ms.eq(&now))
                     .execute(&*self.db_extracted)
                     .with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?;
                 if updated == 0 {
@@ -308,8 +308,8 @@ impl DatyBasy {
                     diesel::insert_into(extracted_current)
                         .values(vec![(
                             utc_date.eq(&day),
-                            extracted_timestamp.eq(&now),
-                            raw_events_changed_timestamp.eq(zero),
+                            extracted_timestamp_unix_ms.eq(&now),
+                            raw_events_changed_timestamp_unix_ms.eq(zero),
                         )])
                         .execute(&*self.db_extracted)
                         .with_context(|| {
@@ -336,12 +336,11 @@ impl DatyBasy {
     pub fn extract_time_range(&self, from: &Timestamptz, to: &Timestamptz) -> anyhow::Result<()> {
         log::debug!("extract_time_range {:?} to {:?}", from, to);
         {
-            use crate::db::schema::extracted::extracted_events::dsl::*;
             let res = diesel::sql_query(
-                "delete from extracted_events where timestamp >= ? and timestamp < ?",
+                "delete from extracted_events where timestamp_unix_ms >= ? and timestamp_unix_ms < ?",
             )
-            .bind::<Text, _>(&from)
-            .bind::<Text, _>(&to)
+            .bind::<BigInt, _>(&from)
+            .bind::<BigInt, _>(&to)
             .execute(&*self.db_extracted)
             .context("removing stale events")?;
             log::info!("removed {} stale events", res);
@@ -364,7 +363,7 @@ impl DatyBasy {
 
         let extracted = raws
             .flatten()
-            .take_while(|a| &a.timestamp < to)
+            .take_while(|a| &a.timestamp_unix_ms < to)
             .filter_map(|a| {
                 total_raw += 1;
                 let r = a
@@ -380,12 +379,12 @@ impl DatyBasy {
                 total_extracted += 1;
                 total_tags += r.tag_count();
                 total_tag_values += r.total_value_count();
-                let timestamp = a.timestamp.clone();
-                let duration = a.sampler.get_duration();
+                let timestamp = a.timestamp_unix_ms.clone();
+                let duration_ms = a.duration_ms;
                 let now = Instant::now();
                 let event_id = self.events_cache.get(
                     &a.id,
-                    rusqlite::params![&a.id, timestamp.0.timestamp_millis(), duration],
+                    rusqlite::params![&a.id, timestamp.0.timestamp_millis(), duration_ms],
                 );
                 total_cache_get_dur += now.elapsed();
                 let now = Instant::now();
@@ -401,8 +400,8 @@ impl DatyBasy {
                         let value = self.values_cache.get_simple(&value);
                         total_cache_get_dur += now.elapsed();
                         InExtractedTag {
-                            timestamp: (&timestamp).into(),
-                            duration,
+                            timestamp_unix_ms: (&timestamp).into(),
+                            duration_ms,
                             event_id,
                             tag,
                             value,

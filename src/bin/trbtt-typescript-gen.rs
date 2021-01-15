@@ -3,13 +3,11 @@ use track_pc_usage_rs as trbtt;
 use trbtt::capture::*;
 
 use trbtt::prelude::*;
-use trbtt::sampler::Sampler;
 use typescript_definitions::TypeScriptifyTrait;
 
 #[cfg(debug_assertions)]
 const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
     // DbEvent::type_script_ify,
-    Sampler::type_script_ify,
     EventData::type_script_ify,
     linux::types::X11EventData::type_script_ify,
     linux::types::X11WindowData::type_script_ify,

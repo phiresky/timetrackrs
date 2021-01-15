@@ -16,12 +16,12 @@ impl<'a> Iterator for YieldEventsFromTrbttDatabase<'a> {
         let mut query = events.into_boxed();
         if self.ascending {
             query = query
-                .filter(timestamp.gt(&self.last_fetched))
-                .order(timestamp.asc());
+                .filter(timestamp_unix_ms.gt(&self.last_fetched))
+                .order(timestamp_unix_ms.asc());
         } else {
             query = query
-                .filter(timestamp.lt(&self.last_fetched))
-                .order(timestamp.desc());
+                .filter(timestamp_unix_ms.lt(&self.last_fetched))
+                .order(timestamp_unix_ms.desc());
         }
         let now = Instant::now();
         let result: Vec<DbEvent> = query
@@ -37,7 +37,7 @@ impl<'a> Iterator for YieldEventsFromTrbttDatabase<'a> {
             result.len()
         );
         if !result.is_empty() {
-            self.last_fetched = result[result.len() - 1].timestamp.clone();
+            self.last_fetched = result[result.len() - 1].timestamp_unix_ms.clone();
             Some(result)
         } else {
             // done, no more elements

@@ -184,7 +184,6 @@ impl Importable for AppUsageImportArgs {
             let n = record.context("deser pkgs record")?;
 
             let timestamp = util::unix_epoch_millis_to_date(n.time);
-            let duration = (n.duration as f64) / 1000.0;
             let id = format!("app_usage.{}_{}_{}", n.time, n.r#type, n.pid);
             if ids.contains(&id) {
                 // ignore dupe notifications, but everything else should be unique
@@ -213,8 +212,7 @@ impl Importable for AppUsageImportArgs {
             outs.push(
                 CreateNewDbEvent {
                     timestamp,
-                    sampler: Sampler::Explicit { duration },
-                    sampler_sequence_id: "".to_string(),
+                    duration_ms: n.duration,
                     id,
                     data: EventData::app_usage_v2(entry),
                 }
@@ -226,8 +224,8 @@ impl Importable for AppUsageImportArgs {
             log::info!(
                 "have {} actions from {:?} to {:?}",
                 outs.len(),
-                outs[0].timestamp,
-                outs.last().unwrap().timestamp
+                outs[0].timestamp_unix_ms,
+                outs.last().unwrap().timestamp_unix_ms
             );
         }
 

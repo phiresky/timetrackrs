@@ -99,8 +99,7 @@ impl Importable for JournaldImportArgs {
                         os_info: os_info.clone(),
                         event: JournaldEvent::Powerup,
                     }),
-                    sampler: Sampler::Explicit { duration: 0.0 },
-                    sampler_sequence_id: "".to_string(),
+                    duration_ms: 0,
                 }
                 .try_into()?,
             );
@@ -114,8 +113,7 @@ impl Importable for JournaldImportArgs {
                             os_info: os_info.clone(),
                             event: JournaldEvent::Shutdown,
                         }),
-                        sampler: Sampler::Explicit { duration: 0.0 },
-                        sampler_sequence_id: "".to_string(),
+                        duration_ms: 0,
                     }
                     .try_into()?,
                 );

@@ -17,8 +17,7 @@ pub enum EventData {
 pub struct CreateNewDbEvent {
     pub id: String,
     pub timestamp: DateTime<Utc>,
-    pub sampler: Sampler,
-    pub sampler_sequence_id: String,
+    pub duration_ms: i64,
     pub data: EventData,
 }
 
@@ -36,9 +35,8 @@ impl std::convert::TryFrom<CreateNewDbEvent> for NewDbEvent {
         };
         Ok(NewDbEvent {
             id: value.id,
-            timestamp: Timestamptz(value.timestamp),
-            sampler: value.sampler,
-            sampler_sequence_id: value.sampler_sequence_id,
+            timestamp_unix_ms: Timestamptz(value.timestamp),
+            duration_ms: value.duration_ms,
             data_type: data_type.to_string(),
             data,
         })

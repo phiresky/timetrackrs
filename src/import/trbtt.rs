@@ -30,10 +30,9 @@ impl Iterator for YieldAllEventsFromTrbttDatabase {
                     .map(|e| NewDbEvent {
                         id: e.id,
                         data: e.data,
-                        timestamp: e.timestamp,
+                        timestamp_unix_ms: e.timestamp_unix_ms,
                         data_type: e.data_type,
-                        sampler: e.sampler,
-                        sampler_sequence_id: e.sampler_sequence_id,
+                        duration_ms: e.duration_ms,
                     })
                     .collect(),
             )
