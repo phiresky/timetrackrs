@@ -1,7 +1,7 @@
 import { computed } from "mobx"
 import React from "react"
 import Plot from "react-plotly.js"
-import { DefaultMap, KeyedSet, totalDuration } from "../util"
+import { DefaultMap, KeyedSet, totalDurationSeconds } from "../util"
 import { ModalLink } from "./ModalLink"
 import { AiOutlineBarChart } from "react-icons/ai"
 import { SingleExtractedEvent } from "../server"
@@ -38,7 +38,7 @@ export class CategoryChart extends React.Component<CategoryChartProps> {
 		}
 		const x = [...groups.keys()]
 		const y = [...groups.values()].map(
-			(s) => totalDuration([...s]) / 60 / 60,
+			(s) => totalDurationSeconds([...s]) / 60 / 60,
 		)
 		return { x, y }
 	}

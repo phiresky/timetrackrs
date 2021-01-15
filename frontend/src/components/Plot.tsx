@@ -106,7 +106,7 @@ export class Plot extends React.Component<{
 		return this.getDayInfo(this.props.events)
 	}
 
-	getDayInfo(e: { timestamp: Date | string }[]) {
+	getDayInfo(e: { timestamp_unix_ms: Date | number }[]) {
 		if (e.length === 0) {
 			return {
 				firstDay: new Date(),
@@ -117,8 +117,8 @@ export class Plot extends React.Component<{
 				durMs: 0,
 			}
 		}
-		const first = new Date(e[0].timestamp)
-		const last = new Date(e[e.length - 1].timestamp)
+		const first = new Date(e[0].timestamp_unix_ms)
+		const last = new Date(e[e.length - 1].timestamp_unix_ms)
 		const firstDay = startOfDay(first)
 		const lastDay = startOfDay(last)
 		const days = differenceInDays(lastDay, firstDay) + 1
@@ -138,26 +138,30 @@ export class Plot extends React.Component<{
 
 		const data: Plotly.Data[] = Object.entries(_gs).map(([key, es]) => {
 			const es2 = es.flatMap((e) => {
-				if (e.duration > maxEventSeconds) {
-					return Array(Math.ceil(e.duration / maxEventSeconds))
+				if (e.duration_ms / 1000 > maxEventSeconds) {
+					return Array(
+						Math.ceil(e.duration_ms / 1000 / maxEventSeconds),
+					)
 						.fill(0)
 						.map((_, i) => ({
 							...e,
 							timestamp: aggregator.mapper(
 								addSeconds(
-									new Date(e.timestamp),
+									new Date(e.timestamp_unix_ms),
 									maxEventSeconds * i,
 								),
 							),
 							duration: Math.min(
 								maxEventSeconds,
-								e.duration - maxEventSeconds * i,
+								e.duration_ms / 1000 - maxEventSeconds * i,
 							),
 						}))
 				} else
 					return {
 						...e,
-						timestamp: aggregator.mapper(new Date(e.timestamp)),
+						timestamp: aggregator.mapper(
+							new Date(e.timestamp_unix_ms),
+						),
 					}
 			})
 			const { firstDay, lastDay, days: aggDays } = this.getDayInfo(es2)
@@ -169,7 +173,7 @@ export class Plot extends React.Component<{
 					tick0: firstDay,
 				},
 				x: es2.map((x) => x.timestamp),
-				y: es2.map((x) => ((x.duration * 1000) / binSize) * aggFactor),
+				y: es2.map((x) => (x.duration_ms / binSize) * aggFactor),
 				type: "histogram",
 				xbins: {
 					start: firstDay.getTime(),

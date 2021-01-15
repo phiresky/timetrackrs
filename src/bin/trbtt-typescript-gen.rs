@@ -41,7 +41,8 @@ fn main() -> anyhow::Result<()> {
     let mut ofile = std::fs::File::create("frontend/src/server.d.ts")?;
     writeln!(ofile, "type DateTime<T> = string;")?;
     writeln!(ofile, "type Local = unknown;")?;
-    writeln!(ofile, "type Timestamptz = string;")?;
+    writeln!(ofile, "type Timestamptz = number;")?;
+    writeln!(ofile, "type Utc = void;")?;
     writeln!(ofile, "type Regex = string;")?;
     writeln!(ofile, "type ExternalFetcher = string;")?;
     writeln!(ofile, "type InternalFetcher = string;")?;

@@ -1,7 +1,7 @@
-import { Activity } from "./api"
+import { SingleExtractedEvent } from "./server"
 
-export function totalDuration(entries: Activity[]): number {
-	return entries.reduce((sum, b) => sum + b.duration, 0)
+export function totalDurationSeconds(entries: SingleExtractedEvent[]): number {
+	return entries.reduce((sum, b) => sum + b.duration_ms, 0) / 1000
 }
 
 export function durationToString(duration: number): string {

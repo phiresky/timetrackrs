@@ -2,7 +2,7 @@ import { makeObservable, observable, runInAction } from "mobx"
 import { observer } from "mobx-react"
 import React, { ReactElement } from "react"
 import * as api from "../api"
-import { durationToString, totalDuration } from "../util"
+import { durationToString, totalDurationSeconds } from "../util"
 import { EntriesTime } from "./EntriesTime"
 import { Entry } from "./Entry"
 import { Page } from "./Page"
@@ -56,8 +56,8 @@ const groupers: Grouper[] = [
 	{
 		name: "Daily",
 		shouldGroup(a, b) {
-			const d1 = new Date(a.timestamp)
-			const d2 = new Date(b.timestamp)
+			const d1 = new Date(a.timestamp_unix_ms)
+			const d2 = new Date(b.timestamp_unix_ms)
 			return (
 				d1.toISOString().slice(0, 10) === d2.toISOString().slice(0, 10)
 			)
@@ -67,7 +67,7 @@ const groupers: Grouper[] = [
 				<ul>
 					<li>
 						Total tracked time:{" "}
-						{durationToString(totalDuration(p.entries))}:
+						{durationToString(totalDurationSeconds(p.entries))}:
 						<TagTree
 							events={p.entries}
 							tagName={p.filter.tagName}
@@ -152,7 +152,7 @@ function RenderGroup(props: {
 	return (
 		<>
 			{groups.map((entries) => (
-				<section key={entries[0].timestamp}>
+				<section key={entries[0].timestamp_unix_ms}>
 					<h4>
 						<EntriesTime entries={entries} /> [{grouper.name}]
 					</h4>
@@ -212,11 +212,11 @@ export class Timeline extends React.Component {
 				before: this.oldestData,
 				after: subDays(this.oldestData, 1),
 			})
-			data.sort((a, b) => -a.timestamp.localeCompare(b.timestamp))
+			data.sort((a, b) => -a.timestamp_unix_ms - b.timestamp_unix_ms)
 			runInAction(() => {
 				let l = null
 				for (const d of data) {
-					const ts = new Date(d.timestamp)
+					const ts = new Date(d.timestamp_unix_ms)
 					const k = ts.toISOString().slice(0, 10)
 					l = ts
 					let z = this.data.get(k)

@@ -1,12 +1,10 @@
 type DateTime<T> = string
 type Local = unknown
-type Timestamptz = string
+type Timestamptz = number
+type Utc = void
 type Regex = string
 type ExternalFetcher = string
 type InternalFetcher = string
-export type Sampler =
-	| { type: "RandomSampler"; avg_time: number }
-	| { type: "Explicit"; duration: number }
 export type EventData =
 	| { data_type: "x11_v2"; data: X11EventData }
 	| { data_type: "windows_v1"; data: WindowsEventData }
@@ -106,14 +104,14 @@ export type ApiTypesTS =
 	| { type: "get_known_tags"; response: string[] }
 export type SingleExtractedEvent = {
 	id: string
-	timestamp: Timestamptz
-	duration: number
+	timestamp_unix_ms: Timestamptz
+	duration_ms: number
 	tags: Tags
 }
 export type SingleExtractedEventWithRaw = {
 	id: string
-	timestamp: Timestamptz
-	duration: number
+	timestamp_unix_ms: Timestamptz
+	duration_ms: number
 	tags: Tags
 	raw: EventData
 	tags_reasons: { [key: string]: TagAddReason }

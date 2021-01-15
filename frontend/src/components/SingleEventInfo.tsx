@@ -5,8 +5,14 @@ import { fromPromise } from "mobx-utils"
 import * as React from "react"
 import { AiOutlineQuestionCircle } from "react-icons/ai"
 import * as api from "../api"
+import { TagRule } from "../server"
 import { Entry } from "./Entry"
 
+function reasonstr(rule: TagRule) {
+	if (rule.type === "HasTag") return "has"
+	if (rule.type === "ExactTagValue") return "has tag with exact value"
+	return rule.type
+}
 @observer
 export class SingleEventInfo extends React.Component<{ id: string }> {
 	constructor(p: { id: string }) {
@@ -20,7 +26,9 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 
 	reason(tag: string) {
 		if (this.data.state !== "fulfilled") return <>wat</>
+
 		const e = this.data.value
+		if (!e) return <>Event not found: {this.props.id}</>
 		const reason = e.tags_reasons[tag]
 		return (
 			<>
@@ -29,16 +37,12 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 					<>intrinsic tag)</>
 				) : (
 					<>
-						added because{" "}
-						{reason.rule.type === "TagRegex"
-							? reason.rule.regexes.join(",")
-							: reason.rule.fetcher_id}{" "}
-						matches tag{" "}
+						added because {reasonstr(reason.rule)} tag{" "}
 						<ul>
 							{reason.matched_tags.map((tag) => (
-								<li key={tag}>
-									{tag}
-									{this.reason(tag)}
+								<li key={tag.tag}>
+									{tag.tag}:{tag.value}
+									{this.reason(`${tag.tag}:${tag.value}`)}
 								</li>
 							))}
 						</ul>
@@ -57,6 +61,7 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 		const e = this.data.value
 		if (!e) return <div>Event not found</div>
 		console.log("raw data", e)
+		const duration = e.duration_ms / 1000
 		return (
 			<div>
 				<h1>
@@ -66,34 +71,39 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 					Unique ID: <code>{e.id}</code>
 				</p>
 				<p>
-					Date: {formatRelative(new Date(e.timestamp), new Date())}{" "}
-					<small>({new Date(e.timestamp).toLocaleString()})</small>
+					Date:{" "}
+					{formatRelative(new Date(e.timestamp_unix_ms), new Date())}{" "}
+					<small>
+						({new Date(e.timestamp_unix_ms).toLocaleString()})
+					</small>
 				</p>
 				<p>
 					Duration:{" "}
 					{formatDuration({
-						seconds: e.duration % 60,
-						minutes: ((e.duration / 60) | 0) % 60,
-						hours: (e.duration / 60 / 60) | 0,
+						seconds: duration % 60,
+						minutes: ((duration / 60) | 0) % 60,
+						hours: (duration / 60 / 60) | 0,
 					})}
 				</p>
 				<div>
 					Tags:
 					<ul>
-						{e.tags.map((tag) => (
-							<li key={tag}>
-								{tag}
-								{this.showReasons.has(tag) ? (
-									this.reason(tag)
-								) : (
-									<AiOutlineQuestionCircle
-										onClick={(e) =>
-											this.showReasons.add(tag)
-										}
-									/>
-								)}
-							</li>
-						))}
+						{Object.entries(e.tags.map).map(([key, values]) =>
+							values?.map((value) => (
+								<li key={`${key}:${value}`}>
+									{key}: {value}
+									{this.showReasons.has(key) ? (
+										this.reason(key)
+									) : (
+										<AiOutlineQuestionCircle
+											onClick={(e) =>
+												this.showReasons.add(key)
+											}
+										/>
+									)}
+								</li>
+							)),
+						)}
 					</ul>
 				</div>
 				{e.raw && (

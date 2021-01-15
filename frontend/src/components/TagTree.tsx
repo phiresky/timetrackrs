@@ -6,7 +6,12 @@ import { useState } from "react"
 import { setTextRange } from "typescript"
 import * as api from "../api"
 import { SingleExtractedEvent } from "../server"
-import { Counter, DefaultMap, durationToString, totalDuration } from "../util"
+import {
+	Counter,
+	DefaultMap,
+	durationToString,
+	totalDurationSeconds,
+} from "../util"
 import {
 	CategoryChart,
 	CategoryChartModal as CategoryChartModalLink,
@@ -58,7 +63,7 @@ function sortTree(t: ATree, cache?: WeakMap<ATree, number>) {
 	const sortKey = ([_, t]: [string, ATree]) => {
 		let v = cache?.get(t)
 		if (!v) {
-			v = -totalDuration(collect(t))
+			v = -totalDurationSeconds(collect(t))
 			cache?.set(t, v)
 		}
 		return v
@@ -94,7 +99,11 @@ function collect(tree: ATree) {
 }
 
 function TotalDuration(props: { tree: ATree }) {
-	return <span>{durationToString(totalDuration(collect(props.tree)))}</span>
+	return (
+		<span>
+			{durationToString(totalDurationSeconds(collect(props.tree)))}
+		</span>
+	)
 }
 
 const TreeLeaves: React.FC<{ leaves: SingleExtractedEvent[] }> = observer(
