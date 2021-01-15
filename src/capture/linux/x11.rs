@@ -31,7 +31,7 @@ fn get_property32<Conn: ?Sized + RequestConnection>(
         false,
         window,
         property,
-        AtomEnum::Any,
+        AtomEnum::ANY,
         0,
         std::u32::MAX,
     )?
@@ -48,7 +48,7 @@ fn get_property_text<Conn: ?Sized + RequestConnection>(
         false,
         window,
         property,
-        AtomEnum::Any,
+        AtomEnum::ANY,
         0,
         std::u32::MAX,
     )?
@@ -148,7 +148,7 @@ impl<C: Connection> Capturer for X11Capturer<C> {
                     false,
                     window,
                     prop,
-                    AtomEnum::Any,
+                    AtomEnum::ANY,
                     0,
                     std::u32::MAX,
                 )?

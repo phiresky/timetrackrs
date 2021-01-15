@@ -18,7 +18,8 @@ fn main() -> anyhow::Result<()> {
 
     // println!("{}", serde_json::to_string_pretty(&data)?);
     let duration_ms: i64 = 30000;
-    let sampler_sequence_id = util::random_uuid();
+
+    let idgen = libxid::new_generator();
 
     loop {
         log::info!("sleeping {}s", duration_ms / 1000);
@@ -26,7 +27,7 @@ fn main() -> anyhow::Result<()> {
 
         let data = c.capture()?;
         let act = CreateNewDbEvent {
-            id: util::random_uuid(),
+            id: idgen.new_id().unwrap().encode(),
             timestamp: Utc::now(),
             duration_ms,
             data,
