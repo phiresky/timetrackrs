@@ -1,11 +1,4 @@
-import {
-	EventData,
-	TagAddReason,
-	TagRuleGroup,
-	SingleExtractedEvent,
-	ApiTypesTS,
-	ApiResponse,
-} from "./server"
+import { TagRuleGroup, ApiTypesTS, ApiResponse } from "./server"
 
 type ApiTypes = { [T in ApiTypesTS["type"]]: ApiTypesTS & { type: T } }
 

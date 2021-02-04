@@ -87,6 +87,12 @@ Which means in the UI you can figure out the time spent on software development,
 
 -   ZSH shell usage
 
+    Adds the following tags:
+
+        - title-match-shell-cwd:<current working directory>
+        - title-match-shell-usr:<current username>
+        - title-match-shell-cmd:<currently running program>
+
     To enable, install [zsh-histdb](https://github.com/larkery/zsh-histdb), then add the following to your `.zshrc`:
 
     ```zsh
@@ -176,6 +182,22 @@ Metadata we could potentially get:
 Store as much information in an as raw as possible format in the capture step. Interpret / make it usable later in the analyse step. This prevents accidentally missing interesting information when saving and can allow reinterpretions in unexpected ways later. Redundancies in the data which cause large storage requirements will be solved with compression later.
 
 This is similar to arbtt, and specifically different to many other time tracking alternatives such as ActivityWatch, which stores processed data only.
+
+### Rule application
+
+Each event has a set of "intrinsic tags" given by the data source. For example, an intrinsic tag would be `window-title:Hey there! - Youtube - https://youtube.com/watch?v=xyz`
+
+The rules are applied iteratively until settled. Here is an example rule derivation chain (you can view this for any tag in the UI):
+
+Yesterday at 4:51 pm, you spent 30s in **category: Entertainment/Video**.
+
+Derivation:
+
+1. The data source `x11_v2` has the intrinsic tag `software-window-title:Bloons TD 6 - YouTube - https://www.youtube.com/watch?v=bs-AUJF9nhs — Firefox`
+2. The tag software-window-title matched the regex `^.*(?P<url>https?://[-a-zA-Z0-9@:%._\+~#=]{1,256}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)).*$`, so the rule `browse-url:$url` in `Default Rules` added the tag `browse-url:https://www.youtube.com/watch?v=bs-AUJF9nhs`
+3. The InternalFetcher url-domain-matcher matched on the tag `browse-url` and added the tag `browse-main-domain:youtube.com`
+4. The ExternalFetcher youtube-meta-json matched on the tag `browse-main-domain:youtube.com` and added the tag `youtube-category:Gaming`
+5. The tag youtube-category matched the regex `^(Gaming|Entertainment)$` so a rule in `Default Rules` added the tag category:Entertainment/Video.
 
 ### Compression notes
 

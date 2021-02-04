@@ -233,12 +233,13 @@ impl DatyBasy {
 
         let now = Instant::now();
         let q1 = "
-            select e.timestamp_unix_ms, e.duration_ms, tags.text as tag, tag_values.text as value, event_ids.id as event_id
+            select e.timestamp_unix_ms, e.duration_ms, tags.text as tag, tag_values.text as value, event_ids.raw_id as event_id
             from extracted_events e
             join tags on tags.id = e.tag
             join tag_values on tag_values.id = e.value
             join event_ids on event_ids.id = e.event_id
-            where e.timestamp_unix_ms >= ?1 and e.timestamp_unix_ms < ?2";
+            where e.timestamp_unix_ms >= ?1 and e.timestamp_unix_ms < ?2
+            order by e.timestamp_unix_ms desc";
         let q = if let Some(tag) = tag {
             diesel::sql_query(format!(
                 "{} and e.tag = (select id from tags where text = ?3)",

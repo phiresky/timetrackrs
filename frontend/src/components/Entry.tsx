@@ -6,11 +6,12 @@ import { ModalLink } from "./ModalLink"
 
 export class Entry extends React.Component<SingleExtractedEvent> {
 	render(): React.ReactNode {
-		const { id, timestamp } = this.props
+		const { id, timestamp_unix_ms } = this.props
 		return (
 			<span>
 				<ModalLink route={routes.singleEvent} args={{ id }} query={{}}>
-					Event at {formatRelative(new Date(timestamp), new Date())}
+					Event at{" "}
+					{formatRelative(new Date(timestamp_unix_ms), new Date())}
 				</ModalLink>
 			</span>
 		)

@@ -84,7 +84,7 @@ pub enum TagRule {
 
 // match all regexes against tags. returns None if one of the regexes did not match
 fn match_multi_regex<'a>(
-    regexes: &[TagValueRegex],
+    regexes: &'a [TagValueRegex],
     tags: &'a Tags,
 ) -> Option<(Vec<regex::Captures<'a>>, Vec<TagValue>)> {
     let mut caps: Vec<regex::Captures> = Vec::new();
@@ -150,7 +150,6 @@ impl TagRule {
                 // (full_tag=foo:bar, tag_value=barbaz, suffix=baz)
                 if let Some((tag_value, suffix)) = orig_tags
                     .get_all_values_of(tag)
-                    .iter()
                     .filter_map(|value| Some((value, value.strip_prefix(prefix)?)))
                     .next()
                 {
@@ -332,9 +331,22 @@ pub enum TagAddReason {
 pub fn get_tags_with_reasons(
     db: &DatyBasy,
     intrinsic_tags: Tags,
-) -> anyhow::Result<HashMap<String, TagAddReason>> {
-    let mut tags: HashMap<String, TagAddReason> = intrinsic_tags
-        .iter()
+) -> (Tags, HashMap<String, TagAddReason>, i32) {
+    let mut tags = intrinsic_tags;
+    let (reasons, iterations) = apply_tag_rules_get_reasons(db, &mut tags);
+    (tags, reasons, iterations)
+}
+
+pub fn apply_tag_rules_get_reasons(
+    db: &DatyBasy,
+    tags: &mut Tags,
+) -> (HashMap<String, TagAddReason>, i32) {
+    let mut last_length = tags.total_value_count();
+    let mut settled = false;
+    let mut iterations = 0;
+    let rules = db.get_all_tag_rules();
+    let mut tag_reasons: HashMap<String, TagAddReason> = tags
+        .iter_values()
         .map(|tag| {
             (
                 format!("{}:{}", tag.0, tag.1),
@@ -344,44 +356,37 @@ pub fn get_tags_with_reasons(
             )
         })
         .collect();
-    let mut last_length = tags.len();
-    let mut settled = false;
-    let mut iterations = 0;
-    let rules = db.get_all_tag_rules();
+
     while !settled && iterations < 50 {
         for rule in rules {
             match rule
-                .apply(
-                    db,
-                    &tags.iter().fold(Tags::new(), |mut tags, (tag, _why)| {
-                        let x: Vec<_> = tag.splitn(1, ':').collect();
-                        tags.add(x[0], x[1]);
-                        tags
-                    }),
-                )
+                .apply(db, tags)
                 .with_context(|| format!("applying rule {:?}", rule))
             {
                 Err(e) => log::warn!("{:?}", e),
                 Ok(None) => {}
-                Ok(Some((new_tags, matched_tags))) => tags.extend(new_tags.into_iter().map(
-                    |new_tag| -> (String, TagAddReason) {
-                        (
-                            format!("{}", new_tag),
+                Ok(Some((new_tags, matched_tags))) => {
+                    for tag in &new_tags {
+                        let tag_w_v = format!("{}", tag);
+                        tag_reasons.insert(
+                            tag_w_v,
                             TagAddReason::AddedByRule {
                                 rule: (*rule).clone(),
                                 matched_tags: matched_tags.clone(),
                             },
-                        )
-                    },
-                )),
+                        );
+                    }
+                    tags.extend(new_tags);
+                }
             }
         }
-        settled = tags.len() == last_length;
-        last_length = tags.len();
+        let new_length = tags.total_value_count();
+        settled = new_length == last_length;
+        last_length = new_length;
         iterations += 1;
     }
     if !settled {
         log::warn!("warning: tags did not settle");
     }
-    Ok(tags)
+    (tag_reasons, iterations)
 }

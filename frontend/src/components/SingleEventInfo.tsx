@@ -8,10 +8,28 @@ import * as api from "../api"
 import { TagRule } from "../server"
 import { Entry } from "./Entry"
 
+function expectNever<T>(n: never): T {
+	return n
+}
 function reasonstr(rule: TagRule) {
 	if (rule.type === "HasTag") return "has"
 	if (rule.type === "ExactTagValue") return "has tag with exact value"
-	return rule.type
+	if (rule.type === "InternalFetcher")
+		return `InternalFetcher ${rule.fetcher_id} converted`
+	if (rule.type === "ExternalFetcher")
+		return `ExternalFetcher ${rule.fetcher_id} converted`
+	if (rule.type === "TagValuePrefix")
+		return `tag ${rule.tag} has prefix ${rule.prefix}`
+	if (rule.type === "TagRegex")
+		return (
+			rule.regexes
+				.map((e) => `tag ${e.tag} matches regex ${e.regex}`)
+				.join(" and ") +
+			` so add ${rule.new_tags
+				.map((t) => `${t.tag}:${t.value}`)
+				.join(" and ")}`
+		)
+	return expectNever<TagRule>(rule).type
 }
 @observer
 export class SingleEventInfo extends React.Component<{ id: string }> {
@@ -30,6 +48,7 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 		const e = this.data.value
 		if (!e) return <>Event not found: {this.props.id}</>
 		const reason = e.tags_reasons[tag]
+		if (!reason) return <>[unknown]</>
 		return (
 			<>
 				<br />(
@@ -89,20 +108,23 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 					Tags:
 					<ul>
 						{Object.entries(e.tags.map).map(([key, values]) =>
-							values?.map((value) => (
-								<li key={`${key}:${value}`}>
-									{key}: {value}
-									{this.showReasons.has(key) ? (
-										this.reason(key)
-									) : (
-										<AiOutlineQuestionCircle
-											onClick={(e) =>
-												this.showReasons.add(key)
-											}
-										/>
-									)}
-								</li>
-							)),
+							values?.map((value) => {
+								const kv = `${key}:${value}`
+								return (
+									<li key={kv}>
+										{key}: {value}{" "}
+										{this.showReasons.has(kv) ? (
+											this.reason(kv)
+										) : (
+											<AiOutlineQuestionCircle
+												onClick={(e) =>
+													this.showReasons.add(kv)
+												}
+											/>
+										)}
+									</li>
+								)
+							}),
 						)}
 					</ul>
 				</div>

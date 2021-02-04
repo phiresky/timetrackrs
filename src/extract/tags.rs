@@ -1,4 +1,8 @@
-use std::{fmt::Display, iter::FromIterator};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    iter::FromIterator,
+};
 
 use crate::prelude::*;
 
@@ -6,7 +10,7 @@ use crate::prelude::*;
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct Tags {
     #[ts(ts_type = "{[key in string]?: string[]}")]
-    map: multimap::MultiMap<String, String>,
+    map: HashMap<String, HashSet<String>>,
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct TagValue {
@@ -38,7 +42,7 @@ impl Display for TagValue {
 impl Tags {
     pub fn new() -> Tags {
         Tags {
-            map: multimap::MultiMap::new(),
+            map: HashMap::new(),
         }
     }
     pub fn single(key: impl Into<String>, value: impl Into<String>) -> Tags {
@@ -47,7 +51,7 @@ impl Tags {
         tags
     }
     pub fn add(&mut self, key: impl Into<String>, value: impl Into<String>) {
-        self.map.insert(key.into(), value.into());
+        self.map.entry(key.into()).or_default().insert(value.into());
     }
     pub fn has(&self, key: &str) -> bool {
         self.map.contains_key(key)
@@ -56,26 +60,43 @@ impl Tags {
         keys.all(|tag| self.has(tag))
     }
     pub fn get_one_value_of(&self, key: &str) -> Option<&str> {
-        self.map.get(key).map(|e| e.as_str())
+        self.map
+            .get(key)
+            .and_then(|e| e.iter().next().map(|s| s.as_str()))
     }
-    pub fn get_all_values_of(&self, key: &str) -> &[String] {
-        self.map.get_vec(key).map(|e| &e[..]).unwrap_or(&[])
+    pub fn get_all_values_of<'a>(&'a self, key: &'a str) -> Box<dyn Iterator<Item = &str> + 'a> {
+        self.map
+            .get(key)
+            .map(|e| Box::new(e.iter().map(|e| e.as_str())) as Box<dyn Iterator<Item = &'a str>>)
+            .unwrap_or(Box::new(std::iter::empty()))
     }
     pub fn has_value(&self, key: &str, value: &str) -> bool {
         self.map
-            .get_vec(key)
-            .and_then(|e| e.iter().find(|v| v.as_str() == value))
-            .is_some()
+            .get(key)
+            .map(|e| e.contains(value))
+            .unwrap_or(false)
     }
     pub fn extend(&mut self, e: Vec<TagValue>) {
-        self.map.extend(e.into_iter().map(|v| (v.tag, v.value)))
+        for tag in e {
+            self.add(tag.tag, tag.value);
+        }
     }
-    pub fn iter(&self) -> multimap::Iter<String, String> {
+    pub fn iter(
+        &self,
+    ) -> std::collections::hash_map::Iter<std::string::String, HashSet<std::string::String>> {
         self.map.iter()
+    }
+    pub fn iter_values(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.map.iter().flat_map(|(tag, values)| {
+            values
+                .iter()
+                .map(move |value| (tag.as_str(), value.as_str()))
+        })
     }
     pub fn into_iter(
         self,
-    ) -> std::collections::hash_map::IntoIter<std::string::String, Vec<std::string::String>> {
+    ) -> std::collections::hash_map::IntoIter<std::string::String, HashSet<std::string::String>>
+    {
         self.map.into_iter()
     }
     pub fn total_value_count(&self) -> usize {
