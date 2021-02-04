@@ -14,9 +14,9 @@
 
 ![detailed plot screenshot](docs/screenshots/2020-12-14-15-15-20.png)
 
-# Automatic Time Tracker
+# timetrackrs - an automatic rule-based time tracker
 
-Track what you spend your time on and stores it in a database. Inspired by [arbtt](https://arbtt.nomeata.de/), which I used previously.
+timetrackrs tracks what you spend your time on and stores it in a database. Inspired by [arbtt](https://arbtt.nomeata.de/), which I used previously.
 
 Provides a Web UI to analyze it and create custom rules to improve the classification.
 
@@ -35,20 +35,32 @@ Which means in the UI you can figure out the time spent on software development,
 ### Working Data Sources
 
 -   Linux X11 tracking. Tracks the following properties:
+
     -   Which program is open (binary name)
     -   The window title
     -   Which file does the program have open (via cmd args)
     -   Connected WiFi (to be able to figure out rough location)
--   [App Usage](https://play.google.com/store/apps/details?id=com.a0soft.gphone.uninstaller&hl=en) impport
+    -   Some stats about the system
 
-    Allows tracking which apps / app categories are used on your Android devices.
-
-    Adds the following tags:
+    Adds the following intrinsic tags:
 
     -   software-window-title:...
     -   software-executable-path:...
-    -   software-window-class:<X11 window class>
-    -   software-opened-file:<file path>
+    -   software-window-class:`<X11 window class>`
+    -   software-opened-file:`<file path>`
+    -   device-hostname:...
+
+    and more.
+
+-   [App Usage](https://play.google.com/store/apps/details?id=com.a0soft.gphone.uninstaller&hl=en) import
+
+    Allows tracking which apps / app categories are used on your Android devices.
+
+    -   device-hostname:...
+    -   device-type:`<tablet or phone>`
+    -   android-packageid:`<play store package id>`
+    -   software-name:`<App Name>`
+    -   device-os-type:Android
 
 -   Browser Usage
 
@@ -63,7 +75,7 @@ Which means in the UI you can figure out the time spent on software development,
     -   browse-full-domain:news.ycombinator.com
     -   browse-domain:ycombinator.com
 
--   VSCode
+-   VS Code tracking
 
     Tracks which software development projects you spend your time on, as well as which files.
 
@@ -71,7 +83,7 @@ Which means in the UI you can figure out the time spent on software development,
 
     Adds the following tags:
 
-    -   software-development-project:<project-path>
+    -   software-development-project:`<project-path>`
 
 -   [Sleep As Android](https://play.google.com/store/apps/details?id=com.urbandroid.sleep&hl=en&gl=US) import
 
@@ -89,9 +101,9 @@ Which means in the UI you can figure out the time spent on software development,
 
     Adds the following tags:
 
-        - title-match-shell-cwd:<current working directory>
-        - title-match-shell-usr:<current username>
-        - title-match-shell-cmd:<currently running program>
+    -   title-match-shell-cwd:`<current working directory>`
+    -   title-match-shell-usr:`<current username>`
+    -   title-match-shell-cmd:`<currently running program>`
 
     To enable, install [zsh-histdb](https://github.com/larkery/zsh-histdb), then add the following to your `.zshrc`:
 
@@ -137,10 +149,10 @@ Currently, the following are implemented:
     Fetches some metadata when watching videos like the youtube category (Music / Educational / Entertainment / etc) and the channel.
     Adds the following tags:
 
-    -   youtube-channel:<uploader channel id>
-    -   youtube-channel-name:<uploader username>
-    -   youtube-tag:<tag-value> for each tag
-    -   youtube-category:<category> for each video category
+    -   youtube-channel:`<uploader channel id>`
+    -   youtube-channel-name:`<uploader username>`
+    -   youtube-tag:`<tag-value>` for each tag
+    -   youtube-category:`<category>` for each video category
 
 -   Wikidata fetcher
 
@@ -185,7 +197,9 @@ This is similar to arbtt, and specifically different to many other time tracking
 
 ### Rule application
 
-Each event has a set of "intrinsic tags" given by the data source. For example, an intrinsic tag would be `window-title:Hey there! - Youtube - https://youtube.com/watch?v=xyz`
+Each event has a set of "intrinsic tags" given by the data source. For example, an intrinsic tag of the window tracking data source would be `window-title:Hey there! - Youtube - https://youtube.com/watch?v=xyz`
+
+Then there is a set of rules that add more tags based on existing tags. These are either simple derivations like "if `software-executable-basename:vlc` then add `category:Entertainment`" or based on external fetchers that retrieve data from external sources.
 
 The rules are applied iteratively until settled. Here is an example rule derivation chain (you can view this for any tag in the UI):
 

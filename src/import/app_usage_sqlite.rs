@@ -101,7 +101,7 @@ impl ExtractInfo for AppUsageEntry {
             let app = self.app.as_ref().unwrap();
             tags.add("device-hostname", &self.device_name);
             tags.add("device-type", format!("{}", self.device_type));
-            tags.add("software-id:android", &app.pkg_name);
+            tags.add("android-package-id", format!("{}", &app.pkg_name));
             tags.add("software-name", &app.app_name);
             tags.add("device-os-type", "Android");
             Some(tags)
