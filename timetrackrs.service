@@ -1,6 +1,6 @@
-# cp trbtt.service ~/.config/systemd/user/
+# cp timetrackrs.service ~/.config/systemd/user/
 # mkdir ~/.local/share/trbtt
-# systemctl --user enable --now trbtt
+# systemctl --user enable --now timetrackrs
 [Unit]
 Description=track pc usage rs
 

@@ -16,108 +16,81 @@
 
 # Automatic Time Tracker
 
-track which programs is used how much and stores data in database. Inspired by [arbtt](https://arbtt.nomeata.de/), which I used previously.
+Track what you spend your time on and stores it in a database. Inspired by [arbtt](https://arbtt.nomeata.de/), which I used previously.
 
-## todo
+Provides a Web UI to analyze it and create custom rules to improve the classification.
 
--   autoimport more detailed / other data
-    -   browser usage via own firefox/chrome `permanent-history-webextension`, tbd
-    -   mpv usage via own mpv tracking lua script `.config/mpv/scripts/logall.lua` tbu
--   look at similar tools, e.g. https://www.raymond.cc/blog/check-application-usage-times-personal-activity-monitor/
+The user activity is tracked as "events", where each events has a timestamp, a duration, and a set of tags with values. You can think of tags as basically an extension of categories, allowing multiple category trees.
 
-## Ideas for getting program metadata
+For example, an event can may have the following tags:
 
-We currently get this metadata:
+-   category:Productivity/Software Development/IDE
+-   project:2021/timetrackrs
+-   device:Home-PC
 
--   window title. can sometimes be configured within the program to be more expressive (e.g. browser plugin, or vscode etc. see Data Sources Setup)
--   binary name. For example /usr/bin/vlc.
--   cwd of the program
+Which means in the UI you can figure out the time spent on software development, or on a specific project (not necessarily software development), or on a specific device.
 
-Metadata we could potentially get:
+## Data Sources
 
--   which files the program has open. e.g. a pdf viewer has a specific file open and that file can be used to identify what the user is working on.
+### Working Data Sources
 
-    sadly only works sometimes because many programs just read the file to ram and close it.
+-   Linux X11 tracking. Tracks the following properties:
+    -   Which program is open (binary name)
+    -   The window title
+    -   Which file does the program have open (via cmd args)
+    -   Connected WiFi (to be able to figure out rough location)
+-   [App Usage](https://play.google.com/store/apps/details?id=com.a0soft.gphone.uninstaller&hl=en) impport
 
-    Tests:
+    Allows tracking which apps / app categories are used on your Android devices.
 
-    -   archive manager (file-roller): works (keeps the archive open)
-    -   image viewer eog (eye-of-gnome): doesn't work. probably reads file to ram and closes
-    -   video viewer vlc and mpv: works
-    -   audio player: probably works
-    -   pdf viewer evince: works
-    -   text editor gedit: doesn't work
-    -   libreoffice: works
-    -   gimp: doesn't work
+    Adds the following tags:
 
-### External APIs
+    -   software-window-title:...
+    -   software-executable-path:...
+    -   software-window-class:<X11 window class>
+    -   software-opened-file:<file path>
 
-This program name can be mapped to a software package using the system package manager, example: `pacman -Qo /usr/bin/vlc`. Then that package name can be used to get metadata, for example the software homepage, tags etc.
+-   Browser Usage
 
-Also, Wikidata can be used to get the software category etc: https://www.wikidata.org/wiki/Q171477
+    Tracks which websites / domains are used.
 
-SELECT ?software ?package WHERE {
-?software wdt:P3454 ?package.
-VALUES ?package { "vlc" }
-}
+    -   For Firefox, install [Add URL to Window Title](https://addons.mozilla.org/en-US/firefox/addon/add-url-to-window-title/) and enable "Show the full URL"
+    -   For Chromium-based browsers, install [URL in title](https://chrome.google.com/webstore/detail/url-in-title/ignpacbgnbnkaiooknalneoeladjnfgb?hl=en).
 
-SELECT ?software ?package ?category ?categoryLabel WHERE {
-?software wdt:P856 ?package.
-?software wdt:P31+ ?category.
-?category wdt:P279 wd:Q1668024
-VALUES ?package { <https://www.reddit.com> }
-SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
-}
+    Adds the following tags:
 
-(returns Q171477)
+    -   browse-url:https://...
+    -   browse-full-domain:news.ycombinator.com
+    -   browse-domain:ycombinator.com
 
-select ?category where ?software is_in ?category and ?category subclass_of\* software_category (should return media_player and multimedia_software etc)
+-   VSCode
 
-### Manual Entry
+    Tracks which software development projects you spend your time on, as well as which files.
 
-Alternatively there could be a UI where user's can categorize their software themselves (boring).
+    To enable, open your user settings and set `window.title` to `${dirty}${activeEditorShort}${separator}${rootName}${separator}${appName}} 🛤sd🠚proj=${rootPath}🙰file=${activeEditorMedium}🠘 `
 
-## Structure
+    Adds the following tags:
 
-## philosophy
+    -   software-development-project:<project-path>
 
-Store as much information in an as raw as possible format in the capture step. Interpret / make it usable later in the analyse step. This prevents accidentally missing interesting information when saving and can allow reinterpretions in unexpected ways later. Redundancies in the data which cause large storage requirements will be solved with compression later.
+-   [Sleep As Android](https://play.google.com/store/apps/details?id=com.urbandroid.sleep&hl=en&gl=US) import
 
-## todo:
+    Imports data of when and how you slept from the Sleep app.
 
-remove Defaults from deserializing in x11.rs
+    Creates events with the following tags:
 
-## notes
+    -   physical-activity:sleeping
 
-alternatives:
+-   Timetrackrs import
 
--   activitywatch
--   https://www.software.com/code-time
+    Imports data from a different timetrackrs database (e.g. from another device).
 
-## Data Sources Setup
+-   ZSH shell usage
 
-### Firefox
-
-Install https://addons.mozilla.org/en-US/firefox/addon/add-url-to-window-title/ and enable "Show the full URL"
-
-### Google Chrome / Chromium
-
-Install https://chrome.google.com/webstore/detail/url-in-title/ignpacbgnbnkaiooknalneoeladjnfgb?hl=en
-
-### VS Code
-
-Open your user settings and set `window.title` to `${dirty}${activeEditorShort}${separator}${rootName}${separator}${appName}} 🛤sd🠚proj=${rootPath}🙰file=${activeEditorMedium}🠘 `
-
-### Shell / Zsh
-
-Todo: look at https://arbtt.nomeata.de/doc/users_guide/effective-use.html
-
-1. Add / Install [zsh-histdb](https://github.com/larkery/zsh-histdb)
-
-2. Add the following to your zshrc:
+    To enable, install [zsh-histdb](https://github.com/larkery/zsh-histdb), then add the following to your `.zshrc`:
 
     ```zsh
-    # set window title for track-pc-usage-rs
+    # set window title for timetrackrs
     # adopted from https://github.com/ohmyzsh/ohmyzsh/blob/master/lib/termsupport.zsh
     autoload -Uz add-zsh-hook
 
@@ -139,7 +112,72 @@ Todo: look at https://arbtt.nomeata.de/doc/users_guide/effective-use.html
 
     ```
 
-## Compression notes
+### Todo Data Sources
+
+-   Fix Windows data source
+-   More detailed browser usage (which containers are used, how did you get to website X?). Needs own webextension
+-   mpv usage via (which TV shows and movies watched), via own mpv tracking lua script `.config/mpv/scripts/logall.lua`
+-   Google Fitness import via API
+-   Manual entry UI to add start/stop times and categories by hand.
+
+## External Info Fetchers
+
+Timetrackrs supports fetching additional information from external sources.
+
+Currently, the following are implemented:
+
+-   Youtube Meta Fetcher
+
+    Fetches some metadata when watching videos like the youtube category (Music / Educational / Entertainment / etc) and the channel.
+    Adds the following tags:
+
+    -   youtube-channel:<uploader channel id>
+    -   youtube-channel-name:<uploader username>
+    -   youtube-tag:<tag-value> for each tag
+    -   youtube-category:<category> for each video category
+
+-   Wikidata fetcher
+
+    For each domain visited, tries to get some info about that domain from Wikidata. Adds the following tags.
+
+    Adds the following tags when visiting e.g. reddit.com:
+
+    -   wikidata-label:Reddit
+    -   wikidata-id:Q1136
+    -   wikidata-category:social networking service
+    -   wikidata-category:social-news website
+    -   wikidata-category:mobile app
+
+## General Todo
+
+-   Make it easier to setup:
+
+    -   Create a single binary that starts server, api handler and tracking
+    -   Create installable systemd service [timetrackrs.service](timetrackrs.service)
+
+-   Look at similar tools, e.g. https://www.raymond.cc/blog/check-application-usage-times-personal-activity-monitor/ , activitywatch, https://www.software.com/code-time
+
+-   Create Android app that uploads the supported app data to the timetrackrs server (currently needs manual file copies)
+
+-   Finish decentralized WebRTC sync support
+-   Prettier web frontend
+
+### Ideas for getting program metadata
+
+Metadata we could potentially get:
+
+-   Get open files from /proc/pid/fd
+-   This program name can be mapped to a software package using the system package manager, example: `pacman -Qo /usr/bin/vlc`. Then that package name can be used to get metadata, for example the software homepage, tags etc.
+
+## Technical details
+
+### Philosophy
+
+Store as much information in an as raw as possible format in the capture step. Interpret / make it usable later in the analyse step. This prevents accidentally missing interesting information when saving and can allow reinterpretions in unexpected ways later. Redundancies in the data which cause large storage requirements will be solved with compression later.
+
+This is similar to arbtt, and specifically different to many other time tracking alternatives such as ActivityWatch, which stores processed data only.
+
+### Compression notes
 
 Finish and make use of https://github.com/phiresky/sqlite-zstd. Then redundancy in the stored raw events should become basically irrelevant.
 
