@@ -179,6 +179,7 @@ Currently, the following are implemented:
 
 -   Finish decentralized WebRTC sync support
 -   Prettier web frontend
+-   Community website to share sets of rules
 
 ### Ideas for getting program metadata
 
@@ -238,3 +239,19 @@ Zstd test: 7400 x11 events rows:
 -   1.3MB as single file (ordered by date) `--ultra -22 --long=31`
 
 Conclusion: zstd is awesome
+
+## Comparison to other tools
+
+**ActivityWatch**
+
+ActivityWatch is fairly similar, but it has a very different philosophy regarding the collected data (see above). It also has no option to fetch metadata from external sources, and the plugins are limited to the same computer (no import from a phone or some API like fitness or sleep tracking or similar).
+
+I actually [opened an issue in the ActivityWatch repo](https://github.com/ActivityWatch/activitywatch/issues/504) with some of the things I learned while writing timetrackrs, since so far it's not clear if I'll get timetrackrs to a production ready state.
+
+**Arbtt**
+
+-   Only tracks open programs
+-   The performance does not scale well with db size, the analyze step always has to go through the whole database. Timetrackrs caches the extracted data in a separate database.
+-   I've had a lot of database corruption issues in the past with it. Timetrackrs uses sqlite which is pretty safe.
+-   No Web-UI, creating rules is hard
+-   No external data fetchers, no importing from other apps
