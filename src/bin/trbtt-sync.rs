@@ -19,28 +19,31 @@ use uuid::Uuid;
 
 use tokio::time::timeout;
 use tokio::{net::TcpStream, spawn};
-use tokio_tungstenite::{connect_async, WebSocketStream};
+use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
 use datachannel::{
-    Config, DataChannel, DataChannelInit, DescriptionType, IceCandidate, PeerConnection,
-    Reliability, RtcDataChannel, RtcPeerConnection, SessionDescription,
+    DataChannelHandler, DataChannelInit, IceCandidate, PeerConnectionHandler, Reliability,
+    RtcConfig, RtcDataChannel, RtcPeerConnection, SdpType, SessionDescription,
 };
 
 // Server part
 
 #[derive(Clone)]
-struct TrbttSyncConn {}
-
-impl TrbttSyncConn {
-    fn new() -> Self {
-        TrbttSyncConn {}
-    }
+enum Mode {
+    Master,
+    Slave,
+}
+#[derive(Clone)]
+struct TrbttSyncConn {
+    my_id: Uuid,
+    their_id: Uuid,
+    mode: Mode,
 }
 
-impl DataChannel for TrbttSyncConn {
+impl DataChannelHandler for TrbttSyncConn {
     fn on_open(&mut self) {
         println!("on_open");
-        // start sending stuff?
+        // start sending stuff if client?
     }
 
     fn on_message(&mut self, msg: &[u8]) {
@@ -49,19 +52,18 @@ impl DataChannel for TrbttSyncConn {
     }
 }
 
+type SignallingOut =
+    Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Message>>>;
+type SignallingIn = Arc<Mutex<SplitStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>>>;
 struct WsConn {
     peer_id: Uuid,
     dest_id: Uuid,
-    signaling: Arc<Mutex<SplitSink<WebSocketStream<TcpStream>, Message>>>,
+    signaling: SignallingOut,
     dc: Option<Box<RtcDataChannel<TrbttSyncConn>>>,
 }
 
 impl WsConn {
-    fn new(
-        peer_id: Uuid,
-        dest_id: Uuid,
-        signaling: Arc<Mutex<SplitSink<WebSocketStream<TcpStream>, Message>>>,
-    ) -> Self {
+    fn new(peer_id: Uuid, dest_id: Uuid, signaling: SignallingOut) -> Self {
         WsConn {
             peer_id,
             dest_id,
@@ -71,8 +73,16 @@ impl WsConn {
     }
 }
 
-impl PeerConnection for WsConn {
-    type DC = TrbttSyncConn;
+impl PeerConnectionHandler for WsConn {
+    type DCH = TrbttSyncConn;
+
+    fn data_channel_handler(&mut self) -> Self::DCH {
+        TrbttSyncConn {
+            my_id: self.peer_id,
+            their_id: self.dest_id,
+            mode: Mode::Slave,
+        }
+    }
 
     fn on_description(&mut self, sess_desc: SessionDescription) {
         let peer_msg = PeerMsg {
@@ -134,21 +144,21 @@ impl PeerConnection for WsConn {
     }
 }
 
-type ConnectionMap = Arc<Mutex<HashMap<Uuid, Box<RtcPeerConnection<WsConn, TrbttSyncConn>>>>>;
+type ConnectionMap = Arc<Mutex<HashMap<Uuid, Box<RtcPeerConnection<WsConn>>>>>;
 type ChannelMap = Arc<Mutex<HashMap<Uuid, Box<RtcDataChannel<TrbttSyncConn>>>>>;
 
 struct SyncClient {
-    conf: Config,
+    conf: RtcConfig,
     conns: ConnectionMap,
     chans: ChannelMap,
     own_id: Uuid,
-    signalling_out: Option<Arc<Mutex<SplitSink<WebSocketStream<TcpStream>, Message>>>>,
-    signalling_in: Option<Arc<Mutex<SplitStream<WebSocketStream<TcpStream>>>>>,
+    signalling_out: Option<SignallingOut>,
+    signalling_in: Option<SignallingIn>,
 }
 impl SyncClient {
     fn new(own_id: Uuid) -> SyncClient {
         SyncClient {
-            conf: Config::new(vec!["stun:stun.l.google.com:19302".to_string()]),
+            conf: RtcConfig::new(&["stun:stun.l.google.com:19302"]),
             conns: ConnectionMap::new(Mutex::new(HashMap::new())),
             chans: ChannelMap::new(Mutex::new(HashMap::new())),
             own_id,
@@ -192,14 +202,13 @@ impl SyncClient {
                     Some(pc) => pc,
                     None => match &peer_msg.kind {
                         MsgKind::Description(SessionDescription {
-                            desc_type: DescriptionType::Offer,
+                            sdp_type: SdpType::Offer,
                             ..
                         }) => {
                             log::info!("Client {:?} answering to {:?}", &own_id, &dest_id);
 
-                            let pipe = TrbttSyncConn::new();
                             let conn = WsConn::new(own_id, dest_id, to_signalling_server.clone());
-                            let pc = RtcPeerConnection::new(&conf, conn, pipe).unwrap();
+                            let pc = RtcPeerConnection::new(&conf, conn).unwrap();
 
                             locked.insert(dest_id, pc);
                             locked.get_mut(&dest_id).unwrap()
@@ -224,26 +233,32 @@ impl SyncClient {
     async fn try_connect(&self, dest_id: Uuid) {
         log::info!("Peer {:?} sends data", self.own_id);
 
-        let pipe = TrbttSyncConn::new();
         let conn = WsConn::new(
             self.own_id,
             dest_id,
             self.signalling_out.as_ref().unwrap().clone(),
         );
-        let pc = RtcPeerConnection::new(&self.conf, conn, pipe.clone()).unwrap();
-        self.conns.lock().await.insert(dest_id, pc);
+
+        let pipe = TrbttSyncConn {
+            my_id: conn.peer_id,
+            their_id: conn.dest_id,
+            mode: Mode::Master,
+        };
+        let mut map = self.conns.lock().await;
+        let pc = {
+            let entry = map.entry(dest_id);
+            use std::collections::hash_map::Entry::*;
+            match entry {
+                Vacant(v) => v.insert(RtcPeerConnection::new(&self.conf, conn).unwrap()),
+                Occupied(_) => panic!("alreday have conn!??"),
+            }
+        };
+
         let opts = DataChannelInit::default()
             .protocol("prototest")
             .reliability(Reliability::default());
 
-        let mut dc = self
-            .conns
-            .lock()
-            .await
-            .get_mut(&dest_id)
-            .unwrap()
-            .create_data_channel_ex("sender", pipe, &opts)
-            .unwrap();
+        let dc = pc.create_data_channel_ex("sender", pipe, &opts).unwrap();
         self.chans.lock().await.insert(dest_id, dc);
         println!("conn estab (i guess)");
     }

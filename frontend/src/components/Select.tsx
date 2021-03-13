@@ -1,4 +1,5 @@
 import { observer } from "mobx-react"
+import { action, runInAction } from "mobx"
 import * as React from "react"
 
 type Choices<T> = { choices: T[]; value: T }
@@ -22,16 +23,19 @@ function _Select<T>(props: {
 			value={getValue(
 				props.overrideCurrent ? props.overrideCurrent() : target.value,
 			)}
-			onChange={(e) => {
-				const v = target.choices.find(
-					(c) => getValue(c) === e.currentTarget.value,
-				)
-				if (!v) {
-					throw Error("select value not found")
-				}
-				target.value = v
-				onChange?.(target.value)
-			}}
+			onChange={action<React.ChangeEventHandler<HTMLSelectElement>>(
+				"setSelectValue",
+				(e) => {
+					const v = target.choices.find(
+						(c) => getValue(c) === e.currentTarget.value,
+					)
+					if (!v) {
+						throw Error("select value not found")
+					}
+					target.value = v
+					onChange?.(target.value)
+				},
+			)}
 		>
 			{target.choices.map((choice) => (
 				<option value={getValue(choice)} key={getValue(choice)}>

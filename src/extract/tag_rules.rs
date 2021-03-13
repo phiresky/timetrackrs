@@ -219,6 +219,7 @@ impl TagRule {
                             let new_tags = fetcher
                                 .process_data(&orig_tags, &inner_cache_key, &data)
                                 .context("processing data")?;
+                            check_tags_match_filter(&new_tags, fetcher.get_possible_output_tags())?;
                             Ok(Some((new_tags, reason_tags)))
                         } else {
                             Ok(None)
@@ -233,12 +234,13 @@ impl TagRule {
                 let caps = match_multi_regex(&regexes, &orig_tags);
                 match caps {
                     None => Ok(None),
-                    Some((caps, reason_tags)) => Ok(Some((
-                        fetcher
+                    Some((caps, reason_tags)) => {
+                        let new_tags = fetcher
                             .process(&caps, &orig_tags)
-                            .context("processing data")?,
-                        reason_tags,
-                    ))),
+                            .context("processing data")?;
+                        check_tags_match_filter(&new_tags, fetcher.get_possible_output_tags())?;
+                        Ok(Some((new_tags, reason_tags)))
+                    }
                 }
             }
         }
@@ -271,6 +273,18 @@ impl TagRule {
             TagRule::TagValuePrefix { .. } => Ok(()),
         }
     }
+}
+
+fn check_tags_match_filter(
+    new_tags: &[TagValue],
+    get_possible_output_tags: &[&str],
+) -> anyhow::Result<()> {
+    for tag in new_tags {
+        if !get_possible_output_tags.contains(&tag.tag.as_str()) {
+            anyhow::bail!("output unexpected tag {}", tag);
+        }
+    }
+    Ok(())
 }
 
 fn validate_tag_regex(regex: &Regex) -> anyhow::Result<()> {

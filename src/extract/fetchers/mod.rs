@@ -34,6 +34,7 @@ pub fn get_simple_fetcher(id: &str) -> Option<&'static dyn SimpleFetcher> {
 pub trait ExternalFetcher: Sync + Send {
     fn get_id(&self) -> &'static str;
     fn get_regexes(&self) -> &[TagValueRegex];
+    fn get_possible_output_tags(&self) -> &[&str];
     fn get_cache_key(&self, found: &[regex::Captures], tags: &Tags) -> Option<String>;
     fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String>;
     fn process_data(
@@ -53,6 +54,7 @@ impl Debug for dyn ExternalFetcher {
 pub trait SimpleFetcher: Sync + Send {
     fn get_id(&self) -> &'static str;
     fn get_regexes(&self) -> &[TagValueRegex];
+    fn get_possible_output_tags(&self) -> &[&str];
     fn process(&self, found: &[regex::Captures], tags: &Tags) -> anyhow::Result<Vec<TagValue>>;
 }
 
@@ -74,6 +76,13 @@ pub struct URLDomainMatcher;
 impl SimpleFetcher for URLDomainMatcher {
     fn get_id(&self) -> &'static str {
         "url-domain-matcher"
+    }
+    fn get_possible_output_tags(&self) -> &[&str] {
+        &[
+            "browse-full-domain",
+            "browse-main-domain",
+            "error-unknown-domain",
+        ]
     }
     fn get_regexes(&self) -> &[TagValueRegex] {
         lazy_static! {

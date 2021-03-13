@@ -1,11 +1,17 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-use std::{collections::HashSet, time::Instant};
+use std::{collections::HashSet, ffi::OsStr, io::Cursor, path::PathBuf, time::Instant};
 
 use diesel::prelude::*;
-use rocket::{get, post, routes};
+use rocket::{
+    get,
+    http::{ContentType, Status},
+    post, response, routes,
+};
 use rocket_contrib::json::Json;
 
+use rocket::Request;
+use rust_embed::RustEmbed;
 use track_pc_usage_rs as trbtt;
 use track_pc_usage_rs::util::iso_string_to_datetime;
 use trbtt::db::models::{DbEvent, Timestamptz};
@@ -15,6 +21,10 @@ use trbtt::prelude::*;
 extern crate rocket_contrib;
 
 use api::*;
+
+#[derive(RustEmbed)]
+#[folder = "frontend/dist/"]
+struct FrontendDistAssets;
 
 #[get("/get-known-tags")]
 fn get_known_tags(db: DatyBasy) -> Api::get_known_tags::response {
@@ -134,6 +144,45 @@ fn update_rule_groups(
     Ok(Json(ApiResponse { data: () }))
 }
 
+#[get("/")]
+fn index<'r>() -> response::Result<'r> {
+    let data = Some(include_bytes!("../../frontend/index.html"));
+    data.map_or_else(
+        || Err(Status::NotFound),
+        |d| {
+            response::Response::build()
+                .header(ContentType::HTML)
+                .sized_body(Cursor::new(d))
+                .ok()
+        },
+    )
+}
+
+#[rocket::catch(404)]
+fn not_found<'r>() -> response::Result<'r> {
+    index()
+}
+
+#[get("/dist/<file..>")]
+fn dist<'r>(file: PathBuf) -> response::Result<'r> {
+    let filename = file.display().to_string();
+    FrontendDistAssets::get(&filename).map_or_else(
+        || Err(Status::NotFound),
+        |d| {
+            let ext = file
+                .as_path()
+                .extension()
+                .and_then(OsStr::to_str)
+                .ok_or_else(|| Status::new(400, "Could not get file extension"))?;
+            let content_type = ContentType::from_extension(ext).unwrap_or(ContentType::Binary);
+            response::Response::build()
+                .header(content_type)
+                .sized_body(Cursor::new(d))
+                .ok()
+        },
+    )
+}
+
 fn main() -> anyhow::Result<()> {
     util::init_logging();
     dotenv::dotenv().ok();
@@ -189,6 +238,8 @@ fn main() -> anyhow::Result<()> {
     }
     .to_cors()?;
     rocket::custom(config)
+        .register(rocket::catchers![not_found])
+        .mount("/", routes![index, dist])
         .mount(
             "/api",
             routes![

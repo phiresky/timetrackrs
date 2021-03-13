@@ -241,9 +241,9 @@ impl DatyBasy {
             where e.timestamp_unix_ms >= ?1 and e.timestamp_unix_ms < ?2
             order by e.timestamp_unix_ms desc";
         let q = if let Some(tag) = tag {
-            diesel::sql_query(format!(
-                "{} and e.tag = (select id from tags where text = ?3)",
-                q1
+            diesel::sql_query(q1.replace(
+                " where ",
+                " where e.tag = (select id from tags where text = ?3) and ",
             ))
             .bind::<BigInt, _>(Timestamptz::from(from))
             .bind::<BigInt, _>(Timestamptz::from(to))

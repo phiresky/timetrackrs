@@ -19,6 +19,9 @@ impl ExternalFetcher for YoutubeFetcher {
 
         &REGEXES
     }
+    fn get_possible_output_tags(&self) -> &[&str] {
+        &["wikidata-website-url", "wikidata-id", "wikidata-label"]
+    }
 
     fn get_cache_key(&self, _found: &[regex::Captures], tags: &Tags) -> Option<String> {
         // https://github.com/ytdl-org/youtube-dl/blob/1fb034d029c8b7feafe45f64e6a0808663ad315e/youtube_dl/extractor/youtube.py
@@ -115,10 +118,18 @@ impl ExternalFetcher for YoutubeFetcher {
         let mut tags: Vec<TagValue> = Vec::new();
         if let YoutubeDlOutput::SingleVideo(sv) = d {
             tags.add("video-title", sv.title);
-            if let Some(u) = sv.uploader_id { tags.add("youtube-uploader", u) }
-            if let Some(u) = sv.uploader { tags.add("youtube-uploader-name", u) }
-            if let Some(u) = sv.channel_id { tags.add("youtube-channel", u) }
-            if let Some(u) = sv.channel { tags.add("youtube-channel-name", u) }
+            if let Some(u) = sv.uploader_id {
+                tags.add("youtube-uploader", u)
+            }
+            if let Some(u) = sv.uploader {
+                tags.add("youtube-uploader-name", u)
+            }
+            if let Some(u) = sv.channel_id {
+                tags.add("youtube-channel", u)
+            }
+            if let Some(u) = sv.channel {
+                tags.add("youtube-channel-name", u)
+            }
             if let Some(tg) = sv.tags {
                 for tag in tg {
                     if let Some(tag) = tag {

@@ -41,7 +41,15 @@ export const ChooserWithChild: React.FC<{
 				tag: this.tag.value,
 				limit: 100000,
 			}
-			return fromPromise(api.getTimeRange(params))
+			return fromPromise(
+				api.getTimeRange(params).then((data) => {
+					data.sort(
+						(a, b) => a.timestamp_unix_ms - b.timestamp_unix_ms,
+					)
+					console.log(data)
+					return data
+				}),
+			)
 		},
 		get tags(): IPromiseBasedObservable<
 			{ value: string; label: string }[]

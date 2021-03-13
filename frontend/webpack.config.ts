@@ -3,9 +3,11 @@ import MiniCssExtractPlugin from "mini-css-extract-plugin"
 import * as path from "path"
 import * as webpack from "webpack"
 
+const production = process.env.NODE_ENV === "production"
 const config: webpack.Configuration = {
 	entry: "./src/main.tsx",
-	mode: process.env.NODE_ENV === "production" ? "production" : "development",
+	mode: production ? "production" : "development",
+	devtool: production ? "source-map" : "eval-source-map",
 	output: {
 		path: path.resolve(__dirname, "dist"),
 		filename: "main.js",
@@ -37,6 +39,7 @@ const config: webpack.Configuration = {
 		],
 	},
 	devServer: {
+		publicPath: "/dist",
 		historyApiFallback: { index: "index.html", disableDotRule: true },
 	},
 }

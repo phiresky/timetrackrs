@@ -14,8 +14,8 @@ pub struct Tags {
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct TagValue {
-    tag: String,
-    value: String,
+    pub tag: String,
+    pub value: String,
 }
 impl TagValue {
     pub fn new(tag: impl Into<String>, value: impl Into<String>) -> TagValue {

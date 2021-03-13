@@ -32,6 +32,10 @@ impl ExternalFetcher for WikidataIdFetcher {
         &REGEXES
     }
 
+    fn get_possible_output_tags(&self) -> &[&str] {
+        &["wikidata-website-url", "wikidata-id", "wikidata-label"]
+    }
+
     fn get_cache_key(
         &self,
         found: &[regex::Captures],
@@ -168,6 +172,10 @@ impl ExternalFetcher for WikidataCategoryFetcher {
                 vec![TagValueRegex{tag: "wikidata-id".to_string(), regex: Regex::new(r#"^wikidata-id:(?P<id>.*)$"#).unwrap()}];
         }
         &REGEXES
+    }
+
+    fn get_possible_output_tags(&self) -> &[&str] {
+        &["wikidata-category"]
     }
 
     fn get_cache_key(

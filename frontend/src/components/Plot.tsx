@@ -123,6 +123,7 @@ export class Plot extends React.Component<{
 		const lastDay = startOfDay(last)
 		const days = differenceInDays(lastDay, firstDay) + 1
 		const durMs = last.getTime() - first.getTime()
+		console.log(first, last)
 		return { firstDay, lastDay, days, first, last, durMs }
 	}
 
@@ -145,7 +146,7 @@ export class Plot extends React.Component<{
 						.fill(0)
 						.map((_, i) => ({
 							...e,
-							timestamp: aggregator.mapper(
+							timestamp_unix_ms: aggregator.mapper(
 								addSeconds(
 									new Date(e.timestamp_unix_ms),
 									maxEventSeconds * i,
@@ -159,20 +160,28 @@ export class Plot extends React.Component<{
 				} else
 					return {
 						...e,
-						timestamp: aggregator.mapper(
+						timestamp_unix_ms: aggregator.mapper(
 							new Date(e.timestamp_unix_ms),
 						),
 					}
 			})
+			console.log(key, es2)
+			es2.sort(
+				(a, b) =>
+					a.timestamp_unix_ms.getTime() -
+					b.timestamp_unix_ms.getTime(),
+			)
 			const { firstDay, lastDay, days: aggDays } = this.getDayInfo(es2)
 
 			const aggFactor = aggDays / days
+
+			console.log(es2)
 
 			return {
 				xaxis: {
 					tick0: firstDay,
 				},
-				x: es2.map((x) => x.timestamp),
+				x: es2.map((x) => x.timestamp_unix_ms),
 				y: es2.map((x) => (x.duration_ms / binSize) * aggFactor),
 				type: "histogram",
 				xbins: {

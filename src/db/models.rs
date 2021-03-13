@@ -9,7 +9,8 @@ use diesel::{
     deserialize::{self, FromSql},
     sql_types::{BigInt, Double},
 };
-use std::io::Write;
+use serde::{de::Visitor, Deserializer, Serializer};
+use std::{fmt, io::Write};
 
 #[derive(Queryable, Serialize, TypeScriptify)]
 pub struct DbEvent {
@@ -28,9 +29,7 @@ impl DbEvent {
     }
 }
 
-#[derive(
-    AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Eq, Hash, Serialize, Deserialize,
-)]
+#[derive(AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Eq, Hash)]
 #[sql_type = "BigInt"]
 pub struct Timestamptz(pub DateTime<Utc>);
 impl FromSql<BigInt, Sqlite> for Timestamptz {
@@ -50,6 +49,37 @@ impl ToSql<BigInt, Sqlite> for Timestamptz {
 impl From<&Timestamptz> for Timestamptz {
     fn from(t: &Timestamptz) -> Self {
         Self(t.0)
+    }
+}
+
+impl Serialize for Timestamptz {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_i64(self.0.timestamp_millis())
+    }
+}
+
+struct TimestamptzVisitor;
+
+impl<'de> Visitor<'de> for TimestamptzVisitor {
+    type Value = Timestamptz;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a unix timestamp")
+    }
+
+    fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Timestamptz(util::unix_epoch_millis_to_date(value)))
+    }
+}
+impl<'de> Deserialize<'de> for Timestamptz {
+    fn deserialize<D>(deserializer: D) -> Result<Timestamptz, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_i64(TimestamptzVisitor)
     }
 }
 
