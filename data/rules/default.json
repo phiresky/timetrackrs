@@ -118,7 +118,7 @@
                             "regexes": [
                                 {
                                     "tag": "software-window-title",
-                                    "regex": "^.*(?P<url>https?://(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)).*$"
+                                    "regex": "^.*(?P<url>https?://(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=!]*)).*$"
                                 }
                             ],
                             "new_tags": [
@@ -425,7 +425,7 @@
                             "regexes": [
                                 {
                                     "tag": "youtube-category",
-                                    "regex": "^(Gaming|Entertainment)$"
+                                    "regex": "^(Gaming|Entertainment|Comedy)$"
                                 }
                             ],
                             "new_tags": [

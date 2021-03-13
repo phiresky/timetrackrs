@@ -20,7 +20,15 @@ impl ExternalFetcher for YoutubeFetcher {
         &REGEXES
     }
     fn get_possible_output_tags(&self) -> &[&str] {
-        &["wikidata-website-url", "wikidata-id", "wikidata-label"]
+        &[
+            "video-title",
+            "youtube-uploader",
+            "youtube-uploader-name",
+            "youtube-channel",
+            "youtube-channel-name",
+            "youtube-tag",
+            "youtube-category",
+        ]
     }
 
     fn get_cache_key(&self, _found: &[regex::Captures], tags: &Tags) -> Option<String> {

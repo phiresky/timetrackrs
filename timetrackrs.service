@@ -1,11 +1,9 @@
 # cp timetrackrs.service ~/.config/systemd/user/
-# mkdir ~/.local/share/trbtt
 # systemctl --user enable --now timetrackrs
 [Unit]
 Description=track pc usage rs
 
 [Service]
-# Environment=DATABASE_URL=%h/.local/share/trbtt/events.sqlite3
 ExecStart=%h/.cargo/bin/trbtt-capture x11
 Restart=on-failure
 RestartSec=20
