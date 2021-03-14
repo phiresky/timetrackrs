@@ -7,12 +7,12 @@ use std::{
 };
 
 use crate::diesel::OptionalExtension;
-use crate::{api::SingleExtractedEvent, prelude::*};
+use crate::{api_types::SingleExtractedEvent, prelude::*};
 use diesel::{prelude::*, sql_types::Text};
 use diesel::{sql_types::BigInt, SqliteConnection};
 use itertools::Itertools;
-use lru::LruCache;
-use owning_ref::{OwningHandle, OwningRef};
+
+
 use rocket::request::FromRequest;
 use rocket_contrib::database;
 use std::iter::FromIterator;
@@ -63,7 +63,7 @@ impl CachingIntMap {
         self.get(key, rusqlite::params![key])
     }
     fn get(&self, key: &str, params: &[&dyn ToSql]) -> i64 {
-        let i: Option<i64> = self.lru.write().unwrap().get(key).map(|e| *e);
+        let i: Option<i64> = self.lru.write().unwrap().get(key).copied();
 
         match i {
             Some(i) => i,
@@ -186,13 +186,6 @@ fn fetch_tag_rules(db_config: &SqliteConnection) -> anyhow::Result<Vec<TagRule>>
         .collect())
 }
 impl DatyBasy {
-    /*pub fn new(conn: &'a SqliteConnection) -> DatyBasy {
-        DatyBasy {
-            conn,
-            enabled_tag_rules: None,
-        }
-    }*/
-
     pub fn get_cache_entry(&self, cache_key: &str) -> anyhow::Result<Option<String>> {
         use crate::db::schema::extracted::fetcher_cache::dsl::*;
 
@@ -263,7 +256,7 @@ impl DatyBasy {
             .map(|(id, group)| {
                 let mut group = group.peekable();
                 SingleExtractedEvent {
-                    id: id.clone(),
+                    id,
                     timestamp_unix_ms: (&group.peek().unwrap().timestamp_unix_ms).into(),
                     duration_ms: group.peek().unwrap().duration_ms,
                     tags: group.map(|e| (e.tag, e.value)).collect(),
@@ -331,7 +324,7 @@ impl DatyBasy {
             affected.push(DateUtc(date));
             date = date + day;
         }
-        return affected;
+        affected
     }
 
     pub fn extract_time_range(&self, from: &Timestamptz, to: &Timestamptz) -> anyhow::Result<()> {

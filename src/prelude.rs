@@ -1,5 +1,5 @@
 // just lots of imports cause i'm lazy
-pub use crate::api;
+pub use crate::api_types;
 pub use crate::capture::linux::types::*;
 pub use crate::capture::windows::types::*;
 pub use crate::capture::*;

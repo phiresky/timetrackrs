@@ -1,4 +1,4 @@
-CREATE TABLE events (
+CREATE TABLE raw_events.events (
     -- declared autoincrement to prevent id reuse for synchronization (otherwise sqlite will reuse old ids on e.g. vacuum)
     insertion_sequence integer PRIMARY KEY AUTOINCREMENT,
     -- for captured events, the id is generated randomly (uuidv4)
@@ -14,5 +14,5 @@ CREATE TABLE events (
     data text NOT NULL -- JSON
 );
 
-CREATE INDEX events_timestamp_idx ON events (timestamp);
+CREATE INDEX raw_events.events_timestamp_idx ON raw_events.events (timestamp);
 

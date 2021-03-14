@@ -4,21 +4,21 @@ use futures::{
 };
 use std::time::Duration;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap},
     sync::Arc,
 };
 use tokio::sync::Mutex;
 
 use anyhow::Context;
-use async_channel as chan;
-use futures_util::{future, pin_mut, select, FutureExt, StreamExt};
+
+use futures_util::{StreamExt};
 
 use track_pc_usage_rs::sync::{MsgKind, PeerMsg};
 use tungstenite::Message;
 use uuid::Uuid;
 
-use tokio::time::timeout;
-use tokio::{net::TcpStream, spawn};
+
+use tokio::{spawn};
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
 use datachannel::{
@@ -181,7 +181,7 @@ impl SyncClient {
         let conns = self.conns.clone();
 
         let conf = self.conf.clone();
-        let own_id = self.own_id.clone();
+        let own_id = self.own_id;
         let from_signalling_server = self.signalling_in.as_ref().unwrap().clone();
 
         let to_signalling_server = self.signalling_out.as_ref().unwrap().clone();

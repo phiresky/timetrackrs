@@ -1,6 +1,6 @@
-ALTER TABLE events RENAME TO events_backup_before_2021_01;
+ALTER TABLE raw_events.events RENAME TO raw_events.events_backup_before_2021_01;
 
-CREATE TABLE events (
+CREATE TABLE raw_events.events (
     -- declared autoincrement to prevent id reuse for synchronization (otherwise sqlite will reuse old ids on e.g. vacuum)
     insertion_sequence integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     -- for captured events, the id is generated randomly (uuidv4)
@@ -15,9 +15,9 @@ CREATE TABLE events (
     data text NOT NULL -- JSON
 );
 
-CREATE INDEX events_timestamp_unix_ms_idx ON events (timestamp_unix_ms);
+CREATE INDEX events_timestamp_unix_ms_idx ON raw_events.events (timestamp_unix_ms);
 
-INSERT INTO events
+INSERT INTO raw_events.events
 SELECT
     insertion_sequence,
     id,

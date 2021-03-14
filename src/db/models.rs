@@ -7,7 +7,7 @@ use diesel::sql_types::Text;
 use diesel::sqlite::Sqlite;
 use diesel::{
     deserialize::{self, FromSql},
-    sql_types::{BigInt, Double},
+    sql_types::{BigInt},
 };
 use serde::{de::Visitor, Deserializer, Serializer};
 use std::{fmt, io::Write};
