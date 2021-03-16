@@ -1,33 +1,16 @@
 use std::{
-    cell::RefCell,
     collections::{HashMap, HashSet},
-    sync::{Arc, Mutex, RwLock},
-    thread_local,
+    sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
 
-use crate::diesel::OptionalExtension;
 use crate::{api_types::SingleExtractedEvent, prelude::*};
-use diesel::{prelude::*, sql_types::Text};
-use diesel::{sql_types::BigInt, SqliteConnection};
+use futures::Future;
+use futures::{StreamExt, TryStreamExt};
 use itertools::Itertools;
-
-
-use rocket::request::FromRequest;
-use rocket_contrib::database;
+use sqlx::{query::Query, sqlite::SqliteArguments, Sqlite, SqlitePool};
 use std::iter::FromIterator;
-#[database("raw_events_database")]
-pub struct DbEvents(SqliteConnection);
 
-#[database("config_database")]
-pub struct DbConfig(SqliteConnection);
-
-#[database("extracted_database")]
-pub struct DbExtracted(SqliteConnection);
-
-struct Stmts<'a> {
-    get: rusqlite::Statement<'a>,
-}
 /*
 https://stackoverflow.com/questions/41665345/borrow-problems-with-compiled-sql-statements
 https://stackoverflow.com/questions/32209391/how-to-store-rusqlite-connection-and-statement-objects-in-the-same-struct-in-rus
@@ -35,18 +18,33 @@ https://stackoverflow.com/questions/27552670/how-to-store-sqlite-prepared-statem
 */
 struct CachingIntMap {
     lru: Arc<RwLock<HashMap<String, i64>>>,
-    pub conn: rusqlite::Connection,
+    pub conn: SqlitePool,
     get: String,
     put: String,
 }
-use rusqlite::{OptionalExtension as OE, ToSql};
+
+pub async fn init_db_pool() -> anyhow::Result<DatyBasy> {
+    let db = crate::db::connect().await.context("connecting to db")?;
+    Ok(DatyBasy {
+        enabled_tag_rules: fetch_tag_rules(&db).await.context("fetching tag rules")?,
+        db: db.clone(),
+        tags_cache: CachingIntMap::new(db.clone(), "tags", "(text) values (?1)", "text"),
+        values_cache: CachingIntMap::new(db.clone(), "tag_values", "(text) values (?1)", "text"),
+        events_cache: CachingIntMap::new(
+            db,
+            "event_ids",
+            "(raw_id, timestamp_unix_ms, duration_ms) values (?1, ?2, ?3)",
+            "raw_id",
+        ),
+    })
+}
+
 impl CachingIntMap {
-    fn new(db_path: &str, table: &str, cols: &str, keycol: &str) -> CachingIntMap {
+    fn new(conn: SqlitePool, table: &str, cols: &str, keycol: &str) -> CachingIntMap {
         lazy_static! {
             static ref lrus: Arc<RwLock<HashMap<String, Arc<RwLock<HashMap<String, i64>>>>>> =
                 Arc::new(RwLock::new(HashMap::new()));
         }
-        let conn = rusqlite::Connection::open(db_path).unwrap();
         CachingIntMap {
             lru: (*lrus)
                 .write()
@@ -59,117 +57,60 @@ impl CachingIntMap {
             conn,
         }
     }
-    fn get_simple(&self, key: &str) -> i64 {
-        self.get(key, rusqlite::params![key])
+    async fn get_simple(&self, key: &str) -> i64 {
+        self.get(key, &|e| e).await
     }
-    fn get(&self, key: &str, params: &[&dyn ToSql]) -> i64 {
-        let i: Option<i64> = self.lru.write().unwrap().get(key).copied();
+    fn get<'a>(
+        &'a self,
+        key: &'a str,
+        binds: &'a dyn Fn(
+            Query<'a, Sqlite, SqliteArguments<'a>>,
+        ) -> Query<'a, Sqlite, SqliteArguments<'a>>,
+    ) -> impl Future<Output = i64> + 'a {
+        async move {
+            let i: Option<i64> = self.lru.write().unwrap().get(key).copied();
 
-        match i {
-            Some(i) => i,
-            None => {
-                let n = match self
-                    .conn
-                    .prepare_cached(&self.get)
-                    .expect("NOCA")
-                    .query_row(&params[0..1], |row| row.get(0))
-                    .optional()
-                    .unwrap()
-                {
-                    Some(n) => n,
-                    None => {
-                        self.conn
-                            .prepare_cached(&self.put)
-                            .unwrap()
-                            .execute(params)
-                            .unwrap();
-                        self.conn.last_insert_rowid()
-                    }
-                };
+            match i {
+                Some(i) => i,
+                None => {
+                    let n = match sqlx::query_scalar(&self.get)
+                        .bind(key)
+                        .fetch_optional(&self.conn)
+                        .await
+                        .unwrap()
+                    {
+                        Some(n) => n,
+                        None => {
+                            let ret = binds(sqlx::query(&self.put).bind(key))
+                                .execute(&self.conn)
+                                .await
+                                .unwrap();
+                            ret.last_insert_rowid()
+                        }
+                    };
 
-                self.lru.write().unwrap().insert(key.to_string(), n);
-                n
+                    self.lru.write().unwrap().insert(key.to_string(), n);
+                    n
+                }
             }
         }
     }
 }
 pub struct DatyBasy {
-    pub db_events: DbEvents,
-    pub db_config: DbConfig,
-    pub db_extracted: DbExtracted,
+    pub db: SqlitePool,
     events_cache: CachingIntMap,
     tags_cache: CachingIntMap,
     values_cache: CachingIntMap,
     enabled_tag_rules: Vec<TagRule>,
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for DatyBasy {
-    type Error = ();
-
-    fn from_request(request: &'a rocket::Request<'r>) -> rocket::request::Outcome<Self, ()> {
-        let db_extracted = DbExtracted::from_request(request)?;
-        if let Err(e) = crate::db::extracted::set_pragmas_migrate(&db_extracted) {
-            log::error!("{:#?}", e);
-            return rocket::request::Outcome::Failure((
-                rocket::http::Status::InternalServerError,
-                (),
-            ));
-        };
-        let db_events = DbEvents::from_request(request)?;
-        if let Err(e) = crate::db::raw_events::set_pragmas_migrate(&db_events) {
-            log::error!("{:#?}", e);
-            return rocket::request::Outcome::Failure((
-                rocket::http::Status::InternalServerError,
-                (),
-            ));
-        };
-        let db_config = DbConfig::from_request(request)?;
-        if let Err(e) = crate::db::config::set_pragmas_migrate(&db_config) {
-            log::error!("{:#?}", e);
-            return rocket::request::Outcome::Failure((
-                rocket::http::Status::InternalServerError,
-                (),
-            ));
-        };
-        rocket::request::Outcome::Success(DatyBasy {
-            enabled_tag_rules: match fetch_tag_rules(&db_config) {
-                Ok(r) => r,
-                Err(e) => {
-                    log::error!("{:#?}", e);
-                    return rocket::request::Outcome::Failure((
-                        rocket::http::Status::InternalServerError,
-                        (),
-                    ));
-                }
-            },
-            db_events,
-            db_extracted,
-            db_config,
-            tags_cache: CachingIntMap::new(
-                &crate::db::extracted::get_filename(),
-                "tags",
-                "(text) values (?1)",
-                "text",
-            ),
-            values_cache: CachingIntMap::new(
-                &crate::db::extracted::get_filename(),
-                "tag_values",
-                "(text) values (?1)",
-                "text",
-            ),
-            events_cache: CachingIntMap::new(
-                &crate::db::extracted::get_filename(),
-                "event_ids",
-                "(raw_id, timestamp_unix_ms, duration_ms) values (?1, ?2, ?3)",
-                "raw_id",
-            ),
-        })
-    }
-}
-
-fn fetch_tag_rules(db_config: &SqliteConnection) -> anyhow::Result<Vec<TagRule>> {
-    use crate::db::schema::config::tag_rule_groups::dsl::*;
-    let groups: Vec<TagRuleGroup> = tag_rule_groups.load(db_config)?;
+pub async fn fetch_tag_rules(db: &SqlitePool) -> anyhow::Result<Vec<TagRule>> {
+    let groups: Vec<TagRuleGroup> = sqlx::query_as!(
+        TagRuleGroup,
+        r#"select global_id, data as "data: _" from config.tag_rule_groups"#
+    )
+    .fetch_all(db)
+    .await?;
     /*if groups.len() == 0 {
         // insert defaults
         let groups =
@@ -182,31 +123,31 @@ fn fetch_tag_rules(db_config: &SqliteConnection) -> anyhow::Result<Vec<TagRule>>
     Ok(groups
         .into_iter()
         .chain(get_default_tag_rule_groups().into_iter())
-        .flat_map(|g| g.data.into_iter_active_rules())
+        .flat_map(|g| g.data.0.into_iter_active_rules())
         .collect())
 }
 impl DatyBasy {
-    pub fn get_cache_entry(&self, cache_key: &str) -> anyhow::Result<Option<String>> {
-        use crate::db::schema::extracted::fetcher_cache::dsl::*;
-
-        let cache_value = fetcher_cache
-            .find(cache_key)
-            .select(value)
-            .first::<String>(&self.db_extracted.0)
-            .optional()?;
+    pub async fn get_cache_entry(&self, cache_key: &str) -> anyhow::Result<Option<String>> {
+        let cache_value = sqlx::query_scalar!(
+            "select value from extracted.fetcher_cache where key = ?",
+            cache_key
+        )
+        .fetch_optional(&self.db)
+        .await?;
         Ok(cache_value)
     }
 
-    pub fn set_cache_entry(&self, cache_key: &str, cache_value: &str) -> anyhow::Result<()> {
-        use crate::db::schema::extracted::fetcher_cache::dsl::*;
-        diesel::insert_into(fetcher_cache)
-            .values((
-                key.eq(cache_key),
-                timestamp_unix_ms.eq(Timestamptz(Utc::now())),
-                value.eq(cache_value),
-            ))
-            .execute(&*self.db_extracted)
-            .context("insert into fetcher_cache db")?;
+    pub async fn set_cache_entry(&self, cache_key: &str, cache_value: &str) -> anyhow::Result<()> {
+        let now = Timestamptz(Utc::now());
+        sqlx::query!(
+            "insert into extracted.fetcher_cache (key, timestamp_unix_ms, value) values (?, ?, ?)",
+            cache_key,
+            now,
+            cache_value
+        )
+        .execute(&self.db)
+        .await
+        .context("insert into fetcher_cache db")?;
 
         Ok(())
     }
@@ -215,39 +156,40 @@ impl DatyBasy {
         &self.enabled_tag_rules
     }
 
-    pub fn get_extracted_for_time_range(
+    pub async fn get_extracted_for_time_range(
         &self,
         from: &Timestamptz,
         to: &Timestamptz,
         tag: Option<&str>,
     ) -> anyhow::Result<Vec<SingleExtractedEvent>> {
         self.ensure_time_range_extracted_valid(from, to)
+            .await
             .context("updating extracted results")?;
 
         let now = Instant::now();
-        let q1 = "
-            select e.timestamp_unix_ms, e.duration_ms, tags.text as tag, tag_values.text as value, event_ids.raw_id as event_id
+        let from = Timestamptz::from(from);
+        let to = Timestamptz::from(to);
+        let q = if let Some(tag) = tag {
+            sqlx::query_as!(OutExtractedTag, r#"
+            select e.timestamp_unix_ms as "timestamp: _", e.duration_ms, tags.text as tag, tag_values.text as value, event_ids.raw_id as event_id
+            from extracted_events e
+            join tags on tags.id = e.tag
+            join tag_values on tag_values.id = e.value
+            join event_ids on event_ids.id = e.event_id
+            where e.tag = (select id from tags where text = ?3) and e.timestamp_unix_ms >= ?1 and e.timestamp_unix_ms < ?2
+            order by e.timestamp_unix_ms desc"#, from, to, tag)
+            .fetch_all(&self.db).await
+            .context("querying extracted db")?
+        } else {
+            sqlx::query_as!(OutExtractedTag, r#"
+            select e.timestamp_unix_ms as "timestamp: _", e.duration_ms, tags.text as tag, tag_values.text as value, event_ids.raw_id as event_id
             from extracted_events e
             join tags on tags.id = e.tag
             join tag_values on tag_values.id = e.value
             join event_ids on event_ids.id = e.event_id
             where e.timestamp_unix_ms >= ?1 and e.timestamp_unix_ms < ?2
-            order by e.timestamp_unix_ms desc";
-        let q = if let Some(tag) = tag {
-            diesel::sql_query(q1.replace(
-                " where ",
-                " where e.tag = (select id from tags where text = ?3) and ",
-            ))
-            .bind::<BigInt, _>(Timestamptz::from(from))
-            .bind::<BigInt, _>(Timestamptz::from(to))
-            .bind::<Text, _>(tag)
-            .load::<OutExtractedTag>(&*self.db_extracted)
-            .context("querying extracted db")?
-        } else {
-            diesel::sql_query(q1)
-                .bind::<BigInt, _>(Timestamptz::from(from))
-                .bind::<BigInt, _>(Timestamptz::from(to))
-                .load::<OutExtractedTag>(&*self.db_extracted)
+            order by e.timestamp_unix_ms desc"#, from, to)
+                .fetch_all(&self.db).await
                 .context("querying extracted db")?
         };
         let ee = q.into_iter().group_by(|e| e.event_id.clone());
@@ -257,7 +199,7 @@ impl DatyBasy {
                 let mut group = group.peekable();
                 SingleExtractedEvent {
                     id,
-                    timestamp_unix_ms: (&group.peek().unwrap().timestamp_unix_ms).into(),
+                    timestamp_unix_ms: (&group.peek().unwrap().timestamp).into(),
                     duration_ms: group.peek().unwrap().duration_ms,
                     tags: group.map(|e| (e.tag, e.value)).collect(),
                 }
@@ -266,20 +208,15 @@ impl DatyBasy {
         log::debug!("geting extracted from db took {:?}", now.elapsed());
         Ok(e)
     }
-    pub fn ensure_time_range_extracted_valid(
+    pub async fn ensure_time_range_extracted_valid(
         &self,
         from: &Timestamptz,
         to: &Timestamptz,
     ) -> anyhow::Result<()> {
         let days = self.get_affected_utc_days(from, to);
         {
-            use crate::db::schema::extracted::extracted_current::dsl::*;
-            let doesnt_need_update = extracted_current
-                .filter(utc_date.eq_any(&days))
-                .filter(extracted_timestamp_unix_ms.gt(raw_events_changed_timestamp_unix_ms))
-                .select(utc_date)
-                .load::<DateUtc>(&*self.db_extracted)
-                .context("fetching currents")?;
+            let days_str = serde_json::to_string(&days)?;
+            let doesnt_need_update: Vec<DateUtc> = sqlx::query_scalar!( r#"select utc_date as "date_utc: _" from extracted.extracted_current where utc_date in (select value from json_each(?)) and extracted_timestamp_unix_ms > raw_events_changed_timestamp_unix_ms"#, days_str).fetch_all(&self.db).await.context("fetching currents")?;
             let doesnt_need_update = HashSet::<DateUtc>::from_iter(doesnt_need_update.into_iter());
             let needs_update: Vec<_> = days
                 .into_iter()
@@ -292,20 +229,13 @@ impl DatyBasy {
                     &Timestamptz(day.0.and_hms(0, 0, 0)),
                     &Timestamptz((day.0 + chrono::Duration::days(1)).and_hms(0, 0, 0)),
                 )
+                .await
                 .with_context(|| format!("extracting tags for day {:?}", day))?;
-                let updated = diesel::update(extracted_current.filter(utc_date.eq(&day)))
-                    .set(extracted_timestamp_unix_ms.eq(&now))
-                    .execute(&*self.db_extracted)
-                    .with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?;
+                let updated = sqlx::query!("update extracted_current set extracted_timestamp_unix_ms = ? where utc_date = ?", now, day).execute(&self.db).await.with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?.rows_affected();
                 if updated == 0 {
                     let zero = Timestamptz(Utc.ymd(1970, 1, 1).and_hms(0, 1, 1));
-                    diesel::insert_into(extracted_current)
-                        .values(vec![(
-                            utc_date.eq(&day),
-                            extracted_timestamp_unix_ms.eq(&now),
-                            raw_events_changed_timestamp_unix_ms.eq(zero),
-                        )])
-                        .execute(&*self.db_extracted)
+                    sqlx::query!("insert into extracted_current (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms) values (?, ?, ?)", day, now, zero)
+                        .execute(&self.db).await
                         .with_context(|| {
                             format!("inserting extracted timestamp {:?} {:?}", day, now)
                         })?;
@@ -327,92 +257,137 @@ impl DatyBasy {
         affected
     }
 
-    pub fn extract_time_range(&self, from: &Timestamptz, to: &Timestamptz) -> anyhow::Result<()> {
+    pub async fn extract_time_range(
+        &self,
+        from: &Timestamptz,
+        to: &Timestamptz,
+    ) -> anyhow::Result<()> {
         log::debug!("extract_time_range {:?} to {:?}", from, to);
         {
-            let res = diesel::sql_query(
+            let res = sqlx::query!(
                 "delete from extracted_events where timestamp_unix_ms >= ? and timestamp_unix_ms < ?",
-            )
-            .bind::<BigInt, _>(&from)
-            .bind::<BigInt, _>(&to)
-            .execute(&*self.db_extracted)
+                from, to)
+            .execute(&self.db).await
             .context("removing stale events")?;
-            log::info!("removed {} stale events", res);
+            log::info!("removed {} stale events", res.rows_affected());
         }
 
-        let raws = YieldEventsFromTrbttDatabase {
+        /*let raws = YieldEventsFromTrbttDatabase {
             db: &*self.db_events,
             chunk_size: 1000,
             last_fetched: from.clone(),
             ascending: true,
-        };
+        };*/
+        let raws = sqlx::query_as!(
+            DbEvent,
+            r#"select
+                insertion_sequence, id, timestamp_unix_ms as "timestamp_unix_ms: _",
+                data_type, duration_ms, data
+            from raw_events.events where timestamp_unix_ms > ? order by timestamp_unix_ms asc"#,
+            from
+        )
+        .fetch(&self.db);
         let now = Instant::now();
-        let mut total_raw = 0;
+        let mut total_raw: usize = 0;
         let mut total_extracted = 0;
-        let mut total_tags = 0;
-        let mut total_tag_values = 0;
+        let mut total_tags: usize = 0;
+        let mut total_tag_values: usize = 0;
         let mut total_extract_iterations = 0;
         let mut total_extract_dur = Duration::from_secs(0);
         let mut total_cache_get_dur = Duration::from_secs(0);
 
         let extracted = raws
-            .flatten()
-            .take_while(|a| &a.timestamp_unix_ms < to)
-            .filter_map(|a| {
-                total_raw += 1;
-                let r = a
-                    .deserialize_data()
-                    .map_err(|e| log::warn!("{:#?}", e))
-                    .ok()?;
-
-                let ex = r.extract_info()?;
-
-                Some((a, ex))
-            })
-            .flat_map(|(a, r)| {
-                total_extracted += 1;
-                total_tags += r.tag_count();
-                total_tag_values += r.total_value_count();
-                let timestamp = a.timestamp_unix_ms.clone();
-                let duration_ms = a.duration_ms;
-                let now = Instant::now();
-                let event_id = self.events_cache.get(
-                    &a.id,
-                    rusqlite::params![&a.id, timestamp.0.timestamp_millis(), duration_ms],
-                );
-                total_cache_get_dur += now.elapsed();
-                let now = Instant::now();
-                let (tags, iterations) = get_tags(&self, r);
-                total_extract_dur += now.elapsed();
-                total_extract_iterations += iterations;
-
-                tags.into_iter().flat_map(move |(tag, values)| {
-                    let tag = self.tags_cache.get_simple(&tag);
-                    let timestamp = timestamp.clone();
-                    values.into_iter().map(move |value| {
-                        let now = Instant::now();
-                        let value = self.values_cache.get_simple(&value);
-                        total_cache_get_dur += now.elapsed();
-                        InExtractedTag {
-                            timestamp_unix_ms: (&timestamp).into(),
-                            duration_ms,
-                            event_id,
-                            tag,
-                            value,
+            .try_take_while(|a| futures::future::ready(Ok(&a.timestamp_unix_ms < to)))
+            .try_filter_map(|a| async {
+                //total_raw += 1;
+                let r = a.deserialize_data();
+                let ex = match r {
+                    Ok(r) => {
+                        let ex = r.extract_info();
+                        match ex {
+                            Some(ex) => ex,
+                            None => {
+                                return Ok(None);
+                            }
                         }
-                    })
-                })
-            })
-            .chunks(10000);
+                    }
+                    Err(e) => {
+                        log::warn!("{:#?}", e);
+                        return Ok(None);
+                    }
+                };
 
-        for chunk in extracted.into_iter() {
-            use crate::db::schema::extracted::extracted_events::dsl::*;
-            let chunk: Vec<_> = chunk.collect();
+                Ok(Some((a, ex)))
+            })
+            .and_then(|(a, r)| {
+                let aid = a.id.clone();
+                async move {
+                    //total_extracted += 1;
+                    //total_tags += r.tag_count();
+                    //total_tag_values += r.total_value_count();
+                    let timestamp = a.timestamp_unix_ms.clone();
+                    let duration_ms = a.duration_ms;
+                    let now = Instant::now();
+                    let event_id = self
+                        .events_cache
+                        .get(&aid, &|q| {
+                            q.bind(timestamp.0.timestamp_millis()).bind(duration_ms)
+                        })
+                        .await;
+                    //total_cache_get_dur += now.elapsed();
+                    let now = Instant::now();
+                    let (tags, iterations) = get_tags(&self, r);
+                    //total_extract_dur += now.elapsed();
+                    //total_extract_iterations += iterations;
+
+                    let ret: Vec<InExtractedTag> = futures::stream::iter(tags.into_iter())
+                        .then(move |(tag, values)| {
+                            let timestamp = timestamp.clone();
+                            async move {
+                                let tag = self.tags_cache.get_simple(&tag).await;
+
+                                futures::stream::iter(values).then(move |value| {
+                                    let timestamp = timestamp.clone();
+                                    async move {
+                                        let now = Instant::now();
+                                        let value = self.values_cache.get_simple(&value).await;
+                                        //total_cache_get_dur += now.elapsed();
+                                        InExtractedTag {
+                                            timestamp_unix_ms: (&timestamp).into(),
+                                            duration_ms,
+                                            event_id,
+                                            tag,
+                                            value,
+                                        }
+                                    }
+                                })
+                            }
+                        })
+                        .flatten()
+                        .collect()
+                        .await;
+                    return Ok(ret);
+                }
+            })
+            .chunks(1000);
+
+        let mut extracted = Box::pin(extracted);
+
+        while let Some(chunk) = extracted.next().await {
             let now = Instant::now();
-            let updated = diesel::insert_into(extracted_events)
-                .values(&chunk)
-                .execute(&*self.db_extracted)
-                .context("inserting new extracted events into db")?;
+            /*event_id bigint NOT NULL REFERENCES event_ids (id),
+            timestamp_unix_ms bigint NOT NULL,
+            duration_ms bigint NOT NULL,
+            tag bigint NOT NULL REFERENCES tags (id),
+            value*/
+            let mut updated: usize = 0;
+            // TODO: transaction
+            for ele in chunk.into_iter().flatten().flatten() {
+                sqlx::query!("insert into extracted.extracted_events (timestamp_unix_ms, duration_ms, tag, value) values (?, ?, ?, ?)", ele.timestamp_unix_ms, ele.duration_ms, ele.tag, ele.value)
+                    .execute(&self.db)
+                    .await?;
+                updated += 1;
+            }
             log::info!("inserted {} ({:?})", updated, now.elapsed());
         }
         if total_extracted > 0 && total_raw > 0 {

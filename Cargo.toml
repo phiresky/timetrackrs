@@ -15,10 +15,8 @@ serde_json = { version = "1.0.64", features = ["preserve_order"] }
 hex = "0.4.3"
 sysinfo = "0.16.4"
 chrono = { version = "0.4.19", features = ["serde"] }
-diesel = { version = "1.4.6", features = ["sqlite"] }
 dotenv = "0.15.0"
 rand = "0.8.3"
-diesel_migrations = "1.4.0"
 typescript-definitions = { git = "https://github.com/onelson/typescript-definitions", branch = "no-debug-attrs"}
 #rocket = { git = "https://github.com/SergioBenitez/Rocket" }
 #rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket", features=["diesel_sqlite_pool"] }
@@ -82,8 +80,9 @@ lru = { version = "0.6.5", features = ["nightly"] } # https://github.com/jeromef
 owning_ref = "0.4.1"
 libxid = "0.1.5"
 rust-embed = "5.9.0"
-sqlx = { version = "0.5.1", features = ["sqlite", "any", "runtime-tokio-native-tls"] }
+sqlx = { version = "0.5.1", features = ["sqlite", "any", "runtime-tokio-native-tls", "json"] }
 rocket_cors = "0.5.2"
+warp = "0.3.0"
 
 [patch.crates-io]
 sqlx-macros = { path = "../sqlx/sqlx-macros" }

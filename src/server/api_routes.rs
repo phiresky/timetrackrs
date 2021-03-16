@@ -1,4 +1,3 @@
-use diesel::prelude::*;
 use rocket::{
     get,
     http::{ContentType, Status},

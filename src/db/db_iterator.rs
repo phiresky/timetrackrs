@@ -1,29 +1,37 @@
 use std::time::Instant;
 
-use crate::prelude::*;
-use diesel::prelude::*;
+use futures::Stream;
+use sqlx::SqlitePool;
 
+use crate::prelude::*;
+/*
 pub struct YieldEventsFromTrbttDatabase<'a> {
-    pub db: &'a SqliteConnection,
+    pub db: SqlitePool,
     pub chunk_size: i64,
     pub last_fetched: Timestamptz,
     pub ascending: bool,
 }
-impl<'a> Iterator for YieldEventsFromTrbttDatabase<'a> {
+impl<'a> Stream for YieldEventsFromTrbttDatabase<'a> {
     type Item = Vec<DbEvent>;
-    fn next(&mut self) -> Option<Self::Item> {
-        use crate::db::schema::raw_events::events::dsl::*;
-        let mut query = events.into_boxed();
-        if self.ascending {
-            query = query
-                .filter(timestamp_unix_ms.gt(&self.last_fetched))
-                .order(timestamp_unix_ms.asc());
+    fn poll_next(&mut self) -> Option<Self::Item> {
+        let result: Vec<DbEvent> = if self.ascending {
+                let result: Vec<DbEvent> = sqlx::query_as!(
+                    DbEvent,
+                    "select * from events
+                     where timestamp_unix_ms > ? order by timestamp_unix_ms asc limit ?",
+                     &self.last_fetched, self.chunk_size
+                ).fetch_all().await;
         } else {
-            query = query
-                .filter(timestamp_unix_ms.lt(&self.last_fetched))
-                .order(timestamp_unix_ms.desc());
+            let result: Vec<DbEvent> = sqlx::query_as!(
+                DbEvent,
+                "select * from events
+                 where timestamp_unix_ms < ? order by timestamp_unix_ms desc limit ?",
+                 &self.last_fetched, self.chunk_size
+            ).fetch_all().await;
         }
         let now = Instant::now();
+
+        .fetch_all();
         let result: Vec<DbEvent> = query
             .limit(self.chunk_size)
             .load::<DbEvent>(self.db)
@@ -45,3 +53,4 @@ impl<'a> Iterator for YieldEventsFromTrbttDatabase<'a> {
         }
     }
 }
+*/

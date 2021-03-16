@@ -1,15 +1,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(proc_macro_hygiene, decl_macro)]
 #![warn(clippy::print_stdout)]
-#[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate diesel_migrations;
 
-#[macro_use]
-extern crate rocket_contrib;
-#[macro_use]
-extern crate rocket;
 pub mod api_types;
 pub mod capture;
 pub mod db;

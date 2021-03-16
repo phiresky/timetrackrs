@@ -1,17 +1,14 @@
 pub mod datybasy;
 pub mod db_iterator;
-pub mod hack;
 pub mod models;
-#[allow(clippy::all)]
-pub mod schema;
 use anyhow::Context;
-use diesel::sql_types::{BigInt, Text};
 use sqlx::Executor;
 use sqlx::{sqlite::SqlitePoolOptions, SqliteConnection, SqlitePool};
-use std::{env, fmt::Display, path::PathBuf};
+use std::{env, path::PathBuf};
 
 pub async fn connect() -> anyhow::Result<SqlitePool> {
-    let dir = get_database_dir_location().to_string_lossy();
+    let dir = get_database_dir_location();
+    let dir = dir.to_string_lossy();
     let main = format!("{}/lock.sqlite3", dir);
     log::debug!("Connecting to db at {}", dir);
     let db = SqlitePoolOptions::new()
@@ -21,7 +18,11 @@ pub async fn connect() -> anyhow::Result<SqlitePool> {
                 set_pragmas(conn)
                     .await
                     .with_context(|| format!("set pragmas for db"))
-                    .map_err(|e| sqlx::error::Error::Configuration(Box::new(e.into())))?;
+                    .map_err(|e| {
+                        /*let b: Box<(dyn std::error::Error + Sync + std::marker::Send + 'static)> =
+                        Box::new(std::error::Error::from(e));*/
+                        sqlx::error::Error::Configuration(e.into())
+                    })?;
                 Ok(())
             })
         })
@@ -33,17 +34,6 @@ pub async fn connect() -> anyhow::Result<SqlitePool> {
         .await
         .context("running migrations")?;
     Ok(db)
-}
-
-#[derive(Debug, QueryableByName)]
-struct P {
-    #[sql_type = "BigInt"]
-    page_size: i64,
-}
-#[derive(Debug, QueryableByName)]
-struct P2 {
-    #[sql_type = "Text"]
-    journal_mode: String,
 }
 pub async fn set_pragmas(db: &mut SqliteConnection) -> anyhow::Result<()> {
     let want_page_size = 32768;

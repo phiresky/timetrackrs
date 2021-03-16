@@ -1,15 +1,9 @@
-use crate::db::schema::config::*;
-use crate::db::schema::extracted::*;
-use crate::db::schema::raw_events::*;
 use crate::prelude::*;
-use diesel::serialize::{self, Output, ToSql};
-use diesel::sql_types::Text;
-use diesel::sqlite::Sqlite;
-use diesel::{
-    deserialize::{self, FromSql},
-    sql_types::{BigInt},
-};
 use serde::{de::Visitor, Deserializer, Serializer};
+use sqlx::{
+    sqlite::{SqliteArgumentValue, SqliteTypeInfo, SqliteValueRef},
+    Decode, Sqlite,
+};
 use std::{fmt, io::Write};
 
 #[derive(Queryable, Serialize, TypeScriptify)]
@@ -29,9 +23,28 @@ impl DbEvent {
     }
 }
 
-#[derive(AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Eq, Hash)]
-#[sql_type = "BigInt"]
+#[derive(PartialEq, PartialOrd, Debug, Clone, Eq, Hash)]
 pub struct Timestamptz(pub DateTime<Utc>);
+
+impl sqlx::Type<Sqlite> for Timestamptz {
+    fn type_info() -> SqliteTypeInfo {
+        <i64 as sqlx::Type<Sqlite>>::type_info()
+    }
+}
+impl sqlx::Encode<'_, Sqlite> for Timestamptz {
+    fn encode_by_ref(&self, buf: &mut Vec<SqliteArgumentValue<'_>>) -> sqlx::encode::IsNull {
+        sqlx::Encode::<Sqlite>::encode(self.0.timestamp_millis(), buf)
+    }
+}
+impl Decode<'_, Sqlite> for Timestamptz {
+    fn decode(
+        value: SqliteValueRef,
+    ) -> Result<Timestamptz, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let value = <i64 as Decode<Sqlite>>::decode(value)?;
+        Ok(Timestamptz(util::unix_epoch_millis_to_date(value)))
+    }
+}
+/*
 impl FromSql<BigInt, Sqlite> for Timestamptz {
     fn from_sql(
         bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
@@ -45,7 +58,7 @@ impl ToSql<BigInt, Sqlite> for Timestamptz {
         let s = self.0.timestamp_millis();
         <i64 as ToSql<BigInt, Sqlite>>::to_sql(&s, out)
     }
-}
+}*/
 impl From<&Timestamptz> for Timestamptz {
     fn from(t: &Timestamptz) -> Self {
         Self(t.0)
@@ -83,10 +96,62 @@ impl<'de> Deserialize<'de> for Timestamptz {
     }
 }
 
-#[derive(AsExpression, FromSqlRow, PartialEq, PartialOrd, Debug, Clone, Eq, Hash)]
-#[sql_type = "Text"]
+#[derive(PartialEq, PartialOrd, Debug, Clone, Eq, Hash)]
 pub struct DateUtc(pub Date<Utc>);
 
+impl sqlx::Type<Sqlite> for DateUtc {
+    fn type_info() -> SqliteTypeInfo {
+        <String as sqlx::Type<Sqlite>>::type_info()
+    }
+}
+impl sqlx::Encode<'_, Sqlite> for DateUtc {
+    fn encode_by_ref(&self, buf: &mut Vec<SqliteArgumentValue<'_>>) -> sqlx::encode::IsNull {
+        sqlx::Encode::<Sqlite>::encode(format!("{}", self.0.format("%F")), buf)
+    }
+}
+impl Decode<'_, Sqlite> for DateUtc {
+    fn decode(
+        value: SqliteValueRef,
+    ) -> Result<DateUtc, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let value = <String as Decode<Sqlite>>::decode(value)?;
+        Ok(DateUtc(util::iso_string_to_date(&value)?))
+    }
+}
+
+struct DateUtcVisitor;
+
+impl<'de> Visitor<'de> for DateUtcVisitor {
+    type Value = DateUtc;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a date")
+    }
+
+    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(DateUtc(
+            util::iso_string_to_date(&value).map_err(serde::de::Error::custom)?,
+        ))
+    }
+}
+impl<'de> Deserialize<'de> for DateUtc {
+    fn deserialize<D>(deserializer: D) -> Result<DateUtc, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_string(DateUtcVisitor)
+    }
+}
+
+impl Serialize for DateUtc {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&format!("{}", self.0.format("%F")))
+    }
+}
+
+/*
 impl FromSql<Text, Sqlite> for DateUtc {
     fn from_sql(
         bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
@@ -100,10 +165,8 @@ impl ToSql<Text, Sqlite> for DateUtc {
         let s = format!("{}", self.0.format("%F"));
         <String as ToSql<Text, Sqlite>>::to_sql(&s, out)
     }
-}
+}*/
 
-#[derive(Insertable)]
-#[table_name = "events"]
 pub struct NewDbEvent {
     pub id: String,
     pub timestamp_unix_ms: Timestamptz,
@@ -112,10 +175,6 @@ pub struct NewDbEvent {
     pub data: String,
 }
 
-#[derive(
-    Debug, Queryable, Insertable, Serialize, Deserialize, TypeScriptify, AsChangeset, Clone,
-)]
-#[table_name = "extracted_events"]
 pub struct InExtractedTag {
     pub timestamp_unix_ms: Timestamptz,
     pub duration_ms: i64,
@@ -123,40 +182,22 @@ pub struct InExtractedTag {
     pub tag: i64,
     pub value: i64,
 }
-#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone, QueryableByName)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct OutExtractedTag {
-    #[sql_type = "BigInt"]
-    pub timestamp_unix_ms: Timestamptz,
-    #[sql_type = "Text"]
-    pub event_id: String,
-    #[sql_type = "BigInt"]
+    pub timestamp: Timestamptz,
     pub duration_ms: i64,
-    #[sql_type = "Text"]
     pub tag: String,
-    #[sql_type = "Text"]
     pub value: String,
+    pub event_id: String,
 }
 
-#[derive(
-    Debug,
-    Queryable,
-    Identifiable,
-    Insertable,
-    Serialize,
-    Deserialize,
-    TypeScriptify,
-    AsChangeset,
-    Clone,
-)]
-#[primary_key(global_id)]
-#[table_name = "tag_rule_groups"]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone, sqlx::Type)]
 pub struct TagRuleGroup {
     pub global_id: String,
-    pub data: TagRuleGroupData,
+    pub data: sqlx::types::Json<TagRuleGroupData>,
 }
 
-#[derive(AsExpression, FromSqlRow, Debug, Serialize, Deserialize, TypeScriptify, Clone)]
-#[sql_type = "Text"]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 #[serde(tag = "version")]
 pub enum TagRuleGroupData {
     V1 { data: TagRuleGroupV1 },
@@ -178,7 +219,7 @@ impl TagRuleGroupData {
         }
     }
 }
-
+/*
 impl FromSql<Text, Sqlite> for TagRuleGroupData {
     fn from_sql(
         bytes: Option<&<Sqlite as diesel::backend::Backend>::RawValue>,
@@ -192,4 +233,4 @@ impl ToSql<Text, Sqlite> for TagRuleGroupData {
         let s = serde_json::to_string(&self)?;
         <String as ToSql<Text, Sqlite>>::to_sql(&s, out)
     }
-}
+}*/
