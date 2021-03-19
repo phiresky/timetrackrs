@@ -18,10 +18,6 @@ chrono = { version = "0.4.19", features = ["serde"] }
 dotenv = "0.15.0"
 rand = "0.8.3"
 typescript-definitions = { git = "https://github.com/onelson/typescript-definitions", branch = "no-debug-attrs"}
-#rocket = { git = "https://github.com/SergioBenitez/Rocket" }
-#rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket", features=["diesel_sqlite_pool"] }
-rocket = "*"
-rocket_contrib = {version="*", features=["diesel_sqlite_pool"]}
 
 lazy_static = "1.4.0"
 

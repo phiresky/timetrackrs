@@ -2,24 +2,10 @@
 
 use std::{collections::HashSet, ffi::OsStr, io::Cursor, path::PathBuf, time::Instant};
 
-use diesel::prelude::*;
-use rocket::{
-    get,
-    http::{ContentType, Status}, response, routes,
-};
-
-
-
 use rust_embed::RustEmbed;
 use track_pc_usage_rs as trbtt;
 
-
-
 use trbtt::prelude::*;
-#[macro_use]
-extern crate rocket_contrib;
-
-
 
 #[derive(RustEmbed)]
 #[folder = "frontend/dist/"]
@@ -68,7 +54,7 @@ fn main() -> anyhow::Result<()> {
     util::init_logging();
     dotenv::dotenv().ok();
 
-    use rocket::config::{Config, Environment, Value};
+    /*use rocket::config::{Config, Environment, Value};
     use std::collections::HashMap;
 
     let mut databases = HashMap::new();
@@ -118,7 +104,7 @@ fn main() -> anyhow::Result<()> {
         ..Default::default()
     }
     .to_cors()?;
-    
+
     rocket::custom(config)
         .register(rocket::catchers![not_found])
         .mount("/", routes![index, dist])
@@ -138,5 +124,5 @@ fn main() -> anyhow::Result<()> {
         .attach(DbExtracted::fairing())
         .launch();
 
-    Ok(())
+    Ok(())*/
 }

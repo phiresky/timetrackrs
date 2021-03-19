@@ -14,5 +14,5 @@ CREATE TABLE raw_events.events (
     data text NOT NULL -- JSON
 );
 
-CREATE INDEX raw_events.events_timestamp_idx ON raw_events.events (timestamp);
+CREATE INDEX raw_events.events_timestamp_idx ON events (timestamp);
 

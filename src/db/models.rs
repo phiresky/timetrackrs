@@ -6,7 +6,7 @@ use sqlx::{
 };
 use std::{fmt, io::Write};
 
-#[derive(Queryable, Serialize, TypeScriptify)]
+#[derive(Serialize, TypeScriptify)]
 pub struct DbEvent {
     pub insertion_sequence: i64,
     pub id: String,

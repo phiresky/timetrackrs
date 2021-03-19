@@ -25,7 +25,7 @@ pub fn get_default_tag_rule_groups() -> Vec<TagRuleGroup> {
             serde_json::from_str(include_str!("../../data/rules/default.json"))
                 .expect("could not parse internal rules");
     }
-    let iter = RULES.iter().flat_map(|r| match &r.data {
+    let iter = RULES.iter().flat_map(|r| match &r.data.0 {
         TagRuleGroupData::V1 { data } => data.rules.iter().map(|r| &r.rule),
     });
     validate_tag_rules(iter);
@@ -107,7 +107,7 @@ fn match_multi_regex<'a>(
 impl TagRule {
     /// returns a vec of new values as well as a vec of values that are the reason for the addition
     /// todo: the reason vector should borrow from the orig tags instead of copying
-    fn apply<'a>(
+    async fn apply<'a>(
         &self,
         db: &DatyBasy,
         orig_tags: &'a Tags,
@@ -204,6 +204,7 @@ impl TagRule {
                             );
                             let cached_data = db
                                 .get_cache_entry(global_cache_key)
+                                .await
                                 .context("get cache entry")?;
                             let data = match cached_data {
                                 Some(data) => data,
@@ -212,6 +213,7 @@ impl TagRule {
                                         .fetch_data(&inner_cache_key)
                                         .context("fetching data")?;
                                     db.set_cache_entry(&global_cache_key, &data)
+                                        .await
                                         .context("saving to cache")?;
                                     data
                                 }
@@ -297,21 +299,22 @@ fn validate_tag_regex(regex: &Regex) -> anyhow::Result<()> {
     }
     Ok(())
 }
-pub fn get_tags(db: &DatyBasy, intrinsic_tags: Tags) -> (Tags, i32) {
+pub async fn get_tags(db: &DatyBasy, intrinsic_tags: Tags) -> (Tags, i32) {
     let mut tags = intrinsic_tags;
-    let iterations = apply_tag_rules(db, &mut tags);
+    let iterations = apply_tag_rules(db, &mut tags).await;
     (tags, iterations)
 }
 
-pub fn apply_tag_rules(db: &DatyBasy, tags: &mut Tags) -> i32 {
+pub async fn apply_tag_rules(db: &DatyBasy, tags: &mut Tags) -> i32 {
     let mut last_length = tags.total_value_count();
     let mut settled = false;
     let mut iterations = 0;
-    let rules = db.get_all_tag_rules();
+    let rules = db.get_all_tag_rules().await;
     while !settled && iterations < 50 {
-        for rule in rules {
+        for rule in rules.iter() {
             match rule
                 .apply(db, tags)
+                .await
                 .with_context(|| format!("applying rule {:?}", rule))
             {
                 Err(e) => log::warn!("{:?}", e),
@@ -342,23 +345,23 @@ pub enum TagAddReason {
     },
 }
 
-pub fn get_tags_with_reasons(
+pub async fn get_tags_with_reasons(
     db: &DatyBasy,
     intrinsic_tags: Tags,
 ) -> (Tags, HashMap<String, TagAddReason>, i32) {
     let mut tags = intrinsic_tags;
-    let (reasons, iterations) = apply_tag_rules_get_reasons(db, &mut tags);
+    let (reasons, iterations) = apply_tag_rules_get_reasons(db, &mut tags).await;
     (tags, reasons, iterations)
 }
 
-pub fn apply_tag_rules_get_reasons(
+pub async fn apply_tag_rules_get_reasons(
     db: &DatyBasy,
     tags: &mut Tags,
 ) -> (HashMap<String, TagAddReason>, i32) {
     let mut last_length = tags.total_value_count();
     let mut settled = false;
     let mut iterations = 0;
-    let rules = db.get_all_tag_rules();
+    let rules = db.get_all_tag_rules().await;
     let mut tag_reasons: HashMap<String, TagAddReason> = tags
         .iter_values()
         .map(|tag| {
@@ -372,9 +375,10 @@ pub fn apply_tag_rules_get_reasons(
         .collect();
 
     while !settled && iterations < 50 {
-        for rule in rules {
+        for rule in rules.iter() {
             match rule
                 .apply(db, tags)
+                .await
                 .with_context(|| format!("applying rule {:?}", rule))
             {
                 Err(e) => log::warn!("{:?}", e),

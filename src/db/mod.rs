@@ -2,18 +2,28 @@ pub mod datybasy;
 pub mod db_iterator;
 pub mod models;
 use anyhow::Context;
-use sqlx::Executor;
+use sqlx::{sqlite::SqliteConnectOptions, Executor};
 use sqlx::{sqlite::SqlitePoolOptions, SqliteConnection, SqlitePool};
 use std::{env, path::PathBuf};
 
 pub async fn connect() -> anyhow::Result<SqlitePool> {
     let dir = get_database_dir_location();
-    let dir = dir.to_string_lossy();
+    let dir = dir.to_string_lossy().to_string();
     let main = format!("{}/lock.sqlite3", dir);
     log::debug!("Connecting to db at {}", dir);
     let db = SqlitePoolOptions::new()
-        .after_connect(|conn| {
+        .after_connect(move |conn| {
+            let dir = dir.clone();
             Box::pin(async move {
+                for attachdb in &["raw_events", "extracted", "config"] {
+                    let connn: &mut SqliteConnection = conn;
+                    sqlx::query(&format!(
+                        "ATTACH DATABASE '{}/{}.sqlite3' as {}",
+                        dir, attachdb, attachdb
+                    ))
+                    .execute(connn)
+                    .await?;
+                }
                 // attach
                 set_pragmas(conn)
                     .await
@@ -26,9 +36,13 @@ pub async fn connect() -> anyhow::Result<SqlitePool> {
                 Ok(())
             })
         })
-        .connect(&main)
+        .connect_with(
+            SqliteConnectOptions::new()
+                .filename(&main)
+                .create_if_missing(true),
+        )
         .await
-        .context("Establishing connection")?;
+        .with_context(|| format!("Establishing connection to db {}", main))?;
     sqlx::migrate!()
         .run(&db)
         .await
@@ -98,9 +112,9 @@ pub async fn set_pragmas(db: &mut SqliteConnection) -> anyhow::Result<()> {
 }
 
 pub fn get_database_dir_location() -> PathBuf {
-    let dir = env::var("TRBTT_DATA_DIR").unwrap_or_else(|_| {
-        let dirs =
-            directories_next::ProjectDirs::from("", "", "trbtt").expect("No HOME directory found");
+    let dir = env::var("TIMETRACKRS_DATA_DIR").unwrap_or_else(|_| {
+        let dirs = directories_next::ProjectDirs::from("", "", "timetrackrs")
+            .expect("No HOME directory found");
         let dir = dirs.data_dir();
         std::fs::create_dir_all(dir).expect("could not create data dir");
         dir.to_string_lossy().into()

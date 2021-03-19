@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use diesel::prelude::*;
+use sqlx::SqlitePool;
 
 #[derive(StructOpt)]
 pub struct TrbttImportArgs {
@@ -9,13 +9,13 @@ pub struct TrbttImportArgs {
     last_id: Option<i64>,
 }
 struct YieldAllEventsFromTrbttDatabase {
-    db: SqliteConnection,
+    db: SqlitePool,
     last_id: i64,
 }
 impl Iterator for YieldAllEventsFromTrbttDatabase {
     type Item = Vec<NewDbEvent>;
     fn next(&mut self) -> Option<Self::Item> {
-        use crate::db::schema::raw_events::events::dsl::*;
+        /*
         let result: Vec<DbEvent> = events
             .filter(insertion_sequence.gt(self.last_id))
             .order(insertion_sequence.asc())
@@ -40,16 +40,17 @@ impl Iterator for YieldAllEventsFromTrbttDatabase {
             log::info!("final import sequence id: {}", self.last_id);
             // done
             None
-        }
+        }*/
+        None
     }
 }
 impl Importable for TrbttImportArgs {
     fn import(&self) -> ImportResult {
-        let db = crate::db::raw_events::connect_file(&self.filename)?;
-
+        anyhow::bail!("not imple")
+        /*let db =
         Ok(Box::new(YieldAllEventsFromTrbttDatabase {
             db,
             last_id: self.last_id.unwrap_or(0),
-        }))
+        }))*/
     }
 }

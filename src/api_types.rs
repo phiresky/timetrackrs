@@ -24,16 +24,22 @@ pub struct SingleExtractedEventWithRaw {
     pub raw: EventData,
     pub tags_reasons: HashMap<String, TagAddReason>,
 }
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
+pub struct TimeRangeRequest {
+    pub before: String,
+    pub after: String,
+    pub tag: Option<String>,
+}
 
 macro_rules! make_thingois {
     (pub enum $name:ident {
-        $($r:ident { response: $resp:ty }),+
+        $($r:ident { request: $req:ty, response: $resp:ty }),+
     }) => (
         #[allow(non_camel_case_types)]
         #[derive(TypeScriptify, Serialize)]
         #[serde(tag="type")]
         pub enum $name {
-            $( $r { response: $resp }),*
+            $( $r { request: $req, response: $resp }),*
         }
         #[allow(non_snake_case)]
         pub mod Api {
@@ -42,31 +48,43 @@ macro_rules! make_thingois {
                 pub mod $r {
                     pub use super::super::*;
                     #[allow(non_camel_case_types)]
-                    pub type response = DebugRes<Json<ApiResponse<$resp>>>;
+                    pub type request = $req;
+                    #[allow(non_camel_case_types)]
+                    pub type response = DebugRes<ApiResponse<$resp>>;
                 }
             )*
         }
     )
 }
 
-use rocket_contrib::json::Json;
-type DebugRes<T> = Result<T, rocket::response::Debug<anyhow::Error>>;
+// type Json<T> = warp::reply::Json;
+type DebugRes<T> = Result<T, anyhow::Error>;
+
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
+pub struct SingleEventRequest {
+    pub id: String,
+}
 
 make_thingois! {
     pub enum ApiTypesTS {
         time_range {
+            request: TimeRangeRequest,
             response: Vec<SingleExtractedEvent>
         },
         single_event {
+            request: SingleEventRequest,
             response: Option<SingleExtractedEventWithRaw>
         },
         rule_groups {
+            request: (),
             response: Vec<TagRuleGroup>
         },
         update_rule_groups {
+            request: (),
             response: ()
         },
         get_known_tags {
+            request: (),
             response: Vec<String>
         }
     }

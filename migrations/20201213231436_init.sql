@@ -25,9 +25,9 @@ CREATE TABLE IF NOT EXISTS extracted.extracted_events (
     value bigint NOT NULL REFERENCES tag_values (id)
 );
 
-CREATE INDEX IF NOT EXISTS extracted.ee_timestamp_idx ON extracted.extracted_events (timestamp_unix_ms);
+CREATE INDEX IF NOT EXISTS extracted.ee_timestamp_idx ON extracted_events (timestamp_unix_ms);
 
-CREATE INDEX IF NOT EXISTS extracted.ee_tag_timestamp_idx ON extracted.extracted_events (tag, timestamp_unix_ms);
+CREATE INDEX IF NOT EXISTS extracted.ee_tag_timestamp_idx ON extracted_events (tag, timestamp_unix_ms);
 
 CREATE TABLE IF NOT EXISTS extracted.extracted_current (
     utc_date text PRIMARY KEY NOT NULL,

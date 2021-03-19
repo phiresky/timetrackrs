@@ -1,6 +1,6 @@
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    track_pc_usage_rs::server::server::make_server().await;
+    track_pc_usage_rs::server::server::make_server().await?;
     /*let db = sqlx::sqlite::SqlitePoolOptions::new()
         .connect("sqlite://foo.sqlite3")
         .await?;
