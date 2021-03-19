@@ -1,6 +1,9 @@
 use std::pin::Pin;
 
-use crate::db::models::{DbEvent, Timestamptz};
+use crate::db::{
+    get_database_dir_location,
+    models::{DbEvent, Timestamptz},
+};
 use crate::extract::ExtractInfo;
 use crate::prelude::*;
 use crate::util::iso_string_to_datetime;
@@ -14,7 +17,10 @@ use warp::{
 
 use crate::api_types::*;
 
-async fn get_known_tags(db: DatyBasy) -> Api::get_known_tags::response {
+async fn get_known_tags(
+    db: DatyBasy,
+    req: Api::get_known_tags::request,
+) -> Api::get_known_tags::response {
     let tags = sqlx::query_scalar!("select text from extracted.tags")
         .fetch_all(&db.db)
         .await?;
@@ -111,30 +117,40 @@ pub fn with_db(
 ) -> impl warp::Filter<Extract = (DatyBasy,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || db.clone())
 }
-fn time_range_route(
-    db: DatyBasy,
-    query: Api::time_range::request,
-) -> Pin<Box<dyn Future<Output = Result<warp::reply::Json, Rejection>> + Send>> {
-    Box::pin(async move {
-        time_range(db, query)
-            .await
-            .map(|e| json(&e))
-            .map_err(map_error)
-    })
-}
+
 pub fn api_routes(
     db: DatyBasy,
 ) -> impl warp::Filter<Extract = (warp::reply::Json,), Error = Rejection> + Clone + Send {
     let rule_groups = with_db(db.clone())
-        .and(warp::path("rule_groups"))
+        .and(warp::path("rule-groups"))
         .and_then(|db| async { rule_groups(db).await.map(|e| json(&e)).map_err(map_error) });
 
     let time_range = with_db(db.clone())
-        .and(warp::path("time_range"))
+        .and(warp::path("time-range"))
         .and(warp::query::<Api::time_range::request>())
-        .and_then(time_range_route);
+        .and_then(|db, query| async {
+            time_range(db, query)
+                .await
+                .map(|e| json(&e))
+                .map_err(map_error)
+        });
 
-    let filter = warp::get().and(rule_groups).or(time_range).unify();
+    let get_known_tags = with_db(db.clone())
+        .and(warp::path("get-known-tags"))
+        .and(warp::query::<Api::get_known_tags::request>())
+        .and_then(|db, query| async move {
+            get_known_tags(db, query)
+                .await
+                .map(|e| json(&e))
+                .map_err(map_error)
+        });
+
+    let filter = warp::get()
+        .and(rule_groups)
+        .or(time_range)
+        .unify()
+        .or(get_known_tags)
+        .unify();
 
     filter
 }

@@ -4161,6 +4161,7 @@ dependencies = [
  "log 0.4.14",
  "lru",
  "mediawiki",
+ "mime_guess",
  "multimap",
  "nl80211",
  "num_enum",
