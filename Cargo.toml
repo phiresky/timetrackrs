@@ -77,7 +77,6 @@ owning_ref = "0.4.1"
 libxid = "0.1.5"
 rust-embed = "5.9.0"
 sqlx = { version = "0.5.1", features = ["sqlite", "any", "runtime-tokio-native-tls", "json"] }
-rocket_cors = "0.5.2"
 warp = "0.3.0"
 mime_guess = "2.0.3"
 

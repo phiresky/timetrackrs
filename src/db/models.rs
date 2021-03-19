@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use anyhow::Context;
 use serde::{de::Visitor, Deserializer, Serializer};
 use sqlx::{
     sqlite::{SqliteArgumentValue, SqliteTypeInfo, SqliteValueRef},
@@ -28,8 +29,12 @@ pub struct Timestamptz(pub DateTime<Utc>);
 
 impl sqlx::Type<Sqlite> for Timestamptz {
     fn type_info() -> SqliteTypeInfo {
-        <i64 as sqlx::Type<Sqlite>>::type_info()
+        <i32 as sqlx::Type<Sqlite>>::type_info()
     }
+    /*fn compatible(ty: &SqliteTypeInfo) -> bool {
+        log::info!("got type info {}", ty);
+        return *ty == <i64 as sqlx::Type<Sqlite>>::type_info();
+    }*/
 }
 impl sqlx::Encode<'_, Sqlite> for Timestamptz {
     fn encode_by_ref(&self, buf: &mut Vec<SqliteArgumentValue<'_>>) -> sqlx::encode::IsNull {
@@ -40,7 +45,10 @@ impl Decode<'_, Sqlite> for Timestamptz {
     fn decode(
         value: SqliteValueRef,
     ) -> Result<Timestamptz, Box<dyn std::error::Error + 'static + Send + Sync>> {
-        let value = <i64 as Decode<Sqlite>>::decode(value)?;
+        let value = <i64 as Decode<Sqlite>>::decode(value).map_err(|e| {
+            log::info!("ERROR EEE {:?}", e);
+            e
+        })?;
         Ok(Timestamptz(util::unix_epoch_millis_to_date(value)))
     }
 }
