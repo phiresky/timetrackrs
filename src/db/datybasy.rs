@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{api_types::SingleExtractedEvent, prelude::*};
-use futures::{future::BoxFuture, stream::BoxStream, Future};
+use futures::{future::BoxFuture, stream::BoxStream, Future, FutureExt};
 use futures::{StreamExt, TryStreamExt};
 use itertools::Itertools;
 use sqlx::{query::Query, sqlite::SqliteArguments, Sqlite, SqlitePool};
@@ -81,7 +81,7 @@ impl CachingIntMap {
             conn,
         }
     }
-    async fn _get(&self, key: &str) -> i64 {
+    async fn get(&self, key: &str) -> i64 {
         let i: Option<i64> = self.lru.write().await.get(key).copied();
 
         match i {
@@ -106,11 +106,8 @@ impl CachingIntMap {
             }
         }
     }
-    fn get<'a>(&'a self, key: &'a str) -> BoxFuture<'a, i64> {
-        Box::pin(self._get(key))
-    }
     // very shitty code. spent 2 hours figuring out how to do this get method generically
-    async fn _get_bind2(&'c self, key: &'c str, bind1: i64, bind2: i64) -> i64 {
+    async fn get_bind2(&'c self, key: &'c str, bind1: i64, bind2: i64) -> i64 {
         let i: Option<i64> = self.lru.write().await.get(key).copied();
 
         match i {
@@ -134,14 +131,6 @@ impl CachingIntMap {
                 n
             }
         }
-    }
-    fn get_bind2<'a>(
-        &'a self,
-        key: &'a str,
-        bind1: i64,
-        bind2: i64,
-    ) -> impl Future<Output = i64> + Send + 'a {
-        self._get_bind2(key, bind1, bind2)
     }
 }
 
@@ -309,7 +298,7 @@ impl DatyBasy {
         affected
     }
 
-    async fn _map_thong(&self, a: DbEvent, r: Tags) -> anyhow::Result<Vec<InExtractedTag>> {
+    async fn map_thong(&self, a: DbEvent, r: Tags) -> anyhow::Result<Vec<InExtractedTag>> {
         let aid = a.id.clone();
 
         //total_extracted += 1;
@@ -318,10 +307,9 @@ impl DatyBasy {
         let timestamp = a.timestamp_unix_ms.clone();
         let duration_ms = a.duration_ms;
         let now = Instant::now();
-        let timestamp_ = timestamp.clone();
         let event_id = self
             .events_cache
-            .get_bind2(&aid, timestamp_.0.timestamp_millis(), duration_ms)
+            .get_bind2(&aid, timestamp.0.timestamp_millis(), duration_ms)
             .await;
         //total_cache_get_dur += now.elapsed();
         let now = Instant::now();
@@ -329,143 +317,123 @@ impl DatyBasy {
         //total_extract_dur += now.elapsed();
         //total_extract_iterations += iterations;
 
-        let stream: BoxStream<_> = Box::pin(futures::stream::iter(tags.into_iter()).then(
-            move |(tag, values)| {
+        Ok(futures::stream::iter(tags.into_iter())
+            .flat_map(move |(tag, values)| {
                 let timestamp = timestamp.clone();
-                let b: BoxFuture<BoxStream<InExtractedTag>> = Box::pin(async move {
+                async move {
                     let tag = self.tags_cache.get(&tag).await;
 
-                    let b: BoxStream<InExtractedTag> =
-                        Box::pin(futures::stream::iter(values).then(move |value| {
-                            let timestamp = timestamp.clone();
-                            let b: BoxFuture<InExtractedTag> = Box::pin(async move {
-                                let now = Instant::now();
-                                let value = self.values_cache.get(&value).await;
-                                //total_cache_get_dur += now.elapsed();
-                                InExtractedTag {
-                                    timestamp_unix_ms: (&timestamp).into(),
-                                    duration_ms,
-                                    event_id,
-                                    tag,
-                                    value,
-                                }
-                            });
-                            b
-                        }));
-                    b
-                });
-                b
-            },
-        ));
-        let ret: Vec<InExtractedTag> = stream.flatten().collect().await;
-        Ok(ret)
-    }
-
-    fn map_thong(&self, a: DbEvent, r: Tags) -> BoxFuture<anyhow::Result<Vec<InExtractedTag>>> {
-        Box::pin(self._map_thong(a, r))
+                    futures::stream::iter(values).then(move |value| {
+                        let timestamp = timestamp.clone();
+                        async move {
+                            let now = Instant::now();
+                            let value = self.values_cache.get(&value).await;
+                            //total_cache_get_dur += now.elapsed();
+                            InExtractedTag {
+                                timestamp_unix_ms: (&timestamp).into(),
+                                duration_ms,
+                                event_id,
+                                tag,
+                                value,
+                            }
+                        }
+                    })
+                }
+                .flatten_stream()
+            })
+            .collect()
+            .await)
     }
 
     // https://github.com/rust-lang/rust/issues/64552
     // https://github.com/rust-lang/rust/issues/64650
-    pub fn extract_time_range(
+    pub async fn extract_time_range(
         &self,
         from: Timestamptz,
         to: Timestamptz,
-    ) -> BoxFuture<anyhow::Result<()>> {
-        let b: BoxFuture<anyhow::Result<()>> = Box::pin(async move {
-            log::debug!("extract_time_range {:?} to {:?}", from, to);
-            {
-                let res = sqlx::query!(
+    ) -> anyhow::Result<()> {
+        log::debug!("extract_time_range {:?} to {:?}", from, to);
+        {
+            let res = sqlx::query!(
                 "delete from extracted_events where timestamp_unix_ms >= ? and timestamp_unix_ms < ?",
                 from, to)
             .execute(&self.db).await
             .context("removing stale events")?;
-                log::info!("removed {} stale events", res.rows_affected());
-            }
+            log::info!("removed {} stale events", res.rows_affected());
+        }
 
-            /*let raws = YieldEventsFromTrbttDatabase {
-                db: &*self.db_events,
-                chunk_size: 1000,
-                last_fetched: from.clone(),
-                ascending: true,
-            };*/
-            let raws = sqlx::query_as!(
-                DbEvent,
-                r#"select
+        /*let raws = YieldEventsFromTrbttDatabase {
+            db: &*self.db_events,
+            chunk_size: 1000,
+            last_fetched: from.clone(),
+            ascending: true,
+        };*/
+        let raws = sqlx::query_as!(
+            DbEvent,
+            r#"select
                 insertion_sequence, id, timestamp_unix_ms as "timestamp_unix_ms: _",
                 data_type, duration_ms, data
             from raw_events.events where timestamp_unix_ms > ? order by timestamp_unix_ms asc"#,
-                from
-            )
-            .fetch(&self.db);
+            from
+        )
+        .fetch(&self.db);
 
-            let now = Instant::now();
-            let mut total_raw: usize = 0;
-            let mut total_extracted: usize = 0;
-            let mut total_tags: usize = 0;
-            let mut total_tag_values: usize = 0;
-            let mut total_extract_iterations: usize = 0;
-            let mut total_extract_dur = Duration::from_secs(0);
-            let mut total_cache_get_dur = Duration::from_secs(0);
+        let now = Instant::now();
+        let mut total_raw: usize = 0;
+        let mut total_extracted: usize = 0;
+        let mut total_tags: usize = 0;
+        let mut total_tag_values: usize = 0;
+        let mut total_extract_iterations: usize = 0;
+        let mut total_extract_dur = Duration::from_secs(0);
+        let mut total_cache_get_dur = Duration::from_secs(0);
 
-            let extracted: BoxStream<Result<_, _>> = Box::pin(
-                raws.map_err(|e| anyhow::Error::new(e))
-                    .try_take_while(move |a| futures::future::ready(Ok(&a.timestamp_unix_ms < &to)))
-                    .try_filter_map(move |a| {
-                        let b: BoxFuture<_> = Box::pin(async move {
-                            //total_raw += 1;
-                            let r = a.deserialize_data();
-                            let ex: Tags = match r {
-                                Ok(r) => {
-                                    let ex = r.extract_info();
-                                    match ex {
-                                        Some(ex) => ex,
-                                        None => {
-                                            return Ok(None);
-                                        }
-                                    }
-                                }
-                                Err(e) => {
-                                    log::warn!("{:#?}", e);
+        let mut extracted: BoxStream<Vec<Result<_, _>>> = Box::pin(
+            raws.map_err(|e| anyhow::Error::new(e))
+                .try_take_while(|a| futures::future::ready(Ok(&a.timestamp_unix_ms < &to)))
+                .try_filter_map(|a| async {
+                    //total_raw += 1;
+                    let r = a.deserialize_data();
+                    let ex: Tags = match r {
+                        Ok(r) => {
+                            let ex = r.extract_info();
+                            match ex {
+                                Some(ex) => ex,
+                                None => {
                                     return Ok(None);
                                 }
-                            };
+                            }
+                        }
+                        Err(e) => {
+                            log::warn!("{:#?}", e);
+                            return Ok(None);
+                        }
+                    };
 
-                            Ok(Some((a, ex)))
-                        });
-                        b
-                    })
-                    .and_then(move |(a, r)| self.map_thong(a, r)),
-            ); /*
-                .chunks(1000);
+                    Ok(Some((a, ex)))
+                })
+                .and_then(move |(a, r)| self.map_thong(a, r))
+                .chunks(1000),
+        );
 
-               let mut extracted: BoxStream<'a, Vec<Result<Vec<InExtractedTag>, sqlx::Error>>> =
-                   Box::pin(extracted);*/
-
-            let tmp: Vec<_> = extracted.collect().await;
-            let tmp: Option<Vec<Result<Vec<InExtractedTag>, sqlx::Error>>> = None;
-
-            if let Some(chunk) = tmp
-            /*extracted.next().await*/
-            {
-                let now = Instant::now();
-                /*event_id bigint NOT NULL REFERENCES event_ids (id),
-                timestamp_unix_ms bigint NOT NULL,
-                duration_ms bigint NOT NULL,
-                tag bigint NOT NULL REFERENCES tags (id),
-                value*/
-                let mut updated: usize = 0;
-                // TODO: transaction
-                for ele in chunk.into_iter().flatten().flatten() {
-                    sqlx::query!("insert into extracted.extracted_events (timestamp_unix_ms, duration_ms, tag, value) values (?, ?, ?, ?)", ele.timestamp_unix_ms, ele.duration_ms, ele.tag, ele.value)
+        while let Some(chunk) = extracted.next().await {
+            let now = Instant::now();
+            /*event_id bigint NOT NULL REFERENCES event_ids (id),
+            timestamp_unix_ms bigint NOT NULL,
+            duration_ms bigint NOT NULL,
+            tag bigint NOT NULL REFERENCES tags (id),
+            value*/
+            let mut updated: usize = 0;
+            // TODO: transaction
+            for ele in chunk.into_iter().flatten().flatten() {
+                sqlx::query!("insert into extracted.extracted_events (timestamp_unix_ms, duration_ms, tag, value) values (?, ?, ?, ?)", ele.timestamp_unix_ms, ele.duration_ms, ele.tag, ele.value)
                     .execute(&self.db)
                     .await?;
-                    updated += 1;
-                }
-                log::info!("inserted {} ({:?})", updated, now.elapsed());
+                updated += 1;
             }
-            if total_extracted > 0 && total_raw > 0 {
-                log::debug!(
+            log::info!("inserted {} ({:?})", updated, now.elapsed());
+        }
+        if total_extracted > 0 && total_raw > 0 {
+            log::debug!(
                 "extraction yielded {} extracted of {} raw events with {} tags with {} values total. extracting tags took {:?} total, avg. {} it/ev, avg. {:?} per ele, extracting avg. {:?} per ele, cachget avg. {:?} per ele",
                 total_extracted,
                 total_raw,
@@ -477,11 +445,9 @@ impl DatyBasy {
                 total_extract_dur.div_f32(total_raw as f32),
                 total_cache_get_dur.div_f32(total_raw as f32)
             );
-                // log::debug!("cache stats")
-            }
+            // log::debug!("cache stats")
+        }
 
-            Ok(())
-        });
-        b
+        Ok(())
     }
 }
