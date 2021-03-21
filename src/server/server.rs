@@ -1,12 +1,19 @@
-use std::net::SocketAddr;
+use std::{convert::Infallible, net::SocketAddr};
 
+use futures::never::Never;
+use hyper::StatusCode;
 use warp::Filter;
 
 use crate::prelude::*;
 use rust_embed::RustEmbed;
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Rejection, Reply};
 
-use super::api_routes::api_routes;
+use super::api_routes::{api_routes, ErrAsJson};
+
+pub struct ServerConfig {
+    pub listen: Vec<String>,
+}
+
 #[derive(RustEmbed)]
 #[folder = "frontend/dist/"]
 struct FrontendDistAssets;
@@ -24,8 +31,19 @@ async fn serve_static(path: Tail) -> Result<impl Reply, Rejection> {
     Ok(res)
 }
 
-pub async fn make_server() -> anyhow::Result<()> {
-    let db = init_db_pool().await?;
+async fn handle_error(rej: Rejection) -> Result<impl Reply, Rejection> {
+    if let Some(err) = rej.find::<ErrAsJson>() {
+        let reply = err.to_json();
+        //reply.set_status
+        return Ok(warp::reply::with_status(
+            reply,
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ));
+    }
+    Err(rej)
+}
+
+pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Never> {
     let index =
         warp::path::end().map(|| warp::reply::html(include_str!("../../frontend/index.html")));
 
@@ -35,11 +53,29 @@ pub async fn make_server() -> anyhow::Result<()> {
 
     let routes = index
         .or(static_files)
-        .or(warp::path("api").and(api_routes(db)));
+        .or(warp::path("api").and(api_routes(db)))
+        .recover(handle_error);
 
-    let listen: SocketAddr = "127.0.0.1:52714".parse()?;
-    println!("starting server at {}", listen);
-    warp::serve(routes).run(listen).await;
+    let futures = config.listen.iter().map(|listen: &String| {
+        println!("starting server at {}", listen);
+        let listen = listen.to_string();
+        let routes = routes.clone();
+        async move {
+            let (_, fut) = warp::serve(routes)
+                .try_bind_ephemeral(
+                    listen
+                        .parse::<SocketAddr>()
+                        .with_context(|| format!("Could not parse listen address {}", listen))?,
+                )
+                .context("Could not bind to address")?;
+            fut.await;
+            Ok::<_, anyhow::Error>(())
+        }
+    });
 
-    Ok(())
+    futures::future::try_join_all(futures)
+        .await
+        .context("Could not create server")?;
+
+    anyhow::bail!("should never return??")
 }

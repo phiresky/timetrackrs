@@ -4,6 +4,7 @@ pub use crate::capture::linux::types::*;
 pub use crate::capture::windows::types::*;
 pub use crate::capture::*;
 pub use crate::db::datybasy::*;
+pub use async_trait::async_trait;
 // pub use crate::db::db_iterator::YieldEventsFromTrbttDatabase;
 pub use crate::db::models::*;
 pub use crate::events::*;

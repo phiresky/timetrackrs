@@ -29,6 +29,7 @@ pub struct Timestamptz(pub DateTime<Utc>);
 
 impl sqlx::Type<Sqlite> for Timestamptz {
     fn type_info() -> SqliteTypeInfo {
+        // use i32 so the sqlite type is INTEGER and not INT8 or BIGINT
         <i32 as sqlx::Type<Sqlite>>::type_info()
     }
     /*fn compatible(ty: &SqliteTypeInfo) -> bool {

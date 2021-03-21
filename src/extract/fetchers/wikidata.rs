@@ -19,6 +19,8 @@ SELECT distinct ?service ?website_url ?outer_category ?outer_categoryLabel WHERE
 "#;*/
 
 pub struct WikidataIdFetcher;
+
+#[async_trait]
 impl ExternalFetcher for WikidataIdFetcher {
     fn get_id(&self) -> &'static str {
         "wikidata-domain-to-id-v1"
@@ -44,9 +46,10 @@ impl ExternalFetcher for WikidataIdFetcher {
         get_capture(found, "domain").map(|d| d.to_string())
     }
 
-    fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
+    async fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
         log::debug!("fetching {} from wikidata", cache_key);
-        let api = mediawiki::api_sync::ApiSync::new("https://www.wikidata.org/w/api.php")
+        let api = mediawiki::api::Api::new("https://www.wikidata.org/w/api.php")
+            .await
             .map_err(|e| anyhow::anyhow!("{:?}", e))
             .context("wikidata api initialization")?; // Will determine the SPARQL API URL via site info data
 
@@ -103,7 +106,8 @@ impl ExternalFetcher for WikidataIdFetcher {
 
         let mutres = api
             .sparql_query(&query)
-            .map_err(|e| anyhow::anyhow!("{:?}", e))?;
+            .await
+            .context("Could not run SPARQL query")?;
 
         let (full_domain_matches, main_domain_matches): (
             Vec<&serde_json::Value>,
@@ -124,7 +128,7 @@ impl ExternalFetcher for WikidataIdFetcher {
         ))
     }
 
-    fn process_data(
+    async fn process_data(
         &self,
         _tags: &Tags,
         _cache_key: &str,
@@ -161,6 +165,7 @@ impl ExternalFetcher for WikidataIdFetcher {
 }
 
 pub struct WikidataCategoryFetcher;
+#[async_trait]
 impl ExternalFetcher for WikidataCategoryFetcher {
     fn get_id(&self) -> &'static str {
         "wikidata-id-to-class"
@@ -186,8 +191,9 @@ impl ExternalFetcher for WikidataCategoryFetcher {
         get_capture(found, "id").map(|d| d.to_string())
     }
 
-    fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
-        let api = mediawiki::api_sync::ApiSync::new("https://www.wikidata.org/w/api.php")
+    async fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
+        let api = mediawiki::api::Api::new("https://www.wikidata.org/w/api.php")
+            .await
             .map_err(|e| anyhow::anyhow!("{:?}", e))
             .context("wikidata api initialization")?; // Will determine the SPARQL API URL via site info data
 
@@ -205,12 +211,13 @@ impl ExternalFetcher for WikidataCategoryFetcher {
 
         let res = api
             .sparql_query(&query)
-            .map_err(|e| anyhow::anyhow!("{:?}", e))?;
+            .await
+            .context("Could not run SPARQL query")?;
 
         Ok(format!("{}", res["results"]["bindings"]))
     }
 
-    fn process_data(
+    async fn process_data(
         &self,
         _tags: &Tags,
         _cache_key: &str,

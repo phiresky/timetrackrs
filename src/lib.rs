@@ -4,6 +4,7 @@
 
 pub mod api_types;
 pub mod capture;
+pub mod config;
 pub mod db;
 pub mod events;
 pub mod expand;

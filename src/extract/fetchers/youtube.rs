@@ -5,6 +5,7 @@ use regex::Regex;
 
 pub struct YoutubeFetcher;
 
+#[async_trait]
 impl ExternalFetcher for YoutubeFetcher {
     fn get_id(&self) -> &'static str {
         "youtube-meta-json"
@@ -106,7 +107,7 @@ impl ExternalFetcher for YoutubeFetcher {
         None
     }
 
-    fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
+    async fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
         log::debug!("querying youtube for {}", cache_key);
         let data =
             youtube_dl::YoutubeDl::new(format!("https://www.youtube.com/watch?v={}", cache_key))
@@ -115,7 +116,7 @@ impl ExternalFetcher for YoutubeFetcher {
         serde_json::to_string(&data).context("serializing ytdl output")
     }
 
-    fn process_data(
+    async fn process_data(
         &self,
         _tags: &Tags,
         _cache_key: &str,

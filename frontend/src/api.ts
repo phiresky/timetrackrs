@@ -8,6 +8,15 @@ const backend =
 
 async function handleError(resp: Response): Promise<never> {
 	const text = await resp.text()
+	let data: { message: string } | null = null
+	try {
+		data = JSON.parse(text)
+	} catch (e) {
+		//
+	}
+	if (data && data.message) {
+		throw Error(`Error from server: ${data.message}`)
+	}
 	console.error(
 		"could not fetch data from",
 		resp.url.toString(),

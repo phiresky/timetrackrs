@@ -326,7 +326,7 @@ impl DatyBasy {
                     futures::stream::iter(values).then(move |value| {
                         let timestamp = timestamp.clone();
                         async move {
-                            let now = Instant::now();
+                            // let now = Instant::now();
                             let value = self.values_cache.get(&value).await;
                             //total_cache_get_dur += now.elapsed();
                             InExtractedTag {
@@ -378,14 +378,14 @@ impl DatyBasy {
         )
         .fetch(&self.db);
 
-        let now = Instant::now();
+        /*let now = Instant::now();
         let mut total_raw: usize = 0;
         let mut total_extracted: usize = 0;
         let mut total_tags: usize = 0;
         let mut total_tag_values: usize = 0;
         let mut total_extract_iterations: usize = 0;
         let mut total_extract_dur = Duration::from_secs(0);
-        let mut total_cache_get_dur = Duration::from_secs(0);
+        let mut total_cache_get_dur = Duration::from_secs(0);*/
 
         let mut extracted: BoxStream<Vec<Result<_, _>>> = Box::pin(
             raws.map_err(|e| anyhow::Error::new(e))
@@ -425,14 +425,14 @@ impl DatyBasy {
             let mut updated: usize = 0;
             // TODO: transaction
             for ele in chunk.into_iter().flatten().flatten() {
-                sqlx::query!("insert into extracted.extracted_events (timestamp_unix_ms, duration_ms, tag, value) values (?, ?, ?, ?)", ele.timestamp_unix_ms, ele.duration_ms, ele.tag, ele.value)
+                sqlx::query!("insert into extracted.extracted_events (event_id, timestamp_unix_ms, duration_ms, tag, value) values (?, ?, ?, ?, ?)", ele.event_id, ele.timestamp_unix_ms, ele.duration_ms, ele.tag, ele.value)
                     .execute(&self.db)
-                    .await?;
+                    .await.context("inserting extracted events")?;
                 updated += 1;
             }
             log::info!("inserted {} ({:?})", updated, now.elapsed());
         }
-        if total_extracted > 0 && total_raw > 0 {
+        /*if total_extracted > 0 && total_raw > 0 {
             log::debug!(
                 "extraction yielded {} extracted of {} raw events with {} tags with {} values total. extracting tags took {:?} total, avg. {} it/ev, avg. {:?} per ele, extracting avg. {:?} per ele, cachget avg. {:?} per ele",
                 total_extracted,
@@ -446,6 +446,18 @@ impl DatyBasy {
                 total_cache_get_dur.div_f32(total_raw as f32)
             );
             // log::debug!("cache stats")
+        }*/
+
+        Ok(())
+    }
+
+    pub async fn insert_events(
+        &self,
+        events: impl IntoIterator<Item = NewDbEvent>,
+    ) -> anyhow::Result<()> {
+        for event in events {
+            sqlx::query!("insert into raw_events.events (id, timestamp_unix_ms, data_type, duration_ms, data) values (?, ?, ?, ?, ?)",
+            event.id, event.timestamp_unix_ms, event.data_type, event.duration_ms, event.data).execute(&self.db).await.context("could not insert event")?;
         }
 
         Ok(())

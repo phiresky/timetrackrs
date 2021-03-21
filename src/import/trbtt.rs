@@ -10,7 +10,7 @@ pub struct TrbttImportArgs {
 }
 struct YieldAllEventsFromTrbttDatabase {
     db: SqlitePool,
-    last_id: i64,
+    alast_id: i64,
 }
 impl Iterator for YieldAllEventsFromTrbttDatabase {
     type Item = Vec<NewDbEvent>;

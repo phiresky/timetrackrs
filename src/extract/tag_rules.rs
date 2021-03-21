@@ -211,6 +211,7 @@ impl TagRule {
                                 None => {
                                     let data = fetcher
                                         .fetch_data(&inner_cache_key)
+                                        .await
                                         .context("fetching data")?;
                                     db.set_cache_entry(&global_cache_key, &data)
                                         .await
@@ -220,6 +221,7 @@ impl TagRule {
                             };
                             let new_tags = fetcher
                                 .process_data(&orig_tags, &inner_cache_key, &data)
+                                .await
                                 .context("processing data")?;
                             check_tags_match_filter(&new_tags, fetcher.get_possible_output_tags())?;
                             Ok(Some((new_tags, reason_tags)))

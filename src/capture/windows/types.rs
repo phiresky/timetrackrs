@@ -1,12 +1,12 @@
 // windows capture types (must be cross-platform)
 use crate::prelude::*;
 
-#[derive(StructOpt)]
+#[derive(Debug)]
 pub struct WindowsCaptureArgs {}
 
 #[cfg(windows)]
 impl CapturerCreator for WindowsCaptureArgs {
-    fn create_capturer(self) -> anyhow::Result<Box<dyn Capturer>> {
+    fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
         match super::winwins::WindowsCapturer::init() {
             Ok(e) => Ok(Box::new(e)),
             Err(e) => Err(e),
@@ -15,7 +15,7 @@ impl CapturerCreator for WindowsCaptureArgs {
 }
 #[cfg(not(windows))]
 impl CapturerCreator for WindowsCaptureArgs {
-    fn create_capturer(self) -> anyhow::Result<Box<dyn Capturer>> {
+    fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
         anyhow::bail!("Not on Linux!")
     }
 }

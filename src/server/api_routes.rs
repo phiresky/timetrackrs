@@ -103,10 +103,17 @@ async fn rule_groups(db: DatyBasy) -> Api::rule_groups::response {
     Ok(ApiResponse { data: groups })
 }
 #[derive(Debug)]
-struct ErrAsJson {
+pub struct ErrAsJson {
     err: anyhow::Error,
 }
 impl warp::reject::Reject for ErrAsJson {}
+impl ErrAsJson {
+    pub fn to_json(&self) -> warp::reply::Json {
+        warp::reply::json(&serde_json::json!({
+            "message": format!("{:?}", &self.err)
+        }))
+    }
+}
 
 fn map_error(err: anyhow::Error) -> warp::Rejection {
     return warp::reject::custom(ErrAsJson { err });

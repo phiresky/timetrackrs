@@ -31,13 +31,14 @@ pub fn get_simple_fetcher(id: &str) -> Option<&'static dyn SimpleFetcher> {
     SIMPLE_FETCHERS.get(id).map(|e| e.as_ref())
 }
 
+#[async_trait]
 pub trait ExternalFetcher: Sync + Send {
     fn get_id(&self) -> &'static str;
     fn get_regexes(&self) -> &[TagValueRegex];
     fn get_possible_output_tags(&self) -> &[&str];
     fn get_cache_key(&self, found: &[regex::Captures], tags: &Tags) -> Option<String>;
-    fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String>;
-    fn process_data(
+    async fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String>;
+    async fn process_data(
         &self,
         tags: &Tags,
         cache_key: &str,

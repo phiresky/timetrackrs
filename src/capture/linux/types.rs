@@ -6,10 +6,9 @@ use serde_json::Value as J;
 use std::collections::BTreeMap;
 use typescript_definitions::TypeScriptify;
 
-#[derive(StructOpt)]
+#[derive(Debug, Clone)]
 pub struct X11CaptureArgs {
-    // captures from default screen, no options really
-    #[structopt(long)]
+    // captures from default screen
     /// if true, only capture the focused window.
     /// if false, capture all windows.
     pub only_focused_window: bool,
@@ -17,8 +16,8 @@ pub struct X11CaptureArgs {
 
 #[cfg(target_os = "linux")]
 impl CapturerCreator for X11CaptureArgs {
-    fn create_capturer(self) -> anyhow::Result<Box<dyn Capturer>> {
-        super::x11::init(self).map(|e| Box::new(e) as Box<dyn Capturer>)
+    fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
+        super::x11::init(self.clone()).map(|e| Box::new(e) as Box<dyn Capturer>)
     }
 }
 

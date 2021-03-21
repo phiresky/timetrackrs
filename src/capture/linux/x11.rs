@@ -101,7 +101,7 @@ pub fn init(options: X11CaptureArgs) -> anyhow::Result<X11Capturer<impl Connecti
     })
 }
 
-impl<C: Connection> Capturer for X11Capturer<C> {
+impl<C: Connection + Send> Capturer for X11Capturer<C> {
     fn capture(&mut self) -> anyhow::Result<EventData> {
         let mut system = sysinfo::System::new();
         let NET_CLIENT_LIST = self.atom("_NET_CLIENT_LIST")?;
