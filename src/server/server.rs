@@ -1,4 +1,4 @@
-use std::{convert::Infallible, net::SocketAddr};
+use std::net::SocketAddr;
 
 use futures::never::Never;
 use hyper::StatusCode;
@@ -44,8 +44,10 @@ async fn handle_error(rej: Rejection) -> Result<impl Reply, Rejection> {
 }
 
 pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Never> {
-    let index =
-        warp::path::end().map(|| warp::reply::html(include_str!("../../frontend/index.html")));
+    let index = warp::path::end()
+        .or(warp::path("plot"))
+        .or(warp::path("timeline"))
+        .map(|_| warp::reply::html(include_str!("../../frontend/index.html")));
 
     let static_files = warp::path("dist")
         .and(warp::path::tail())

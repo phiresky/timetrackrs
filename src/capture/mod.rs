@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use futures::never::Never;
 
-use crate::{config::TimetrackrsConfig, prelude::*};
+use crate::{prelude::*};
 
 #[enum_dispatch]
 #[derive(Debug)]
@@ -30,7 +30,7 @@ pub trait Capturer: Send {
 }
 
 pub async fn capture_loop(db: DatyBasy, config: CaptureConfig) -> anyhow::Result<Never> {
-    let CaptureConfig { args, interval } = config;
+    let CaptureConfig { args, interval: _ } = config;
     let mut c = args
         .create_capturer()
         .with_context(|| format!("Could not create capturer from {:?}", &args))?;

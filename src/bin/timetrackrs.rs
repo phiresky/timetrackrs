@@ -1,10 +1,5 @@
 use futures::TryStreamExt;
-use futures::{
-    future::{BoxFuture, OptionFuture},
-    never::Never,
-    stream::FuturesUnordered,
-    TryFuture,
-};
+use futures::{future::BoxFuture, never::Never, stream::FuturesUnordered};
 use track_pc_usage_rs as trbtt;
 
 use trbtt::prelude::*;
@@ -28,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
         )));
     }
 
-    let results: Vec<_> = features
+    let _results: Vec<_> = features
         .try_collect()
         .await
         .context("Some feature failed")?;

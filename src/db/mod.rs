@@ -15,6 +15,14 @@ pub async fn connect() -> anyhow::Result<SqlitePool> {
         .after_connect(move |conn| {
             let dir = dir.clone();
             Box::pin(async move {
+                set_pragmas(conn, None)
+                    .await
+                    .with_context(|| "set pragmas for root")
+                    .map_err(|e| {
+                        /*let b: Box<(dyn std::error::Error + Sync + std::marker::Send + 'static)> =
+                        Box::new(std::error::Error::from(e));*/
+                        sqlx::error::Error::Configuration(e.into())
+                    })?;
                 for attachdb in &["raw_events", "extracted", "config"] {
                     let connn: &mut SqliteConnection = conn;
                     sqlx::query(&format!(
@@ -23,16 +31,16 @@ pub async fn connect() -> anyhow::Result<SqlitePool> {
                     ))
                     .execute(connn)
                     .await?;
+                    set_pragmas(conn, Some(attachdb))
+                        .await
+                        .with_context(|| format!("set pragmas for {}", attachdb))
+                        .map_err(|e| {
+                            /*let b: Box<(dyn std::error::Error + Sync + std::marker::Send + 'static)> =
+                            Box::new(std::error::Error::from(e));*/
+                            sqlx::error::Error::Configuration(e.into())
+                        })?;
                 }
-                // attach
-                set_pragmas(conn)
-                    .await
-                    .with_context(|| format!("set pragmas for db"))
-                    .map_err(|e| {
-                        /*let b: Box<(dyn std::error::Error + Sync + std::marker::Send + 'static)> =
-                        Box::new(std::error::Error::from(e));*/
-                        sqlx::error::Error::Configuration(e.into())
-                    })?;
+
                 Ok(())
             })
         })
@@ -49,61 +57,63 @@ pub async fn connect() -> anyhow::Result<SqlitePool> {
         .context("running migrations")?;
     Ok(db)
 }
-pub async fn set_pragmas(db: &mut SqliteConnection) -> anyhow::Result<()> {
+pub async fn set_pragmas(db: &mut SqliteConnection, schema: Option<&str>) -> anyhow::Result<()> {
     let want_page_size = 32768;
+    let prefix = schema.map(|s| format!("{}.", s)).unwrap_or_default();
 
-    db.execute("pragma busy_timeout = 5000;")
+    db.execute(format!("pragma {}busy_timeout = 5000;", prefix).as_str())
         .await
         .context("setup pragma 1")?;
-    db.execute(format!("pragma page_size = {};", want_page_size).as_str())
+    db.execute(format!("pragma {}page_size = {};", prefix, want_page_size).as_str())
         .await
         .context("setup pragma 1")?;
-    db.execute("pragma foreign_keys = on;")
+    db.execute(format!("pragma {}foreign_keys = on;", prefix).as_str())
         .await
         .context("setup pragma 2")?;
-    db.execute("pragma temp_store = memory;")
+    db.execute(format!("pragma {}temp_store = memory;", prefix).as_str())
         .await
         .context("setup pragma 3")?;
-    db.execute("pragma journal_mode = WAL;")
+    db.execute(format!("pragma {}journal_mode = WAL;", prefix).as_str())
         .await
         .context("setup pragma 4")?;
-    db.execute("pragma wal_autocheckpoint = 20;")
+    db.execute(format!("pragma {}wal_autocheckpoint = 20;", prefix).as_str())
         .await
         .context("setup pragma 4b")?;
-    db.execute("pragma synchronous = normal;")
+    db.execute(format!("pragma {}synchronous = normal;", prefix).as_str())
         .await
         .context("setup pragma 5")?;
-    db.execute("pragma mmap_size = 30000000000;")
+    db.execute(format!("pragma {}mmap_size = 30000000000;", prefix).as_str())
         .await
         .context("setup pragma 6")?;
     let dbb: &mut SqliteConnection = db;
-    let page_size: i64 = sqlx::query_scalar("pragma page_size;")
+    let page_size: i64 = sqlx::query_scalar(format!("pragma {}page_size;", prefix).as_str())
         .fetch_one(dbb)
         .await?;
     let dbb: &mut SqliteConnection = db;
-    let journal_mode: String = sqlx::query_scalar("pragma journal_mode;")
-        .fetch_one(dbb)
-        .await?;
+    let journal_mode: String =
+        sqlx::query_scalar(format!("pragma {}journal_mode;", prefix).as_str())
+            .fetch_one(dbb)
+            .await?;
     if page_size != want_page_size || journal_mode != "wal" {
         log::info!("vaccuuming db to ensure page size and journal mode");
         let dbb: &mut SqliteConnection = db;
-        sqlx::query("pragma journal_mode = DELETE;")
+        sqlx::query(format!("pragma {}journal_mode = DELETE;", prefix).as_str())
             .execute(dbb)
             .await
             .context("setup pragma 7")?;
         let dbb: &mut SqliteConnection = db;
-        sqlx::query("vacuum")
+        sqlx::query(format!("vacuum {}", schema.unwrap_or_default()).as_str())
             .execute(dbb)
             .await
             .context("setup pragma 8")?;
         let dbb: &mut SqliteConnection = db;
-        sqlx::query("pragma journal_mode = WAL;")
+        sqlx::query(format!("pragma {}journal_mode = WAL;", prefix).as_str())
             .execute(dbb)
             .await
             .context("setup pragma 9")?;
     }
     let dbb: &mut SqliteConnection = db;
-    sqlx::query("pragma auto_vacuum = full")
+    sqlx::query(format!("pragma {}auto_vacuum = full", prefix).as_str())
         .execute(dbb)
         .await
         .context("setup pragma 10")?;

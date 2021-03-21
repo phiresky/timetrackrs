@@ -5,7 +5,7 @@ use sqlx::{
     sqlite::{SqliteArgumentValue, SqliteTypeInfo, SqliteValueRef},
     Decode, Sqlite,
 };
-use std::{fmt, io::Write};
+use std::{fmt};
 
 #[derive(Serialize, TypeScriptify)]
 pub struct DbEvent {

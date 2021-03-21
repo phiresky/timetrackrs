@@ -10,7 +10,7 @@ use crate::{api_types::SingleExtractedEvent, prelude::*};
 use futures::{future::BoxFuture, stream::BoxStream, Future, FutureExt};
 use futures::{StreamExt, TryStreamExt};
 use itertools::Itertools;
-use sqlx::{query::Query, sqlite::SqliteArguments, Sqlite, SqlitePool};
+use sqlx::{Sqlite, SqlitePool};
 use std::iter::FromIterator;
 use tokio::sync::RwLock;
 
@@ -205,7 +205,7 @@ impl DatyBasy {
     ) -> anyhow::Result<Vec<SingleExtractedEvent>> {
         self.ensure_time_range_extracted_valid(from, to)
             .await
-            .context("updating extracted results")?;
+            .context("Could not update extracted events")?;
 
         let now = Instant::now();
         let from = Timestamptz::from(from);
@@ -271,11 +271,11 @@ impl DatyBasy {
                     Timestamptz((day.0 + chrono::Duration::days(1)).and_hms(0, 0, 0)),
                 )
                 .await
-                .with_context(|| format!("extracting tags for day {:?}", day))?;
-                let updated = sqlx::query!("update extracted_current set extracted_timestamp_unix_ms = ? where utc_date = ?", now, day).execute(&self.db).await.with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?.rows_affected();
+                .with_context(|| format!("Could not extract tags for day {:?}", day))?;
+                let updated = sqlx::query!("update extracted.extracted_current set extracted_timestamp_unix_ms = ? where utc_date = ?", now, day).execute(&self.db).await.with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?.rows_affected();
                 if updated == 0 {
                     let zero = Timestamptz(Utc.ymd(1970, 1, 1).and_hms(0, 1, 1));
-                    sqlx::query!("insert into extracted_current (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms) values (?, ?, ?)", day, now, zero)
+                    sqlx::query!("insert into extracted.extracted_current (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms) values (?, ?, ?)", day, now, zero)
                         .execute(&self.db).await
                         .with_context(|| {
                             format!("inserting extracted timestamp {:?} {:?}", day, now)
@@ -306,14 +306,14 @@ impl DatyBasy {
         //total_tag_values += r.total_value_count();
         let timestamp = a.timestamp_unix_ms.clone();
         let duration_ms = a.duration_ms;
-        let now = Instant::now();
+        let _now = Instant::now();
         let event_id = self
             .events_cache
             .get_bind2(&aid, timestamp.0.timestamp_millis(), duration_ms)
             .await;
         //total_cache_get_dur += now.elapsed();
-        let now = Instant::now();
-        let (tags, iterations) = get_tags(&self, r).await;
+        let _now = Instant::now();
+        let (tags, _iterations) = get_tags(&self, r).await;
         //total_extract_dur += now.elapsed();
         //total_extract_iterations += iterations;
 
@@ -358,7 +358,7 @@ impl DatyBasy {
                 "delete from extracted_events where timestamp_unix_ms >= ? and timestamp_unix_ms < ?",
                 from, to)
             .execute(&self.db).await
-            .context("removing stale events")?;
+            .context("Could not remove stale events")?;
             log::info!("removed {} stale events", res.rows_affected());
         }
 
@@ -373,8 +373,8 @@ impl DatyBasy {
             r#"select
                 insertion_sequence, id, timestamp_unix_ms as "timestamp_unix_ms: _",
                 data_type, duration_ms, data
-            from raw_events.events where timestamp_unix_ms > ? order by timestamp_unix_ms asc"#,
-            from
+            from raw_events.events where timestamp_unix_ms >= ? and timestamp_unix_ms < ? order by timestamp_unix_ms asc"#,
+            from, to
         )
         .fetch(&self.db);
 
@@ -388,8 +388,8 @@ impl DatyBasy {
         let mut total_cache_get_dur = Duration::from_secs(0);*/
 
         let mut extracted: BoxStream<Vec<Result<_, _>>> = Box::pin(
-            raws.map_err(|e| anyhow::Error::new(e))
-                .try_take_while(|a| futures::future::ready(Ok(&a.timestamp_unix_ms < &to)))
+            raws.map_err(anyhow::Error::new)
+                //.try_take_while(|a| futures::future::ready(Ok(&a.timestamp_unix_ms < &to)))
                 .try_filter_map(|a| async {
                     //total_raw += 1;
                     let r = a.deserialize_data();

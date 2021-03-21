@@ -1,25 +1,15 @@
-use std::pin::Pin;
-
-use crate::db::{
-    get_database_dir_location,
-    models::{DbEvent, Timestamptz},
-};
+use crate::db::models::{DbEvent, Timestamptz};
 use crate::extract::ExtractInfo;
 use crate::prelude::*;
 use crate::util::iso_string_to_datetime;
 
-use futures::Future;
-use rust_embed::RustEmbed;
-use warp::{
-    reply::{json, Json},
-    Filter, Rejection,
-};
+use warp::{reply::json, Filter, Rejection};
 
 use crate::api_types::*;
 
 async fn get_known_tags(
     db: DatyBasy,
-    req: Api::get_known_tags::request,
+    _req: Api::get_known_tags::request,
 ) -> Api::get_known_tags::response {
     let tags = sqlx::query_scalar!("select text from extracted.tags")
         .fetch_all(&db.db)
@@ -41,7 +31,7 @@ async fn time_range(db: DatyBasy, req: Api::time_range::request) -> Api::time_ra
                 req.tag.as_deref(),
             )
             .await
-            .context("get extracted events")?,
+            .context("Could not get extracted events")?,
     })
 }
 
@@ -116,7 +106,7 @@ impl ErrAsJson {
 }
 
 fn map_error(err: anyhow::Error) -> warp::Rejection {
-    return warp::reject::custom(ErrAsJson { err });
+    warp::reject::custom(ErrAsJson { err })
 }
 
 pub fn with_db(
@@ -142,7 +132,7 @@ pub fn api_routes(
                 .map_err(map_error)
         });
 
-    let get_known_tags = with_db(db.clone())
+    let get_known_tags = with_db(db)
         .and(warp::path("get-known-tags"))
         .and(warp::query::<Api::get_known_tags::request>())
         .and_then(|db, query| async move {
