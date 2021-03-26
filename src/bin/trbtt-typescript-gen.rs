@@ -1,8 +1,7 @@
 use std::io::prelude::*;
-use track_pc_usage_rs as trbtt;
-use trbtt::capture::*;
+use timetrackrs::capture::*;
 
-use trbtt::prelude::*;
+use timetrackrs::prelude::*;
 use typescript_definitions::TypeScriptifyTrait;
 
 #[cfg(debug_assertions)]

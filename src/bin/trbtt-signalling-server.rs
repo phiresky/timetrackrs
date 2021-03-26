@@ -6,7 +6,7 @@ use std::{
 use async_channel as chan;
 use futures_util::{future, pin_mut, StreamExt};
 use hyper::StatusCode;
-use track_pc_usage_rs::sync::PeerMsg;
+use timetrackrs::sync::PeerMsg;
 use tungstenite::{
     handshake::server::{Request, Response},
     Message,

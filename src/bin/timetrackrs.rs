@@ -1,15 +1,14 @@
 use futures::TryStreamExt;
 use futures::{future::BoxFuture, never::Never, stream::FuturesUnordered};
-use track_pc_usage_rs as trbtt;
 
-use trbtt::prelude::*;
-use trbtt::util::init_logging;
+use timetrackrs::prelude::*;
+use timetrackrs::util::init_logging;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_logging();
     let db = init_db_pool().await?;
-    let config = trbtt::config::default_config();
+    let config = timetrackrs::config::default_config();
 
     let features: FuturesUnordered<BoxFuture<anyhow::Result<Never>>> = FuturesUnordered::new();
 
@@ -17,7 +16,7 @@ async fn main() -> anyhow::Result<()> {
         features.push(Box::pin(capture_loop(db.clone(), c)));
     }
     if let Some(server) = config.server {
-        features.push(Box::pin(trbtt::server::server::run_server(
+        features.push(Box::pin(timetrackrs::server::server::run_server(
             db.clone(),
             server,
         )));

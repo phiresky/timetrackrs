@@ -249,6 +249,6 @@ impl Importable for AppUsageImportArgs {
         }*/
         println!();
         println!("got {} acts", outs.len());
-        Ok(Box::new(std::iter::once(outs)))
+        Ok(Box::pin(futures::stream::once(futures::future::ok(outs))))
     }
 }

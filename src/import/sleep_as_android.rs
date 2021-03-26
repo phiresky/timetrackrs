@@ -48,7 +48,7 @@ fn parse_saa_entry(
                     noise_row: noise,
                 }),
                 timestamp: from.with_timezone(&chrono::Utc),
-                duration_ms: to.signed_duration_since(from).num_milliseconds()
+                duration_ms: to.signed_duration_since(from).num_milliseconds(),
             }
             .try_into()?,
         ))
@@ -91,7 +91,9 @@ impl Importable for SleepAsAndroidImportArgs {
             entries.push(e)
         }
 
-        Ok(Box::new(std::iter::once(entries)))
+        Ok(Box::pin(futures::stream::once(futures::future::ok(
+            entries,
+        ))))
     }
 }
 

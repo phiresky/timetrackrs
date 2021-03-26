@@ -120,7 +120,7 @@ impl Importable for JournaldImportArgs {
             }
         }
 
-        Ok(Box::new(std::iter::once(outs)))
+        Ok(Box::pin(futures::stream::once(futures::future::ok(outs))))
 
         // journalctl -t systemd-sleep --output=json --all
     }

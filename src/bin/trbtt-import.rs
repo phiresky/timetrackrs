@@ -1,29 +1,25 @@
-use diesel::prelude::*;
+use futures::stream::StreamExt;
+use timetrackrs::{db::connect, prelude::*};
 
-use track_pc_usage_rs as trbtt;
-use trbtt::prelude::*;
-
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     util::init_logging();
 
     let opt = ImportArgs::from_args();
-    let data = opt.import()?;
+    let mut data = opt.import()?;
     log::info!("inserting...");
-    use track_pc_usage_rs::db::schema::raw_events::events;
-    let db = track_pc_usage_rs::db::raw_events::connect()?;
+    let db = init_db_pool().await?;
 
-    let mut total_updated = 0;
-    let mut total_seen = 0;
-    let mut total_existed = 0;
-    for data in data {
-        let updated = diesel::insert_or_ignore_into(events::table).values(&data);
-
-        let updated = updated
-            .execute(&db)
-            .context("inserting new events into db")?;
+    let mut total_updated: u64 = 0;
+    let mut total_seen: u64 = 0;
+    let mut total_existed: u64 = 0;
+    while let Some(chunk) = data.next().await {
+        let chunk = chunk?;
+        let len = chunk.len() as u64;
+        let updated = db.insert_events(chunk).await.context("inserting events")?;
         total_updated += updated;
-        total_seen += data.len();
-        total_existed += data.len() - updated;
+        total_seen += len;
+        total_existed += len - updated;
         log::info!(
             "successfully inserted {}/{} entries ({} already existed)",
             total_updated,

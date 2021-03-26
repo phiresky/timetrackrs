@@ -42,7 +42,9 @@ struct CachingIntMap {
 }*/
 
 pub async fn init_db_pool() -> anyhow::Result<DatyBasy> {
-    let db = crate::db::connect().await.context("connecting to db")?;
+    let db = crate::db::connect()
+        .await
+        .context("Could not connect to db")?;
     Ok(DatyBasy {
         enabled_tag_rules: Arc::new(RwLock::new(
             fetch_tag_rules(&db).await.context("fetching tag rules")?,
@@ -454,12 +456,14 @@ impl DatyBasy {
     pub async fn insert_events(
         &self,
         events: impl IntoIterator<Item = NewDbEvent>,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<u64> {
+        let mut inserted: u64 = 0;
         for event in events {
-            sqlx::query!("insert into raw_events.events (id, timestamp_unix_ms, data_type, duration_ms, data) values (?, ?, ?, ?, ?)",
+            let res = sqlx::query!("insert into raw_events.events (id, timestamp_unix_ms, data_type, duration_ms, data) values (?, ?, ?, ?, ?)",
             event.id, event.timestamp_unix_ms, event.data_type, event.duration_ms, event.data).execute(&self.db).await.context("could not insert event")?;
+            inserted += res.rows_affected();
         }
 
-        Ok(())
+        Ok(inserted)
     }
 }

@@ -8,6 +8,7 @@ use crate::prelude::*;
 
 use enum_dispatch::enum_dispatch;
 
+use futures::stream::BoxStream;
 use structopt::StructOpt;
 
 #[enum_dispatch]
@@ -25,5 +26,4 @@ pub trait Importable {
     fn import(&self) -> ImportResult;
 }
 
-
-pub type ImportResult = anyhow::Result<Box<dyn Iterator<Item=Vec<NewDbEvent>>>>;
+pub type ImportResult<'a> = anyhow::Result<BoxStream<'a, anyhow::Result<Vec<NewDbEvent>>>>;

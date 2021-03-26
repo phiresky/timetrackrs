@@ -3,22 +3,18 @@ use futures::{
     SinkExt,
 };
 use std::time::Duration;
-use std::{
-    collections::{HashMap},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
 use anyhow::Context;
 
-use futures_util::{StreamExt};
+use futures_util::StreamExt;
 
-use track_pc_usage_rs::sync::{MsgKind, PeerMsg};
+use timetrackrs::sync::{MsgKind, PeerMsg};
 use tungstenite::Message;
 use uuid::Uuid;
 
-
-use tokio::{spawn};
+use tokio::spawn;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
 use datachannel::{
@@ -265,7 +261,7 @@ impl SyncClient {
 }
 
 async fn go() -> anyhow::Result<()> {
-    track_pc_usage_rs::util::init_logging();
+    timetrackrs::util::init_logging();
 
     let id1 = Uuid::new_v4();
     let id2 = Uuid::new_v4();

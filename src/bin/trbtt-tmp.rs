@@ -1,6 +1,6 @@
 #![allow(clippy::all)]
 
-use track_pc_usage_rs::prelude::*;
+use timetrackrs::prelude::*;
 
 fn main() -> anyhow::Result<()> {
     let rules = get_default_tag_rule_groups();
