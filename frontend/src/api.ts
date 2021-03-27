@@ -4,7 +4,7 @@ type ApiTypes = { [T in ApiTypesTS["type"]]: ApiTypesTS & { type: T } }
 
 const backend =
 	new URLSearchParams(location.search).get("server") ||
-	location.protocol + "//" + location.hostname + ":52714/api"
+	new URL("/api", location.href).toString()
 
 async function handleError(resp: Response): Promise<never> {
 	const text = await resp.text()

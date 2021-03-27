@@ -5,7 +5,7 @@ use sqlx::{
     sqlite::{SqliteArgumentValue, SqliteTypeInfo, SqliteValueRef},
     Decode, Sqlite,
 };
-use std::{fmt};
+use std::fmt;
 
 #[derive(Serialize, TypeScriptify)]
 pub struct DbEvent {
@@ -136,12 +136,12 @@ impl<'de> Visitor<'de> for DateUtcVisitor {
         formatter.write_str("a date")
     }
 
-    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
         Ok(DateUtc(
-            util::iso_string_to_date(&value).map_err(serde::de::Error::custom)?,
+            util::iso_string_to_date(value).map_err(serde::de::Error::custom)?,
         ))
     }
 }

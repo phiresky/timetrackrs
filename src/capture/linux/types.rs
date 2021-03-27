@@ -6,7 +6,7 @@ use serde_json::Value as J;
 use std::collections::BTreeMap;
 use typescript_definitions::TypeScriptify;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct X11CaptureArgs {
     // captures from default screen
     /// if true, only capture the focused window.

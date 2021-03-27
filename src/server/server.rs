@@ -10,6 +10,7 @@ use warp::{http::header::HeaderValue, path::Tail, reply::Response, Rejection, Re
 
 use super::api_routes::{api_routes, ErrAsJson};
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ServerConfig {
     pub listen: Vec<String>,
 }
@@ -51,15 +52,17 @@ pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Ne
 
     let static_files = warp::path("dist")
         .and(warp::path::tail())
-        .and_then(serve_static);
+        .and_then(serve_static)
+        .with(warp::compression::gzip());
 
     let routes = index
         .or(static_files)
         .or(warp::path("api").and(api_routes(db)))
+        //
         .recover(handle_error);
 
     let futures = config.listen.iter().map(|listen: &String| {
-        println!("starting server at {}", listen);
+        println!("starting server at http://{}", listen);
         let listen = listen.to_string();
         let routes = routes.clone();
         async move {

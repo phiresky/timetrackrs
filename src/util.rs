@@ -99,7 +99,7 @@ pub fn get_os_info() -> OsInfo {
 
 pub fn init_logging() {
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "info");
+        std::env::set_var("RUST_LOG", "timetrackrs=info");
     }
     pretty_env_logger::init();
     log::debug!("env logger inited")

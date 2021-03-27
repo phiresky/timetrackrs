@@ -1,5 +1,5 @@
 use futures::stream::StreamExt;
-use timetrackrs::{db::connect, prelude::*};
+use timetrackrs::{prelude::*};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

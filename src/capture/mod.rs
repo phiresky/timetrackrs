@@ -5,16 +5,37 @@ use std::time::Duration;
 
 use futures::never::Never;
 
-use crate::{prelude::*};
+use crate::prelude::*;
 
 #[enum_dispatch]
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum CaptureArgs {
     /// Capture open window information from a (linux) X11 server
     X11(X11CaptureArgs),
     Windows(WindowsCaptureArgs),
+    /// Capture window information using the default for the current system
+    NativeDefault(NativeDefaultArgs),
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NativeDefaultArgs {}
+
+fn default_capture_args() -> CaptureArgs {
+    #[cfg(target_os = "linux")]
+    return CaptureArgs::X11(X11CaptureArgs {
+        only_focused_window: false,
+    });
+    #[cfg(target_os = "windows")]
+    return CaptureArgs::Windows(WindowsCaptureArgs {});
+}
+
+impl CapturerCreator for NativeDefaultArgs {
+    fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
+        default_capture_args().create_capturer()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CaptureConfig {
     pub interval: Duration,
     pub args: CaptureArgs,

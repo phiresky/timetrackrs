@@ -11,6 +11,7 @@ pub mod expand;
 pub mod extract;
 pub mod import;
 pub mod prelude;
+pub mod progress;
 pub mod server;
 pub mod sync;
 pub mod util;

@@ -1,7 +1,7 @@
 // windows capture types (must be cross-platform)
 use crate::prelude::*;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WindowsCaptureArgs {}
 
 #[cfg(windows)]

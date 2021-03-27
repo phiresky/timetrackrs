@@ -1,13 +1,11 @@
 use std::{
-    borrow::Borrow,
     collections::{HashMap, HashSet},
-    pin::Pin,
     sync::Arc,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use crate::{api_types::SingleExtractedEvent, prelude::*};
-use futures::{future::BoxFuture, stream::BoxStream, Future, FutureExt};
+use futures::{stream::BoxStream, FutureExt};
 use futures::{StreamExt, TryStreamExt};
 use itertools::Itertools;
 use sqlx::{Sqlite, SqlitePool};
@@ -65,14 +63,15 @@ pub async fn init_db_pool() -> anyhow::Result<DatyBasy> {
 
 trait MyBonk<'a>: sqlx::Encode<'a, Sqlite> + sqlx::Type<Sqlite> {}
 
+type IntCache = Arc<RwLock<HashMap<String, i64>>>;
 impl CachingIntMap {
     async fn new(conn: SqlitePool, table: &str, cols: &str, keycol: &str) -> CachingIntMap {
         lazy_static! {
-            static ref lrus: Arc<RwLock<HashMap<String, Arc<RwLock<HashMap<String, i64>>>>>> =
+            static ref LRUS: Arc<RwLock<HashMap<String, IntCache>>> =
                 Arc::new(RwLock::new(HashMap::new()));
         }
         CachingIntMap {
-            lru: (*lrus)
+            lru: (*LRUS)
                 .write()
                 .await
                 .entry(table.to_string())
@@ -256,7 +255,7 @@ impl DatyBasy {
         from: &Timestamptz,
         to: &Timestamptz,
     ) -> anyhow::Result<()> {
-        let days = self.get_affected_utc_days(from, to);
+        let days = self.get_affected_utc_days_range(from, to);
         {
             let days_str = serde_json::to_string(&days)?;
             let doesnt_need_update: Vec<DateUtc> = sqlx::query_scalar!( r#"select utc_date as "date_utc: _" from extracted.extracted_current where utc_date in (select value from json_each(?)) and extracted_timestamp_unix_ms > raw_events_changed_timestamp_unix_ms"#, days_str).fetch_all(&self.db).await.context("fetching currents")?;
@@ -276,7 +275,7 @@ impl DatyBasy {
                 .with_context(|| format!("Could not extract tags for day {:?}", day))?;
                 let updated = sqlx::query!("update extracted.extracted_current set extracted_timestamp_unix_ms = ? where utc_date = ?", now, day).execute(&self.db).await.with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?.rows_affected();
                 if updated == 0 {
-                    let zero = Timestamptz(Utc.ymd(1970, 1, 1).and_hms(0, 1, 1));
+                    let zero = Timestamptz(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0));
                     sqlx::query!("insert into extracted.extracted_current (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms) values (?, ?, ?)", day, now, zero)
                         .execute(&self.db).await
                         .with_context(|| {
@@ -287,7 +286,7 @@ impl DatyBasy {
             Ok(())
         }
     }
-    fn get_affected_utc_days(&self, from: &Timestamptz, to: &Timestamptz) -> Vec<DateUtc> {
+    fn get_affected_utc_days_range(&self, from: &Timestamptz, to: &Timestamptz) -> Vec<DateUtc> {
         let from_date = from.0.date();
         let to_date = to.0.date();
         let day = chrono::Duration::days(1);
@@ -298,6 +297,34 @@ impl DatyBasy {
             date = date + day;
         }
         affected
+    }
+    fn get_affected_utc_days_events<'a>(
+        &self,
+        events: impl IntoIterator<Item = &'a NewDbEvent>,
+    ) -> HashSet<DateUtc> {
+        let days: HashSet<DateUtc> = events
+            .into_iter()
+            .map(|e| DateUtc(e.timestamp_unix_ms.0.date()))
+            .collect();
+        days
+    }
+    async fn invalidate_extractions(&self, events: &[NewDbEvent]) -> anyhow::Result<()> {
+        let days = self.get_affected_utc_days_events(events);
+        let days_str = serde_json::to_string(&days).context("impossibo")?;
+        let now = Timestamptz(Utc::now());
+        sqlx::query!(
+            r#"insert into extracted.extracted_current
+                (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms)
+                
+            select json.value as utc_date, 0, ?
+            from json_each(?) as json where true
+            
+            on conflict(utc_date) do update set raw_events_changed_timestamp_unix_ms = excluded.raw_events_changed_timestamp_unix_ms
+            "#,
+            now,
+            days_str
+        ).execute(&self.db).await.context("Could not update extracted_current")?;
+        Ok(())
     }
 
     async fn map_thong(&self, a: DbEvent, r: Tags) -> anyhow::Result<Vec<InExtractedTag>> {
@@ -453,16 +480,17 @@ impl DatyBasy {
         Ok(())
     }
 
-    pub async fn insert_events(
-        &self,
-        events: impl IntoIterator<Item = NewDbEvent>,
-    ) -> anyhow::Result<u64> {
+    pub async fn insert_events(&self, events: Vec<NewDbEvent>) -> anyhow::Result<u64> {
         let mut inserted: u64 = 0;
-        for event in events {
+        for event in &events {
             let res = sqlx::query!("insert into raw_events.events (id, timestamp_unix_ms, data_type, duration_ms, data) values (?, ?, ?, ?, ?)",
             event.id, event.timestamp_unix_ms, event.data_type, event.duration_ms, event.data).execute(&self.db).await.context("could not insert event")?;
             inserted += res.rows_affected();
         }
+
+        self.invalidate_extractions(&events)
+            .await
+            .context("Could not invalidate extractions")?;
 
         Ok(inserted)
     }

@@ -68,7 +68,7 @@ impl Tags {
         self.map
             .get(key)
             .map(|e| Box::new(e.iter().map(|e| e.as_str())) as Box<dyn Iterator<Item = &'a str>>)
-            .unwrap_or(Box::new(std::iter::empty()))
+            .unwrap_or_else(|| Box::new(std::iter::empty()))
     }
     pub fn has_value(&self, key: &str, value: &str) -> bool {
         self.map
@@ -93,17 +93,30 @@ impl Tags {
                 .map(move |value| (tag.as_str(), value.as_str()))
         })
     }
-    pub fn into_iter(
-        self,
-    ) -> std::collections::hash_map::IntoIter<std::string::String, HashSet<std::string::String>>
-    {
-        self.map.into_iter()
-    }
+
     pub fn total_value_count(&self) -> usize {
         self.iter().count()
     }
     pub fn tag_count(&self) -> usize {
         self.map.len()
+    }
+}
+
+impl Default for Tags {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl IntoIterator for Tags {
+    type Item = (String, HashSet<String>);
+    type IntoIter =
+        std::collections::hash_map::IntoIter<std::string::String, HashSet<std::string::String>>;
+    fn into_iter(
+        self,
+    ) -> std::collections::hash_map::IntoIter<std::string::String, HashSet<std::string::String>>
+    {
+        self.map.into_iter()
     }
 }
 

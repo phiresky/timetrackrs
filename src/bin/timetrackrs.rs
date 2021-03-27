@@ -1,14 +1,31 @@
+use std::path::PathBuf;
+
 use futures::TryStreamExt;
 use futures::{future::BoxFuture, never::Never, stream::FuturesUnordered};
 
-use timetrackrs::prelude::*;
 use timetrackrs::util::init_logging;
+use timetrackrs::{config::TimetrackrsConfig, prelude::*};
+
+#[derive(StructOpt, Debug, Serialize, Deserialize)]
+struct Args {
+    #[structopt(long)]
+    config: Option<PathBuf>,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_logging();
+    let args = Args::from_args();
     let db = init_db_pool().await?;
-    let config = timetrackrs::config::default_config();
+    let config: TimetrackrsConfig = match args.config {
+        Some(path) => {
+            serde_json::from_reader(File::open(path).context("Could not open config file")?)
+                .context("Could not read config file")?
+        }
+        None => timetrackrs::config::default_config(),
+    };
+
+    println!("Configuration: {:#?}", config);
 
     let features: FuturesUnordered<BoxFuture<anyhow::Result<Never>>> = FuturesUnordered::new();
 

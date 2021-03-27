@@ -74,11 +74,12 @@ paste = "1.0.4"
 lru = { version = "0.6.5", features = ["nightly"] } # https://github.com/jeromefroe/lru-rs/pull/40
 owning_ref = "0.4.1"
 libxid = "0.1.5"
-rust-embed = "5.9.0"
+rust-embed = { version = "5.9.0", features = ["compression"] }
 sqlx = { version = "0.5.1", features = ["sqlite", "any", "runtime-tokio-native-tls", "json"] }
-warp = "0.3.0"
+warp = { version = "0.3.1", features = ["compression"] }
 mime_guess = "2.0.3"
 async-trait = "0.1.48"
+ansi-escapes = "0.1.0"
 
 [patch.crates-io]
 sqlx-macros = { path = "../sqlx/sqlx-macros" }
