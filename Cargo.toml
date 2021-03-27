@@ -80,6 +80,7 @@ warp = { version = "0.3.1", features = ["compression"] }
 mime_guess = "2.0.3"
 async-trait = "0.1.48"
 ansi-escapes = "0.1.0"
+tokio-stream = { version = "0.1.5", features = ["sync"] }
 
 [patch.crates-io]
 sqlx-macros = { path = "../sqlx/sqlx-macros" }

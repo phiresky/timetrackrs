@@ -2,6 +2,7 @@ use std::io::prelude::*;
 use timetrackrs::capture::*;
 
 use timetrackrs::prelude::*;
+use timetrackrs::server::api_routes::progress_events::ProgressReport;
 use typescript_definitions::TypeScriptifyTrait;
 
 #[cfg(debug_assertions)]
@@ -28,6 +29,8 @@ const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
     api_types::SingleExtractedEventWithRaw::type_script_ify,
     api_types::ApiResponse::<String>::type_script_ify,
     Tags::type_script_ify,
+    ProgressReport::type_script_ify,
+    ProgressState::type_script_ify,
 ];
 
 #[cfg(not(debug_assertions))]

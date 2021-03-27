@@ -2,10 +2,63 @@ use crate::db::models::{DbEvent, Timestamptz};
 use crate::extract::ExtractInfo;
 use crate::prelude::*;
 use crate::util::iso_string_to_datetime;
-
+use futures::StreamExt;
 use warp::{reply::json, Filter, Rejection};
 
 use crate::api_types::*;
+
+pub mod progress_events {
+    use std::sync::Arc;
+
+    use crate::prelude::*;
+    use tokio::sync::broadcast::{Receiver, Sender};
+
+    #[derive(Debug, Serialize, TypeScriptify)]
+    pub struct ProgressReport {
+        call_id: String,
+        call_desc: String,
+        state: Vec<ProgressState>,
+    }
+    type SharedProgressReport = Arc<ProgressReport>;
+
+    lazy_static::lazy_static! {
+        static ref CHAN: (Sender<SharedProgressReport>, Receiver<SharedProgressReport>) = tokio::sync::broadcast::channel(10);
+    }
+    fn get_sender() -> Sender<SharedProgressReport> {
+        CHAN.0.clone()
+    }
+    pub fn get_receiver() -> Receiver<SharedProgressReport> {
+        CHAN.0.subscribe()
+    }
+
+    #[derive(Debug)]
+    struct StreamingReporter {
+        call_id: String,
+        call_desc: String,
+        sender: Sender<SharedProgressReport>,
+    }
+    impl ProgressReporter for StreamingReporter {
+        fn report(&self, p: Vec<ProgressState>) {
+            let report = ProgressReport {
+                call_id: self.call_id.clone(),
+                call_desc: self.call_desc.clone(),
+                state: p,
+            };
+            self.sender
+                .send(Arc::new(report))
+                .expect("Could not send progress");
+        }
+    }
+
+    pub(crate) fn new_progress(desc: impl Into<String>) -> Progress {
+        let id = libxid::new_generator().new_id().unwrap().encode();
+        Progress::root(Arc::new(StreamingReporter {
+            call_id: id,
+            call_desc: desc.into(),
+            sender: get_sender(),
+        }))
+    }
+}
 
 async fn get_known_tags(
     db: DatyBasy,
@@ -23,12 +76,15 @@ async fn time_range(db: DatyBasy, req: Api::time_range::request) -> Api::time_ra
     let before = iso_string_to_datetime(&req.before).context("could not parse before date")?;
     let after = iso_string_to_datetime(&req.after).context("could not parse after date")?;
 
+    let progress = progress_events::new_progress("Extracting time range");
+
     Ok(ApiResponse {
         data: db
             .get_extracted_for_time_range(
                 &Timestamptz(after),
                 &Timestamptz(before),
                 req.tag.as_deref(),
+                progress,
             )
             .await
             .context("Could not get extracted events")?,
@@ -51,10 +107,12 @@ async fn single_event(
     .await?;
 
     let r = a.deserialize_data();
+    let progress = progress_events::new_progress("Single Event");
     let v = match r {
         Ok(raw) => {
             if let Some(data) = raw.extract_info() {
-                let (tags, tags_reasons, _iterations) = get_tags_with_reasons(&db, data).await;
+                let (tags, tags_reasons, _iterations) =
+                    get_tags_with_reasons(&db, data, progress).await;
                 //let (tags, iterations) = get_tags(&db, data);
                 Some(SingleExtractedEventWithRaw {
                     id: a.id,
@@ -117,7 +175,7 @@ pub fn with_db(
 
 pub fn api_routes(
     db: DatyBasy,
-) -> impl warp::Filter<Extract = (warp::reply::Json,), Error = Rejection> + Clone + Send {
+) -> impl warp::Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone + Send {
     let rule_groups = with_db(db.clone())
         .and(warp::path("rule-groups"))
         .and_then(|db| async { rule_groups(db).await.map(|e| json(&e)).map_err(map_error) });
@@ -142,12 +200,27 @@ pub fn api_routes(
                 .map_err(map_error)
         });
 
+    let progress_events = warp::path("progress-events").and(warp::get()).map(|| {
+        let events = tokio_stream::wrappers::BroadcastStream::new(progress_events::get_receiver());
+        let events = events.filter_map(|e| {
+            futures::future::ready(match e {
+                Ok(e) => Some(warp::sse::Event::default().json_data(e)),
+                Err(e) => {
+                    log::warn!("progress recv error {:?}", e);
+                    None
+                }
+            })
+        });
+        warp::sse::reply(events)
+    });
+
     let filter = warp::get()
         .and(rule_groups)
         .or(time_range)
         .unify()
         .or(get_known_tags)
-        .unify();
+        .unify()
+        .or(progress_events);
 
     filter
 }

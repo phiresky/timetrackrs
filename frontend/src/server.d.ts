@@ -64,7 +64,7 @@ export type OsInfo = {
 	username: string | null
 	machine_id: string | null
 }
-export type TagRuleGroup = { global_id: string; data: TagRuleGroupData }
+export type TagRuleGroup = { global_id: string; data: Json<TagRuleGroupData> }
 export type TagRuleGroupData = { version: "V1"; data: TagRuleGroupV1 }
 export type TagRuleWithMeta = { enabled: boolean; rule: TagRule }
 export type TagRule =
@@ -97,11 +97,19 @@ export type TagAddReason =
 	| { type: "IntrinsicTag"; raw_data_type: string }
 	| { type: "AddedByRule"; matched_tags: TagValue[]; rule: TagRule }
 export type ApiTypesTS =
-	| { type: "time_range"; response: SingleExtractedEvent[] }
-	| { type: "single_event"; response: SingleExtractedEventWithRaw | null }
-	| { type: "rule_groups"; response: TagRuleGroup[] }
-	| { type: "update_rule_groups"; response: [] }
-	| { type: "get_known_tags"; response: string[] }
+	| {
+			type: "time_range"
+			request: TimeRangeRequest
+			response: SingleExtractedEvent[]
+	  }
+	| {
+			type: "single_event"
+			request: SingleEventRequest
+			response: SingleExtractedEventWithRaw | null
+	  }
+	| { type: "rule_groups"; request: []; response: TagRuleGroup[] }
+	| { type: "update_rule_groups"; request: []; response: [] }
+	| { type: "get_known_tags"; request: []; response: string[] }
 export type SingleExtractedEvent = {
 	id: string
 	timestamp_unix_ms: Timestamptz
@@ -118,3 +126,13 @@ export type SingleExtractedEventWithRaw = {
 }
 export type ApiResponse<T> = { data: T }
 export type Tags = { map: { [key in string]?: string[] } }
+export type ProgressReport = {
+	call_id: string
+	call_desc: string
+	state: ProgressState[]
+}
+export type ProgressState = {
+	desc: string
+	current: number
+	total: number | null
+}

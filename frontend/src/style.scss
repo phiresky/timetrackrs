@@ -307,3 +307,13 @@ details.rule-group {
 		vertical-align: middle;
 	}
 }
+
+.progress-popup {
+	position: fixed;
+	right: 1ex;
+	bottom: 1ex;
+	background: white;
+	border: 1px solid gray;
+	box-shadow: 10 10;
+	border-radius: 5px;
+}

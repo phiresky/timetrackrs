@@ -1,8 +1,21 @@
-use std::sync::{Arc, RwLock};
+use crate::prelude::*;
+use std::{
+    fmt::Debug,
+    sync::{Arc, RwLock},
+};
+
+pub trait ProgressReporter: Debug + Send + Sync {
+    fn report(&self, p: Vec<ProgressState>);
+}
 
 #[derive(Debug)]
+enum Mode {
+    Root(Arc<dyn ProgressReporter>),
+    Child(Progress),
+}
+#[derive(Debug)]
 struct ProgressInner {
-    parent: Option<Progress>,
+    parent: Mode,
     state: ProgressState,
 }
 #[derive(Clone, Debug)]
@@ -10,18 +23,31 @@ pub struct Progress {
     inner: Arc<RwLock<ProgressInner>>,
 }
 
-#[derive(Clone, Debug)]
-struct ProgressState {
+#[derive(Clone, Debug, Serialize, TypeScriptify)]
+pub struct ProgressState {
     desc: String,
     current: i64,
     total: Option<i64>,
 }
+impl Drop for ProgressInner {
+    fn drop(&mut self) {
+        // println!("dropping progress {:?}", self);
+        match &self.parent {
+            Mode::Root(r) => {
+                r.report(vec![]);
+            }
+            Mode::Child(parent) => {
+                parent.report();
+            }
+        }
+    }
+}
 
 impl Progress {
-    fn root() -> Progress {
-        Progress::new(None)
+    pub fn root(reporter: Arc<dyn ProgressReporter>) -> Progress {
+        Progress::new(Mode::Root(reporter))
     }
-    fn new(parent: Option<Progress>) -> Progress {
+    fn new(parent: Mode) -> Progress {
         Progress {
             inner: Arc::new(RwLock::new(ProgressInner {
                 parent,
@@ -33,27 +59,60 @@ impl Progress {
             })),
         }
     }
-    fn child(&self, current: i64, total: Option<i64>, desc: impl Into<String>) -> Progress {
+    pub fn child(
+        &self,
+        current: i64,
+        total: impl Into<Option<i64>>,
+        desc: impl Into<String>,
+    ) -> Progress {
         self.update(current, total, desc);
-        Progress::new(Some(self.clone()))
+        Progress::new(Mode::Child(self.clone()))
     }
     /*fn get_parent(&self) -> Option<&Progress> {
         self.inner.read().unwrap().parent.as_ref()
     }*/
-    fn update(&self, current: i64, total: Option<i64>, desc: impl Into<String>) {
+    pub fn update(&self, current: i64, total: impl Into<Option<i64>>, desc: impl Into<String>) {
         {
             let mut p = self.inner.write().unwrap();
             p.state = ProgressState {
                 current,
-                total,
+                total: total.into(),
                 desc: desc.into(),
             };
         }
         self.report();
     }
+    pub fn inc(&self, desc: impl Into<String>) {
+        {
+            let mut p = self.inner.write().unwrap();
+            p.state.current += 1;
+            p.state.desc = desc.into();
+        }
+        self.report();
+    }
+    pub fn child_inc(&self, desc: impl Into<String>) -> Progress {
+        self.inc(desc);
+        Progress::new(Mode::Child(self.clone()))
+    }
     fn report(&self) {
-        let state = self.get_full_state();
-        print!("{}", ansi_escapes::CursorUp((state.len()) as u16));
+        let (reporter, state) = self.get_full_state();
+        reporter.report(state);
+    }
+    fn get_full_state(&self) -> (Arc<dyn ProgressReporter>, Vec<ProgressState>) {
+        let mut state = match &self.inner.read().unwrap().parent {
+            Mode::Root(r) => (r.clone(), vec![]),
+            Mode::Child(parent) => parent.get_full_state(),
+        };
+        state.1.push(self.inner.read().unwrap().state.clone());
+        state
+    }
+}
+
+#[derive(Debug)]
+struct TerminalReporter {}
+impl ProgressReporter for TerminalReporter {
+    fn report(&self, state: Vec<ProgressState>) {
+        // print!("{}", ansi_escapes::CursorUp((state.len()) as u16));
 
         for (i, state) in state.iter().enumerate() {
             let prog_str = if let Some(total) = state.total {
@@ -73,18 +132,6 @@ impl Progress {
                 prog_str
             );
         }
-    }
-    fn get_full_state(&self) -> Vec<ProgressState> {
-        let mut state = self
-            .inner
-            .read()
-            .unwrap()
-            .parent
-            .as_ref()
-            .map(|p| p.get_full_state())
-            .unwrap_or_else(|| vec![]);
-        state.push(self.inner.read().unwrap().state.clone());
-        state
     }
 }
 
@@ -114,7 +161,7 @@ mod tests {
     async fn test_progress() {
         println!("Test progress");
         let directory = "/foo";
-        let root = Progress::root();
+        let root = Progress::root(Arc::new(TerminalReporter {}));
         let progress = Progress::child(&root, 0, Some(1), "Doing Stuff");
 
         let files = scan_files(directory, progress.child(0, Some(2), "Scanning directory")).await;

@@ -1,6 +1,7 @@
 import React from "react"
 import { render } from "react-dom"
 import { MaybeModal } from "./components/ModalLink"
+import { ProgressPopup } from "./components/ProgressPopup"
 import { Routes, BrowserRouterProvider } from "./components/Routes"
 import "./style.scss"
 
@@ -12,6 +13,7 @@ function Main() {
 		<MaybeModal appElement={appElement}>
 			<BrowserRouterProvider>
 				<Routes />
+				<ProgressPopup />
 			</BrowserRouterProvider>
 		</MaybeModal>
 	)

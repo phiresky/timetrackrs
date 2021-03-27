@@ -203,10 +203,15 @@ impl DatyBasy {
         from: &Timestamptz,
         to: &Timestamptz,
         tag: Option<&str>,
+        progress: Progress,
     ) -> anyhow::Result<Vec<SingleExtractedEvent>> {
-        self.ensure_time_range_extracted_valid(from, to)
-            .await
-            .context("Could not update extracted events")?;
+        self.ensure_time_range_extracted_valid(
+            from,
+            to,
+            progress.child(0, 1, "Ensuring extracted time range is valid"),
+        )
+        .await
+        .context("Could not update extracted events")?;
 
         let now = Instant::now();
         let from = Timestamptz::from(from);
@@ -254,6 +259,7 @@ impl DatyBasy {
         &self,
         from: &Timestamptz,
         to: &Timestamptz,
+        progress: Progress,
     ) -> anyhow::Result<()> {
         let days = self.get_affected_utc_days_range(from, to);
         {
@@ -264,23 +270,33 @@ impl DatyBasy {
                 .into_iter()
                 .filter(|e| !doesnt_need_update.contains(e))
                 .collect();
-            log::debug!("found {} dates that need update", needs_update.len());
-            for day in needs_update {
-                let now = Timestamptz(Utc::now());
-                self.extract_time_range(
-                    Timestamptz(day.0.and_hms(0, 0, 0)),
-                    Timestamptz((day.0 + chrono::Duration::days(1)).and_hms(0, 0, 0)),
-                )
-                .await
-                .with_context(|| format!("Could not extract tags for day {:?}", day))?;
-                let updated = sqlx::query!("update extracted.extracted_current set extracted_timestamp_unix_ms = ? where utc_date = ?", now, day).execute(&self.db).await.with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?.rows_affected();
-                if updated == 0 {
-                    let zero = Timestamptz(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0));
-                    sqlx::query!("insert into extracted.extracted_current (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms) values (?, ?, ?)", day, now, zero)
+            if needs_update.len() > 0 {
+                let count = needs_update.len() as i64;
+                let progress = progress.child(
+                    0,
+                    Some(1),
+                    format!("found {} dates that need update", count),
+                );
+                for (i, day) in needs_update.into_iter().enumerate() {
+                    let progress =
+                        progress.child(i as i64, count, format!("extracting day {}", day.0));
+                    let now = Timestamptz(Utc::now());
+                    self.extract_time_range(
+                        Timestamptz(day.0.and_hms(0, 0, 0)),
+                        Timestamptz((day.0 + chrono::Duration::days(1)).and_hms(0, 0, 0)),
+                        progress,
+                    )
+                    .await
+                    .with_context(|| format!("Could not extract tags for day {:?}", day))?;
+                    let updated = sqlx::query!("update extracted.extracted_current set extracted_timestamp_unix_ms = ? where utc_date = ?", now, day).execute(&self.db).await.with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?.rows_affected();
+                    if updated == 0 {
+                        let zero = Timestamptz(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0));
+                        sqlx::query!("insert into extracted.extracted_current (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms) values (?, ?, ?)", day, now, zero)
                         .execute(&self.db).await
                         .with_context(|| {
                             format!("inserting extracted timestamp {:?} {:?}", day, now)
                         })?;
+                    }
                 }
             }
             Ok(())
@@ -327,7 +343,12 @@ impl DatyBasy {
         Ok(())
     }
 
-    async fn map_thong(&self, a: DbEvent, r: Tags) -> anyhow::Result<Vec<InExtractedTag>> {
+    async fn extract_single_event(
+        &self,
+        a: DbEvent,
+        r: Tags,
+        progress: Progress,
+    ) -> anyhow::Result<Vec<InExtractedTag>> {
         let aid = a.id.clone();
 
         //total_extracted += 1;
@@ -342,7 +363,7 @@ impl DatyBasy {
             .await;
         //total_cache_get_dur += now.elapsed();
         let _now = Instant::now();
-        let (tags, _iterations) = get_tags(&self, r).await;
+        let (tags, _iterations) = get_tags(&self, r, progress).await;
         //total_extract_dur += now.elapsed();
         //total_extract_iterations += iterations;
 
@@ -380,8 +401,10 @@ impl DatyBasy {
         &self,
         from: Timestamptz,
         to: Timestamptz,
+        progress: Progress,
     ) -> anyhow::Result<()> {
         log::debug!("extract_time_range {:?} to {:?}", from, to);
+        progress.update(0, 3, "Removing stale events");
         {
             let res = sqlx::query!(
                 "delete from extracted_events where timestamp_unix_ms >= ? and timestamp_unix_ms < ?",
@@ -397,6 +420,7 @@ impl DatyBasy {
             last_fetched: from.clone(),
             ascending: true,
         };*/
+        progress.update(1, 3, "Fetching raw events");
         let raws = sqlx::query_as!(
             DbEvent,
             r#"select
@@ -440,7 +464,14 @@ impl DatyBasy {
 
                     Ok(Some((a, ex)))
                 })
-                .and_then(move |(a, r)| self.map_thong(a, r))
+                .and_then(move |(a, r)| {
+                    let ts = a.timestamp_unix_ms.clone();
+                    self.extract_single_event(
+                        a,
+                        r,
+                        progress.child(2, 3, format!("Extracting data for event {}", ts.0)),
+                    )
+                })
                 .chunks(1000),
         );
 

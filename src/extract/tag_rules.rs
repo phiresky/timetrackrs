@@ -111,6 +111,7 @@ impl TagRule {
         &self,
         db: &DatyBasy,
         orig_tags: &'a Tags,
+        progress: &Progress,
     ) -> anyhow::Result<Option<(Vec<TagValue>, Vec<TagValue>)>> {
         match self {
             TagRule::HasTag { tag, new_tags } => {
@@ -209,10 +210,15 @@ impl TagRule {
                             let data = match cached_data {
                                 Some(data) => data,
                                 None => {
+                                    progress.inc(format!(
+                                        "Fetching data for {} {}",
+                                        id, inner_cache_key
+                                    ));
                                     let data = fetcher
                                         .fetch_data(&inner_cache_key)
                                         .await
                                         .context("fetching data")?;
+
                                     db.set_cache_entry(&global_cache_key, &data)
                                         .await
                                         .context("saving to cache")?;
@@ -301,13 +307,14 @@ fn validate_tag_regex(regex: &Regex) -> anyhow::Result<()> {
     }
     Ok(())
 }
-pub async fn get_tags(db: &DatyBasy, intrinsic_tags: Tags) -> (Tags, i32) {
+pub async fn get_tags(db: &DatyBasy, intrinsic_tags: Tags, progress: Progress) -> (Tags, i32) {
     let mut tags = intrinsic_tags;
-    let iterations = apply_tag_rules(db, &mut tags).await;
+    let iterations =
+        apply_tag_rules(db, &mut tags, progress.child(0, None, "Applying tag rules")).await;
     (tags, iterations)
 }
 
-pub async fn apply_tag_rules(db: &DatyBasy, tags: &mut Tags) -> i32 {
+pub async fn apply_tag_rules(db: &DatyBasy, tags: &mut Tags, progress: Progress) -> i32 {
     let mut last_length = tags.total_value_count();
     let mut settled = false;
     let mut iterations = 0;
@@ -315,9 +322,9 @@ pub async fn apply_tag_rules(db: &DatyBasy, tags: &mut Tags) -> i32 {
     while !settled && iterations < 50 {
         for rule in rules.iter() {
             match rule
-                .apply(db, tags)
+                .apply(db, tags, &progress)
                 .await
-                .with_context(|| format!("applying rule {:?}", rule))
+                .with_context(|| format!("Applying rule {:?}", rule))
             {
                 Err(e) => log::warn!("{:?}", e),
                 Ok(None) => {}
@@ -350,15 +357,17 @@ pub enum TagAddReason {
 pub async fn get_tags_with_reasons(
     db: &DatyBasy,
     intrinsic_tags: Tags,
+    progress: Progress,
 ) -> (Tags, HashMap<String, TagAddReason>, i32) {
     let mut tags = intrinsic_tags;
-    let (reasons, iterations) = apply_tag_rules_get_reasons(db, &mut tags).await;
+    let (reasons, iterations) = apply_tag_rules_get_reasons(db, &mut tags, progress).await;
     (tags, reasons, iterations)
 }
 
 pub async fn apply_tag_rules_get_reasons(
     db: &DatyBasy,
     tags: &mut Tags,
+    progress: Progress,
 ) -> (HashMap<String, TagAddReason>, i32) {
     let mut last_length = tags.total_value_count();
     let mut settled = false;
@@ -379,7 +388,7 @@ pub async fn apply_tag_rules_get_reasons(
     while !settled && iterations < 50 {
         for rule in rules.iter() {
             match rule
-                .apply(db, tags)
+                .apply(db, tags, &progress)
                 .await
                 .with_context(|| format!("applying rule {:?}", rule))
             {
