@@ -80,7 +80,7 @@ make_thingois! {
             response: Vec<TagRuleGroup>
         },
         update_rule_groups {
-            request: (),
+            request: Vec<TagRuleGroup>,
             response: ()
         },
         get_known_tags {

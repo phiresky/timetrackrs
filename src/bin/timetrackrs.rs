@@ -18,13 +18,32 @@ struct Args {
 
 async fn cleanup_wal(db: DatyBasy) -> anyhow::Result<Never> {
     loop {
+        sleep(Duration::from_secs(120)).await;
         if let Err(e) = clear_wal_files(&db.db)
             .await
             .context("Could not clear wal files")
         {
             log::warn!("{}", e);
         }
-        sleep(Duration::from_secs(120)).await;
+    }
+}
+
+async fn ensure_past_month_valid(db: DatyBasy) -> anyhow::Result<Never> {
+    loop {
+        let now = Utc::now();
+        let month_ago = now - chrono::Duration::days(31);
+        if let Err(e) = db
+            .ensure_time_range_extracted_valid(
+                &Timestamptz(month_ago),
+                &Timestamptz(now),
+                timetrackrs::server::api_routes::progress_events::new_progress("Background work"),
+            )
+            .await
+            .context("Could not update month data")
+        {
+            log::warn!("{}", e);
+        }
+        sleep(Duration::from_secs(5 * 60)).await;
     }
 }
 
@@ -59,6 +78,7 @@ async fn main() -> anyhow::Result<()> {
         )));
     }
     features.push(tokio::spawn(cleanup_wal(db.clone())));
+    features.push(tokio::spawn(ensure_past_month_valid(db.clone())));
 
     let mut features = features;
 

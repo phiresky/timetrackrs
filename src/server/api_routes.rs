@@ -52,7 +52,7 @@ pub mod progress_events {
         }
     }
 
-    pub(crate) fn new_progress(desc: impl Into<String>) -> Progress {
+    pub fn new_progress(desc: impl Into<String>) -> Progress {
         let id = libxid::new_generator().new_id().unwrap().encode();
         Progress::root(Arc::new(StreamingReporter {
             call_id: id,
@@ -154,6 +154,28 @@ async fn rule_groups(db: DatyBasy) -> Api::rule_groups::response {
 
     Ok(ApiResponse { data: groups })
 }
+
+async fn update_rule_groups(
+    db: DatyBasy,
+    req: Api::update_rule_groups::request,
+) -> Api::update_rule_groups::response {
+    // println!("handling...");
+    // println!("querying...");
+
+    for g in req {
+        sqlx::query!(
+            "insert into config.tag_rule_groups (global_id, data) values (?, ?)
+                on conflict(global_id) do update set data = excluded.data",
+            g.global_id,
+            g.data
+        )
+        .execute(&db.db)
+        .await?;
+    }
+
+    Ok(ApiResponse { data: () })
+}
+
 #[derive(Debug)]
 pub struct ErrAsJson {
     err: anyhow::Error,
@@ -194,11 +216,30 @@ pub fn api_routes(
                 .map_err(map_error)
         });
 
-    let get_known_tags = with_db(db)
+    let get_known_tags = with_db(db.clone())
         .and(warp::path("get-known-tags"))
         .and(warp::query::<Api::get_known_tags::request>())
         .and_then(|db, query| async move {
             get_known_tags(db, query)
+                .await
+                .map(|e| json(&e))
+                .map_err(map_error)
+        });
+    let single_event = with_db(db.clone())
+        .and(warp::path("single-event"))
+        .and(warp::query::<Api::single_event::request>())
+        .and_then(|db, query| async move {
+            single_event(db, query)
+                .await
+                .map(|e| json(&e))
+                .map_err(map_error)
+        });
+
+    let update_rule_groups = with_db(db.clone())
+        .and(warp::path("update-rule-groups"))
+        .and(warp::body::json())
+        .and_then(|db, req| async move {
+            update_rule_groups(db, req)
                 .await
                 .map(|e| json(&e))
                 .map_err(map_error)
@@ -223,36 +264,11 @@ pub fn api_routes(
         .unify()
         .or(get_known_tags)
         .unify()
+        .or(single_event)
+        .unify()
+        .or(update_rule_groups)
+        .unify()
         .or(progress_events);
 
     filter
 }
-/*
-#[post("/rule-groups", format = "json", data = "<input>")]
-fn update_rule_groups(
-    db: DatyBasy,
-    input: Json<Vec<TagRuleGroup>>,
-) -> Api::update_rule_groups::response {
-    // println!("handling...");
-    // println!("querying...");
-    use trbtt::db::schema::config::tag_rule_groups::dsl::*;
-    db.db_config.transaction::<(), anyhow::Error, _>(|| {
-        for g in input.into_inner() {
-            let q = diesel::update(&g).set(&g);
-            log::info!("query: {}", diesel::debug_query(&q));
-            let updated = q.execute(&*db.db_config).context("updating in db")?;
-
-            if updated == 0 {
-                log::info!("inserting new group");
-                diesel::insert_into(tag_rule_groups)
-                    .values(g)
-                    .execute(&*db.db_config)
-                    .context("inserting into db")?;
-            }
-        }
-        Ok(())
-    })?;
-
-    Ok(Json(ApiResponse { data: () }))
-}
-*/

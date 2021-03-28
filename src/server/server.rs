@@ -48,6 +48,7 @@ pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Ne
     let index = warp::path::end()
         .or(warp::path("plot"))
         .or(warp::path("timeline"))
+        .or(warp::path("rule-editor"))
         .map(|_| warp::reply::html(include_str!("../../frontend/index.html")));
 
     let static_files = warp::path("dist")

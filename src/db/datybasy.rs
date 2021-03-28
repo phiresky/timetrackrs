@@ -194,7 +194,6 @@ impl DatyBasy {
                         let datybasy = self.clone();
                         let progress = progress.clone();
                         tokio::spawn(async move {
-                            println!("started task {}", day.0);
                             datybasy.extract_time_range_and_store(&progress, day).await
                         })
                     })
@@ -342,7 +341,6 @@ impl DatyBasy {
         to: Timestamptz,
         progress: Progress,
     ) -> anyhow::Result<()> {
-        log::debug!("extract_time_range {:?} to {:?}", from, to);
         let now = Instant::now();
         progress.update(0, 3, "Removing stale events");
         {
@@ -351,7 +349,7 @@ impl DatyBasy {
                 from, to)
             .execute(&self.db).await
             .context("Could not remove stale events")?;
-            log::info!("removed {} stale events", res.rows_affected());
+            log::debug!("removed {} stale events", res.rows_affected());
         }
 
         /*let raws = YieldEventsFromTrbttDatabase {
@@ -370,7 +368,7 @@ impl DatyBasy {
             from, to
         )
         .fetch_all(&self.db).await?;
-        log::info!(
+        log::debug!(
             "Got {} raw events in range {} - {}",
             raws.len(),
             from.0,
@@ -469,6 +467,7 @@ impl DatyBasy {
         }
         db.commit().await?;
 
+        // TODO: filter invalidation by RETURNING timestamp_unix_ms above
         self.invalidate_extractions(&events)
             .await
             .context("Could not invalidate extractions")?;

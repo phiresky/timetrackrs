@@ -260,6 +260,8 @@ impl SyncClient {
     }
 }
 
+// TODO: make and verify dtls certificate
+
 async fn go() -> anyhow::Result<()> {
     timetrackrs::util::init_logging();
 

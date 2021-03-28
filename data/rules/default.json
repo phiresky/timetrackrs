@@ -129,6 +129,16 @@
                     {
                         "enabled": true,
                         "rule": {
+                            "type": "HasTag",
+                            "tag": "software-development-project-name",
+                            "new_tags": [
+                                { "tag": "project", "value": "$value" }
+                            ]
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "rule": {
                             "type": "ExactTagValue",
                             "tag": "browse-full-domain",
                             "value": "mail.google.com",
