@@ -5,8 +5,10 @@ use crate::prelude::*;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
+use url::Url;
 pub mod wikidata;
 pub mod youtube;
+use addr::parser::DomainName;
 
 pub use wikidata::*;
 pub use youtube::YoutubeFetcher;
@@ -96,14 +98,6 @@ impl Debug for dyn SimpleFetcher {
     }
 }
 
-lazy_static! {
-    // in theory the public suffix list should be kept up to date regularily
-    // but eh
-    pub static ref PUBLIC_SUFFIXES: publicsuffix::List =
-        publicsuffix::List::from_str(include_str!("../../../data/public_suffix_list.dat"))
-            .unwrap();
-}
-
 pub struct URLDomainMatcher;
 impl SimpleFetcher for URLDomainMatcher {
     fn get_id(&self) -> &'static str {
@@ -130,15 +124,19 @@ impl SimpleFetcher for URLDomainMatcher {
         let url = get_capture(found, "url").context("Url match invalid?")?;
         let mut tags: Vec<TagValue> = Vec::new();
 
-        let host = PUBLIC_SUFFIXES
-            .parse_url(url)
-            .map_err(|e| anyhow::anyhow!("{}", e))
-            .with_context(|| format!("parsing url '{}'", url))?;
+        let url2 = Url::parse(url).with_context(|| format!("parsing url '{}'", url))?;
 
-        if let publicsuffix::Host::Domain(domain) = host {
+        let host = url2
+            .host()
+            .with_context(|| format!("url has no host'{}'", url))?;
+
+        if let url::Host::Domain(domain) = &host {
+            let domain = addr::psl::List
+                .parse_domain_name(&domain)
+                .map_err(|e| anyhow::anyhow!("cant parse domain"))?;
             tags.add("browse-full-domain", domain.to_string());
             if let Some(root) = domain.root() {
-                tags.add("browse-main-domain", root);
+                tags.add("browse-main-domain", root.to_string());
             }
             if !domain.has_known_suffix() {
                 tags.add("error-unknown-domain", domain.to_string());

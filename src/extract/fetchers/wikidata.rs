@@ -2,6 +2,7 @@ use super::ExternalFetcher;
 use crate::prelude::*;
 use itertools::Itertools;
 use regex::Regex;
+use addr::parser::DomainName;
 
 // ugh. https://phabricator.wikimedia.org/T196450
 
@@ -69,8 +70,8 @@ impl ExternalFetcher for WikidataIdFetcher {
             format!("http://{}/", cache_key),
             format!("https://{}/", cache_key),
         ];
-        let main_domain_urls: Vec<String> = super::PUBLIC_SUFFIXES
-            .parse_domain(cache_key)
+        let main_domain_urls: Vec<String> = addr::psl::List
+            .parse_domain_name(cache_key)
             .map(|e| {
                 e.root().map(|root| {
                     vec![

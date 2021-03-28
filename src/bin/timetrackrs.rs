@@ -1,10 +1,14 @@
 use std::path::PathBuf;
 
-use futures::TryStreamExt;
 use futures::{future::BoxFuture, never::Never, stream::FuturesUnordered};
+use futures::{StreamExt, TryStreamExt};
 
-use timetrackrs::util::init_logging;
 use timetrackrs::{config::TimetrackrsConfig, prelude::*};
+use timetrackrs::{db::clear_wal_files, util::init_logging};
+use tokio::{
+    task::{JoinError, JoinHandle},
+    time::sleep,
+};
 
 #[derive(StructOpt, Debug, Serialize, Deserialize)]
 struct Args {
@@ -12,7 +16,19 @@ struct Args {
     config: Option<PathBuf>,
 }
 
-#[tokio::main]
+async fn cleanup_wal(db: DatyBasy) -> anyhow::Result<Never> {
+    loop {
+        if let Err(e) = clear_wal_files(&db.db)
+            .await
+            .context("Could not clear wal files")
+        {
+            log::warn!("{}", e);
+        }
+        sleep(Duration::from_secs(120)).await;
+    }
+}
+
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
     init_logging();
     let args = Args::from_args();
@@ -31,31 +47,25 @@ async fn main() -> anyhow::Result<()> {
 
     println!("Configuration: {:#?}", config);
 
-    let features: FuturesUnordered<BoxFuture<anyhow::Result<Never>>> = FuturesUnordered::new();
+    let features: FuturesUnordered<JoinHandle<anyhow::Result<Never>>> = FuturesUnordered::new();
 
     for c in config.capturers {
-        features.push(Box::pin(capture_loop(db.clone(), c)));
+        features.push(tokio::spawn(capture_loop(db.clone(), c)));
     }
     if let Some(server) = config.server {
-        features.push(Box::pin(timetrackrs::server::server::run_server(
+        features.push(tokio::spawn(timetrackrs::server::server::run_server(
             db.clone(),
             server,
         )));
     }
+    features.push(tokio::spawn(cleanup_wal(db.clone())));
 
-    let _results: Vec<_> = features
-        .try_collect()
-        .await
-        .context("Some feature failed")?;
-    // features.await;
-    /*let db = sqlx::sqlite::SqlitePoolOptions::new()
-        .connect("sqlite://foo.sqlite3")
-        .await?;
+    let mut features = features;
 
-    let q = sqlx::query!("select count(*) as coint from foo.events")
-        .fetch_one(&db)
-        .await?;
-    println!("qq = {:?}", q);*/
+    while let Some(f) = features.next().await {
+        f?.context("Some feature failed")?;
+    }
+
     println!("Everything exited");
     Ok(())
 }

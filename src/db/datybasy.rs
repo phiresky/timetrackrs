@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{api_types::SingleExtractedEvent, prelude::*};
-use futures::{stream::BoxStream, FutureExt};
+use futures::{future::join_all, stream::BoxStream, FutureExt};
 use futures::{StreamExt, TryStreamExt};
 use itertools::Itertools;
 use sqlx::{Sqlite, SqlitePool};
@@ -187,36 +187,54 @@ impl DatyBasy {
                 .collect();
             if needs_update.len() > 0 {
                 let count = needs_update.len() as i64;
-                let progress = progress.child(
-                    0,
-                    Some(1),
-                    format!("found {} dates that need update", count),
-                );
-                for (i, day) in needs_update.into_iter().enumerate() {
-                    let progress =
-                        progress.child(i as i64, count, format!("extracting day {}", day.0));
-                    let now = Timestamptz(Utc::now());
-                    self.extract_time_range(
-                        Timestamptz(day.0.and_hms(0, 0, 0)),
-                        Timestamptz((day.0 + chrono::Duration::days(1)).and_hms(0, 0, 0)),
-                        progress,
-                    )
-                    .await
-                    .with_context(|| format!("Could not extract tags for day {:?}", day))?;
+                progress.update(0, count, "Dates need update");
+                let futures = needs_update
+                    .into_iter()
+                    .map(|day| {
+                        let datybasy = self.clone();
+                        let progress = progress.clone();
+                        tokio::spawn(async move {
+                            println!("started task {}", day.0);
+                            datybasy.extract_time_range_and_store(&progress, day).await
+                        })
+                    })
+                    .collect::<Vec<_>>();
 
-                    let updated = sqlx::query!("update extracted.extracted_current set extracted_timestamp_unix_ms = ? where utc_date = ?", now, day).execute(&self.db).await.with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?.rows_affected();
-                    if updated == 0 {
-                        let zero = Timestamptz(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0));
-                        sqlx::query!("insert into extracted.extracted_current (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms) values (?, ?, ?)", day, now, zero)
+                for future in futures {
+                    future.await??;
+                }
+                /*for (i, day) in needs_update.into_iter().enumerate() {
+                    self.extract_time_range_and_store(&progress, day).await?;
+                }*/
+            }
+            Ok(())
+        }
+    }
+    async fn extract_time_range_and_store(
+        &self,
+        progress: &Progress,
+        day: DateUtc,
+    ) -> anyhow::Result<()> {
+        let progress = progress.child_inc(format!("extracting day {}", day.0));
+        let now = Timestamptz(Utc::now());
+        self.extract_time_range(
+            Timestamptz(day.0.and_hms(0, 0, 0)),
+            Timestamptz((day.0 + chrono::Duration::days(1)).and_hms(0, 0, 0)),
+            progress,
+        )
+        .await
+        .with_context(|| format!("Could not extract tags for day {:?}", day))?;
+
+        let updated = sqlx::query!("update extracted.extracted_current set extracted_timestamp_unix_ms = ? where utc_date = ?", now, day).execute(&self.db).await.with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?.rows_affected();
+        if updated == 0 {
+            let zero = Timestamptz(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0));
+            sqlx::query!("insert into extracted.extracted_current (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms) values (?, ?, ?)", day, now, zero)
                         .execute(&self.db).await
                         .with_context(|| {
                             format!("inserting extracted timestamp {:?} {:?}", day, now)
                         })?;
-                    }
-                }
-            }
-            Ok(())
         }
+        Ok(())
     }
     fn get_affected_utc_days_range(&self, from: &Timestamptz, to: &Timestamptz) -> Vec<DateUtc> {
         let from_date = from.0.date();

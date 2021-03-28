@@ -66,7 +66,7 @@ export class Plot extends React.Component<{
 						start: d.startOfDay(date),
 						end: date,
 					})
-					const today = d.startOfDay(new Date())
+					const today = d.startOfDay(new Date("2021-01-01"))
 					return d.add(today, duration)
 				},
 				name: "Daily",

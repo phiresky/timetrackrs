@@ -260,13 +260,15 @@ async fn run_external_fetcher(
                     .context("get cache entry")?;
                 let data = match cached_data {
                     Some(FetchResultJson::Ok { value: data }) => data,
-                    Some(FetchResultJson::PermanentFailure { reason }) => {
-                        anyhow::bail!("cached permanent error")
+                    Some(FetchResultJson::PermanentFailure { reason: _ }) => {
+                        // anyhow::bail!("cached permanent error")
+                        return Ok(None);
                     }
-                    Some(FetchResultJson::TemporaryFailure { reason, until })
+                    Some(FetchResultJson::TemporaryFailure { reason: _, until })
                         if until > Timestamptz(Utc::now()) =>
                     {
-                        anyhow::bail!("cached temporary error")
+                        // anyhow::bail!("cached temporary error")
+                        return Ok(None);
                     }
                     _ => {
                         progress.inc(format!("Fetching data for {} {}", id, inner_cache_key));

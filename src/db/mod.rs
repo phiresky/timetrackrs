@@ -7,13 +7,26 @@ use sqlx::{sqlite::SqliteConnectOptions, Executor};
 use sqlx::{sqlite::SqlitePoolOptions, SqliteConnection, SqlitePool};
 use std::{env, path::PathBuf};
 
+fn dbs_list() -> &'static [&'static str] {
+    &["raw_events", "extracted", "config"]
+}
+
+pub async fn clear_wal_files(db: &SqlitePool) -> anyhow::Result<()> {
+    for attachdb in dbs_list() {
+        sqlx::query(&format!("pragma {}.wal_checkpoint(truncate);", attachdb))
+            .execute(db)
+            .await?;
+    }
+    Ok(())
+}
+
 pub async fn connect(pool_size: Option<u32>) -> anyhow::Result<SqlitePool> {
     let dir = get_database_dir_location();
     let dir = dir.to_string_lossy().to_string();
     let main = format!("{}/lock.sqlite3", dir);
     log::debug!("Connecting to db at {}", dir);
     let db = SqlitePoolOptions::new()
-        .max_connections(pool_size.unwrap_or(1))
+        .max_connections(pool_size.unwrap_or(10))
         .after_connect(move |conn| {
             let dir = dir.clone();
             Box::pin(async move {
@@ -25,7 +38,7 @@ pub async fn connect(pool_size: Option<u32>) -> anyhow::Result<SqlitePool> {
                         Box::new(std::error::Error::from(e));*/
                         sqlx::error::Error::Configuration(e.into())
                     })?;
-                for attachdb in &["raw_events", "extracted", "config"] {
+                for attachdb in dbs_list() {
                     let connn: &mut SqliteConnection = conn;
                     sqlx::query(&format!(
                         "ATTACH DATABASE '{}/{}.sqlite3' as {}",

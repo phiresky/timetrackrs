@@ -3,6 +3,16 @@
 version = 3
 
 [[package]]
+name = "addr"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "204ef0dd0a2b3e9544b5c107dd6f745daa1ea7be92b714804e1d9c7c1f2ad492"
+dependencies = [
+ "psl",
+ "psl-types",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -480,7 +490,7 @@ dependencies = [
  "cached_proc_macro",
  "cached_proc_macro_types",
  "futures 0.3.13",
- "hashbrown 0.9.1",
+ "hashbrown",
  "once_cell",
 ]
 
@@ -664,7 +674,7 @@ dependencies = [
  "cookie",
  "idna 0.2.2",
  "log 0.4.14",
- "publicsuffix 1.5.6",
+ "publicsuffix",
  "serde 1.0.125",
  "serde_json",
  "time 0.2.26",
@@ -1148,18 +1158,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 
 [[package]]
-name = "fallible-iterator"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
-
-[[package]]
-name = "fallible-streaming-iterator"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
-
-[[package]]
 name = "filetime"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1457,18 +1455,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "hashbrown"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
-
-[[package]]
 name = "hashlink"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d99cf782f0dc4372d26846bec3de7804ceb5df083c2d4462c0b8d2330e894fa8"
 dependencies = [
- "hashbrown 0.9.1",
+ "hashbrown",
 ]
 
 [[package]]
@@ -1743,7 +1735,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "824845a0bf897a9042383849b02c1bc219c2383772efcd5c6f9766fa4b81aef3"
 dependencies = [
  "autocfg 1.0.1",
- "hashbrown 0.9.1",
+ "hashbrown",
 ]
 
 [[package]]
@@ -1888,9 +1880,8 @@ checksum = "c7d73b3f436185384286bd8098d17ec07c9a7d2388a6599f824d8502b529702a"
 
 [[package]]
 name = "libsqlite3-sys"
-version = "0.20.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64d31059f22935e6c31830db5249ba2b7ecd54fd73a9909286f0a67aa55c2fbd"
+version = "0.21.0"
+source = "git+https://github.com/rusqlite/rusqlite#ed3bfbdf9d9e577e8d4cff937b053a0e429a4cd7"
 dependencies = [
  "cc",
  "pkg-config",
@@ -1961,7 +1952,7 @@ version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f374d42cdfc1d7dbf3d3dec28afab2eb97ffbf43a3234d795b5986dbf4b90ba"
 dependencies = [
- "hashbrown 0.9.1",
+ "hashbrown",
 ]
 
 [[package]]
@@ -2647,6 +2638,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "psl"
+version = "2.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c54323792e940f81e12431446ab5a067d7f86d544222ef75c185c64d531a8ef"
+dependencies = [
+ "psl-types",
+]
+
+[[package]]
 name = "psl-types"
 version = "2.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2660,18 +2660,6 @@ checksum = "95b4ce31ff0a27d93c8de1849cf58162283752f065a90d508f1105fa6c9a213f"
 dependencies = [
  "idna 0.2.2",
  "url 2.2.1",
-]
-
-[[package]]
-name = "publicsuffix"
-version = "2.0.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51fdd6dac4efcf80a8e93c0be97efede133cdd3aac06a3e9d4e879ac8cf899aa"
-dependencies = [
- "byteorder",
- "hashbrown 0.11.2",
- "idna 0.2.2",
- "psl-types",
 ]
 
 [[package]]
@@ -3092,21 +3080,6 @@ dependencies = [
  "subtle",
  "thiserror",
  "zeroize",
-]
-
-[[package]]
-name = "rusqlite"
-version = "0.24.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5f38ee71cbab2c827ec0ac24e76f82eca723cee92c509a65f67dee393c25112"
-dependencies = [
- "bitflags",
- "fallible-iterator",
- "fallible-streaming-iterator",
- "hashlink",
- "libsqlite3-sys",
- "memchr",
- "smallvec",
 ]
 
 [[package]]
@@ -3540,10 +3513,8 @@ dependencies = [
 [[package]]
 name = "sqlx"
 version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2739d54a2ae9fdd0f545cb4e4b5574efb95e2ec71b7f921678e246fb20dcaaf"
 dependencies = [
- "sqlx-core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sqlx-core",
  "sqlx-macros",
 ]
 
@@ -3579,49 +3550,7 @@ dependencies = [
  "sha2",
  "smallvec",
  "sqlformat",
- "sqlx-rt 0.3.0",
- "stringprep",
- "thiserror",
- "tokio-stream",
- "url 2.2.1",
- "whoami",
-]
-
-[[package]]
-name = "sqlx-core"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1cad9cae4ca8947eba1a90e8ec7d3c59e7a768e2f120dc9013b669c34a90711"
-dependencies = [
- "ahash 0.6.3",
- "atoi",
- "bitflags",
- "byteorder",
- "bytes",
- "crc",
- "crossbeam-channel",
- "crossbeam-queue",
- "crossbeam-utils 0.8.3",
- "either",
- "futures-channel",
- "futures-core",
- "futures-util",
- "hashlink",
- "hex",
- "itoa",
- "libc",
- "libsqlite3-sys",
- "log 0.4.14",
- "memchr",
- "once_cell",
- "parking_lot",
- "percent-encoding 2.1.0",
- "serde 1.0.125",
- "serde_json",
- "sha2",
- "smallvec",
- "sqlformat",
- "sqlx-rt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sqlx-rt",
  "stringprep",
  "thiserror",
  "tokio-stream",
@@ -3643,8 +3572,8 @@ dependencies = [
  "quote 1.0.9",
  "serde_json",
  "sha2",
- "sqlx-core 0.5.1",
- "sqlx-rt 0.3.0",
+ "sqlx-core",
+ "sqlx-rt",
  "syn 1.0.65",
  "url 2.2.1",
 ]
@@ -3652,18 +3581,6 @@ dependencies = [
 [[package]]
 name = "sqlx-rt"
 version = "0.3.0"
-dependencies = [
- "native-tls",
- "once_cell",
- "tokio",
- "tokio-native-tls",
-]
-
-[[package]]
-name = "sqlx-rt"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ce2e16b6774c671cc183e1d202386fdf9cde1e8468c1894a7f2a63eb671c4f4"
 dependencies = [
  "native-tls",
  "once_cell",
@@ -3971,6 +3888,7 @@ dependencies = [
 name = "timetrackrs"
 version = "0.1.0"
 dependencies = [
+ "addr",
  "ansi-escapes",
  "anyhow",
  "async-channel",
@@ -4015,11 +3933,9 @@ dependencies = [
  "owning_ref",
  "paste",
  "pretty_env_logger",
- "publicsuffix 2.0.15",
  "rand 0.8.3",
  "regex",
  "rsa",
- "rusqlite",
  "rust-crypto",
  "rust-embed",
  "serde 1.0.125",

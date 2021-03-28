@@ -80,17 +80,19 @@ async fn time_range(db: DatyBasy, req: Api::time_range::request) -> Api::time_ra
 
     let progress = progress_events::new_progress("Extracting time range");
 
-    Ok(ApiResponse {
-        data: db
-            .get_extracted_for_time_range(
-                &Timestamptz(after),
-                &Timestamptz(before),
-                req.tag.as_deref(),
-                progress,
-            )
-            .await
-            .context("Could not get extracted events")?,
-    })
+    let now = Instant::now();
+    let data = db
+        .get_extracted_for_time_range(
+            &Timestamptz(after),
+            &Timestamptz(before),
+            req.tag.as_deref(),
+            progress,
+        )
+        .await
+        .context("Could not get extracted events")?;
+
+    log::debug!("time-range request took {:?}", now.elapsed());
+    Ok(ApiResponse { data })
 }
 
 async fn single_event(
