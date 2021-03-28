@@ -1,3 +1,4 @@
+pub mod caching_int_map;
 pub mod datybasy;
 pub mod db_iterator;
 pub mod models;

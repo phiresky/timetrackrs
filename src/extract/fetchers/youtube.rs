@@ -116,14 +116,18 @@ impl ExternalFetcher for YoutubeFetcher {
                 .run()
                 .map_err(|e| match &e {
                     youtube_dl::Error::ExitCode { code, stderr }
-                        if stderr.contains("unmatcheaaebale") =>
+                        if stderr.contains("Video unavailable")
+                            && (stderr.contains("copyright claim")
+                                || stderr.contains(
+                                    "account associated with this video has been terminated",
+                                )) =>
                     {
                         FetchError::PermanentFailure(Box::new(e))
                     }
                     youtube_dl::Error::Io(_)
                     | youtube_dl::Error::Json(_)
                     | youtube_dl::Error::ProcessTimeout
-                    | _ => FetchError::TemporaryFailure(Box::new(e), Duration::from_secs(5)),
+                    | _ => FetchError::TemporaryFailure(Box::new(e), Duration::from_secs(60)),
                 })?;
         serde_json::to_string(&data)
             .context("serializing ytdl output")

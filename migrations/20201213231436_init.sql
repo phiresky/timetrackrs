@@ -1,17 +1,17 @@
 -- Your SQL goes here
 CREATE TABLE IF NOT EXISTS extracted.tags (
     id integer PRIMARY KEY NOT NULL,
-    text text NOT NULL
+    text text UNIQUE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS extracted.tag_values (
     id integer PRIMARY KEY NOT NULL,
-    text text NOT NULL
+    text text UNIQUE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS extracted.event_ids (
     id integer PRIMARY KEY NOT NULL,
-    raw_id text NOT NULL,
+    raw_id text UNIQUE NOT NULL,
     timestamp_unix_ms bigint NOT NULL,
     duration_ms bigint NOT NULL
 );

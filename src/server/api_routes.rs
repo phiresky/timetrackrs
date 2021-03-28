@@ -208,10 +208,7 @@ pub fn api_routes(
         let events = StreamExt::filter_map(events, |e| {
             futures::future::ready(match e {
                 Ok(e) => Some(warp::sse::Event::default().json_data(e)),
-                Err(e) => {
-                    log::warn!("progress recv error {:?}", e);
-                    None
-                }
+                Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(_)) => None,
             })
         });
         let events = events.throttle(Duration::from_millis(250));

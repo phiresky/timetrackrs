@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{atomic::AtomicUsize, Arc},
     time::Instant,
 };
 
@@ -10,34 +10,10 @@ use futures::{StreamExt, TryStreamExt};
 use itertools::Itertools;
 use sqlx::{Sqlite, SqlitePool};
 use std::iter::FromIterator;
+use std::sync::atomic::Ordering::Relaxed;
 use tokio::sync::RwLock;
 
-/*
-https://stackoverflow.com/questions/41665345/borrow-problems-with-compiled-sql-statements
-https://stackoverflow.com/questions/32209391/how-to-store-rusqlite-connection-and-statement-objects-in-the-same-struct-in-rus
-https://stackoverflow.com/questions/27552670/how-to-store-sqlite-prepared-statements-for-later
-*/
-#[derive(Clone)]
-struct CachingIntMap {
-    lru: Arc<RwLock<HashMap<String, i64>>>,
-    pub conn: SqlitePool,
-    get: String,
-    put: String,
-}
-
-/*fn events_cache_insert(
-    conn: SqlitePool,
-    key: String,
-    inp: (i64, i64),
-) -> Pin<Box<dyn Future<Output = i64>>> {
-    Box::pin(async {
-        let ret = sqlx::query!("insert into extracted.event_ids (raw_id, timestamp_unix_ms, duration_ms) values (?1, ?2, ?3)", key, inp.0, inp.1)
-        .execute(&conn)
-        .await
-        .unwrap();
-        ret.last_insert_rowid()
-    })
-}*/
+use super::caching_int_map::CachingIntMap;
 
 pub async fn init_db_pool() -> anyhow::Result<DatyBasy> {
     let db = crate::db::connect(None)
@@ -59,80 +35,6 @@ pub async fn init_db_pool() -> anyhow::Result<DatyBasy> {
         )
         .await,
     })
-}
-
-trait MyBonk<'a>: sqlx::Encode<'a, Sqlite> + sqlx::Type<Sqlite> {}
-
-type IntCache = Arc<RwLock<HashMap<String, i64>>>;
-impl CachingIntMap {
-    async fn new(conn: SqlitePool, table: &str, cols: &str, keycol: &str) -> CachingIntMap {
-        lazy_static! {
-            static ref LRUS: Arc<RwLock<HashMap<String, IntCache>>> =
-                Arc::new(RwLock::new(HashMap::new()));
-        }
-        CachingIntMap {
-            lru: (*LRUS)
-                .write()
-                .await
-                .entry(table.to_string())
-                .or_insert_with(|| Arc::new(RwLock::new(HashMap::with_capacity(10_000))))
-                .clone(),
-            get: format!("select id from {} where {} = ?1", table, keycol),
-            put: format!("insert into {} {}", table, cols),
-            conn,
-        }
-    }
-    async fn get(&self, key: &str) -> i64 {
-        let i: Option<i64> = self.lru.write().await.get(key).copied();
-
-        match i {
-            Some(i) => i,
-            None => {
-                let n = match sqlx::query_scalar(&self.get)
-                    .bind(key)
-                    .fetch_optional(&self.conn)
-                    .await
-                    .unwrap()
-                {
-                    Some(n) => n,
-                    None => {
-                        let q = sqlx::query(&self.put).bind(key);
-                        let ret = q.execute(&self.conn).await.unwrap();
-                        ret.last_insert_rowid()
-                    }
-                };
-
-                self.lru.write().await.insert(key.to_string(), n);
-                n
-            }
-        }
-    }
-    // very shitty code. spent 2 hours figuring out how to do this get method generically
-    async fn get_bind2(&'c self, key: &'c str, bind1: i64, bind2: i64) -> i64 {
-        let i: Option<i64> = self.lru.write().await.get(key).copied();
-
-        match i {
-            Some(i) => i,
-            None => {
-                let n = match sqlx::query_scalar(&self.get)
-                    .bind(key)
-                    .fetch_optional(&self.conn)
-                    .await
-                    .unwrap()
-                {
-                    Some(n) => n,
-                    None => {
-                        let q = sqlx::query(&self.put).bind(key).bind(bind1).bind(bind2);
-                        let ret = q.execute(&self.conn).await.unwrap();
-                        ret.last_insert_rowid()
-                    }
-                };
-
-                self.lru.write().await.insert(key.to_string(), n);
-                n
-            }
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -362,6 +264,7 @@ impl DatyBasy {
         a: DbEvent,
         r: Tags,
         progress: Progress,
+        total_cache_get_dur: Arc<std::sync::RwLock<Duration>>,
     ) -> anyhow::Result<Vec<InExtractedTag>> {
         let aid = a.id.clone();
 
@@ -370,12 +273,12 @@ impl DatyBasy {
         //total_tag_values += r.total_value_count();
         let timestamp = a.timestamp_unix_ms.clone();
         let duration_ms = a.duration_ms;
-        let _now = Instant::now();
+        let now = Instant::now();
         let event_id = self
             .events_cache
             .get_bind2(&aid, timestamp.0.timestamp_millis(), duration_ms)
             .await;
-        //total_cache_get_dur += now.elapsed();
+        *total_cache_get_dur.write().unwrap() += now.elapsed();
         let _now = Instant::now();
         let (tags, _iterations) = get_tags(&self, r, progress).await;
         //total_extract_dur += now.elapsed();
@@ -384,15 +287,19 @@ impl DatyBasy {
         Ok(futures::stream::iter(tags.into_iter())
             .flat_map(move |(tag, values)| {
                 let timestamp = timestamp.clone();
+                let t = total_cache_get_dur.clone();
                 async move {
+                    let now = Instant::now();
                     let tag = self.tags_cache.get(&tag).await;
+                    *t.write().unwrap() += now.elapsed();
 
                     futures::stream::iter(values).then(move |value| {
                         let timestamp = timestamp.clone();
+                        let t = t.clone();
                         async move {
-                            // let now = Instant::now();
+                            let now = Instant::now();
                             let value = self.values_cache.get(&value).await;
-                            //total_cache_get_dur += now.elapsed();
+                            *t.write().unwrap() += now.elapsed();
                             InExtractedTag {
                                 timestamp_unix_ms: (&timestamp).into(),
                                 duration_ms,
@@ -452,18 +359,17 @@ impl DatyBasy {
             to.0
         );
 
-        /*let now = Instant::now();
-        let mut total_raw: usize = 0;
-        let mut total_extracted: usize = 0;
+        let now = Instant::now();
+        let mut total_raw: usize = raws.len();
+        let mut total_extracted = Arc::new(AtomicUsize::new(0));
         let mut total_tags: usize = 0;
         let mut total_tag_values: usize = 0;
         let mut total_extract_iterations: usize = 0;
-        let mut total_extract_dur = Duration::from_secs(0);
-        let mut total_cache_get_dur = Duration::from_secs(0);*/
+        let mut total_extract_dur = Arc::new(std::sync::RwLock::new(Duration::from_secs(0)));
+        let total_cache_get_dur = Arc::new(std::sync::RwLock::new(Duration::default()));
 
         let mut extracted: BoxStream<Vec<Result<_, _>>> = Box::pin(
             futures::stream::iter(raws.into_iter().filter_map(|a| {
-                //total_raw += 1;
                 let r = a.deserialize_data();
                 let ex: Tags = match r {
                     Ok(r) => r.extract_info()?,
@@ -475,13 +381,18 @@ impl DatyBasy {
 
                 Some((a, ex))
             }))
-            .then(move |(a, r)| {
+            .then(|(a, r)| {
                 let ts = a.timestamp_unix_ms.clone();
-                self.extract_single_event(
-                    a,
-                    r,
-                    progress.child(2, 3, format!("Extracting data for event {}", ts.0)),
-                )
+                let p = progress.child(2, 3, format!("Extracting data for event {}", ts.0));
+                let to = total_extract_dur.clone();
+                let t2 = total_cache_get_dur.clone();
+                total_extracted.fetch_add(1, Relaxed);
+                async move {
+                    let now = Instant::now();
+                    let res = self.extract_single_event(a, r, p, t2).await;
+                    *to.write().unwrap() += now.elapsed();
+                    res
+                }
             })
             .chunks(1000),
         );
@@ -504,7 +415,8 @@ impl DatyBasy {
             tx.commit().await?;
             log::info!("inserted {} ({:?})", updated, now.elapsed());
         }
-        /*if total_extracted > 0 && total_raw > 0 {
+        let total_extracted = total_extracted.load(Relaxed);
+        if total_extracted > 0 && total_raw > 0 {
             log::debug!(
                 "extraction yielded {} extracted of {} raw events with {} tags with {} values total. extracting tags took {:?} total, avg. {} it/ev, avg. {:?} per ele, extracting avg. {:?} per ele, cachget avg. {:?} per ele",
                 total_extracted,
@@ -512,13 +424,13 @@ impl DatyBasy {
                 total_tags,
                 total_tag_values,
                 now.elapsed(),
-                total_extract_iterations / total_extracted,
+                 total_extract_iterations / total_extracted,
                 now.elapsed().div_f32(total_raw as f32),
-                total_extract_dur.div_f32(total_raw as f32),
-                total_cache_get_dur.div_f32(total_raw as f32)
+                total_extract_dur.read().unwrap().div_f32(total_raw as f32),
+                total_cache_get_dur.read().unwrap().div_f32(total_raw as f32)
             );
             // log::debug!("cache stats")
-        }*/
+        }
         log::info!(
             "extract_time_range {:?} to {:?} took {:?}",
             from,
