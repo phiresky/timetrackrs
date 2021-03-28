@@ -95,6 +95,12 @@ impl<'de> Visitor<'de> for TimestamptzVisitor {
     {
         Ok(Timestamptz(util::unix_epoch_millis_to_date(value)))
     }
+    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        self.visit_i64(value as i64)
+    }
 }
 impl<'de> Deserialize<'de> for Timestamptz {
     fn deserialize<D>(deserializer: D) -> Result<Timestamptz, D::Error>

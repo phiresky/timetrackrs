@@ -301,6 +301,7 @@ impl DatyBasy {
                     )
                     .await
                     .with_context(|| format!("Could not extract tags for day {:?}", day))?;
+
                     let updated = sqlx::query!("update extracted.extracted_current set extracted_timestamp_unix_ms = ? where utc_date = ?", now, day).execute(&self.db).await.with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?.rows_affected();
                     if updated == 0 {
                         let zero = Timestamptz(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0));
@@ -417,6 +418,7 @@ impl DatyBasy {
         progress: Progress,
     ) -> anyhow::Result<()> {
         log::debug!("extract_time_range {:?} to {:?}", from, to);
+        let now = Instant::now();
         progress.update(0, 3, "Removing stale events");
         {
             let res = sqlx::query!(
@@ -442,7 +444,13 @@ impl DatyBasy {
             from raw_events.events where timestamp_unix_ms >= ? and timestamp_unix_ms < ? order by timestamp_unix_ms asc"#,
             from, to
         )
-        .fetch(&self.db);
+        .fetch_all(&self.db).await?;
+        log::info!(
+            "Got {} raw events in range {} - {}",
+            raws.len(),
+            from.0,
+            to.0
+        );
 
         /*let now = Instant::now();
         let mut total_raw: usize = 0;
@@ -454,38 +462,28 @@ impl DatyBasy {
         let mut total_cache_get_dur = Duration::from_secs(0);*/
 
         let mut extracted: BoxStream<Vec<Result<_, _>>> = Box::pin(
-            raws.map_err(anyhow::Error::new)
-                //.try_take_while(|a| futures::future::ready(Ok(&a.timestamp_unix_ms < &to)))
-                .try_filter_map(|a| async {
-                    //total_raw += 1;
-                    let r = a.deserialize_data();
-                    let ex: Tags = match r {
-                        Ok(r) => {
-                            let ex = r.extract_info();
-                            match ex {
-                                Some(ex) => ex,
-                                None => {
-                                    return Ok(None);
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            log::warn!("{:#?}", e);
-                            return Ok(None);
-                        }
-                    };
+            futures::stream::iter(raws.into_iter().filter_map(|a| {
+                //total_raw += 1;
+                let r = a.deserialize_data();
+                let ex: Tags = match r {
+                    Ok(r) => r.extract_info()?,
+                    Err(e) => {
+                        log::warn!("{:#?}", e);
+                        return None;
+                    }
+                };
 
-                    Ok(Some((a, ex)))
-                })
-                .and_then(move |(a, r)| {
-                    let ts = a.timestamp_unix_ms.clone();
-                    self.extract_single_event(
-                        a,
-                        r,
-                        progress.child(2, 3, format!("Extracting data for event {}", ts.0)),
-                    )
-                })
-                .chunks(1000),
+                Some((a, ex))
+            }))
+            .then(move |(a, r)| {
+                let ts = a.timestamp_unix_ms.clone();
+                self.extract_single_event(
+                    a,
+                    r,
+                    progress.child(2, 3, format!("Extracting data for event {}", ts.0)),
+                )
+            })
+            .chunks(1000),
         );
 
         while let Some(chunk) = extracted.next().await {
@@ -521,7 +519,12 @@ impl DatyBasy {
             );
             // log::debug!("cache stats")
         }*/
-
+        log::info!(
+            "extract_time_range {:?} to {:?} took {:?}",
+            from,
+            to,
+            now.elapsed()
+        );
         Ok(())
     }
 
