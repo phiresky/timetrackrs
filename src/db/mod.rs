@@ -6,12 +6,13 @@ use sqlx::{sqlite::SqliteConnectOptions, Executor};
 use sqlx::{sqlite::SqlitePoolOptions, SqliteConnection, SqlitePool};
 use std::{env, path::PathBuf};
 
-pub async fn connect() -> anyhow::Result<SqlitePool> {
+pub async fn connect(pool_size: Option<u32>) -> anyhow::Result<SqlitePool> {
     let dir = get_database_dir_location();
     let dir = dir.to_string_lossy().to_string();
     let main = format!("{}/lock.sqlite3", dir);
     log::debug!("Connecting to db at {}", dir);
     let db = SqlitePoolOptions::new()
+        .max_connections(pool_size.unwrap_or(1))
         .after_connect(move |conn| {
             let dir = dir.clone();
             Box::pin(async move {
@@ -51,10 +52,9 @@ pub async fn connect() -> anyhow::Result<SqlitePool> {
         )
         .await
         .with_context(|| format!("Establishing connection to db {}", main))?;
-    sqlx::migrate!()
-        .run(&db)
-        .await
-        .context("running migrations")?;
+    let migrator = sqlx::migrate!();
+    log::info!("Running {} migrations", migrator.iter().count());
+    migrator.run(&db).await.context("running migrations")?;
     Ok(db)
 }
 pub async fn set_pragmas(db: &mut SqliteConnection, schema: Option<&str>) -> anyhow::Result<()> {

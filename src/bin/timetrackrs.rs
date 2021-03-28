@@ -17,6 +17,10 @@ async fn main() -> anyhow::Result<()> {
     init_logging();
     let args = Args::from_args();
     let db = init_db_pool().await?;
+    {
+        // just get one connection to ensure pool is initialized (and migrated) ok
+        db.db.acquire().await.context("Db Pool invalid")?;
+    }
     let config: TimetrackrsConfig = match args.config {
         Some(path) => {
             serde_json::from_reader(File::open(path).context("Could not open config file")?)

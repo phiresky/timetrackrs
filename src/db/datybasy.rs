@@ -40,7 +40,7 @@ struct CachingIntMap {
 }*/
 
 pub async fn init_db_pool() -> anyhow::Result<DatyBasy> {
-    let db = crate::db::connect()
+    let db = crate::db::connect(None)
         .await
         .context("Could not connect to db")?;
     Ok(DatyBasy {
@@ -167,20 +167,33 @@ pub async fn fetch_tag_rules(db: &SqlitePool) -> anyhow::Result<Vec<TagRule>> {
         .collect())
 }
 impl DatyBasy {
-    pub async fn get_cache_entry(&self, cache_key: &str) -> anyhow::Result<Option<String>> {
+    pub async fn get_fetcher_cache_entry(
+        &self,
+        cache_key: &str,
+    ) -> anyhow::Result<Option<FetchResultJson>> {
         let cache_value = sqlx::query_scalar!(
             "select value from extracted.fetcher_cache where key = ?",
             cache_key
         )
         .fetch_optional(&self.db)
         .await?;
-        Ok(cache_value)
+
+        Ok(if let Some(cache_value) = cache_value {
+            Some(serde_json::from_str(&cache_value).context("deserializing cache")?)
+        } else {
+            None
+        })
     }
 
-    pub async fn set_cache_entry(&self, cache_key: &str, cache_value: &str) -> anyhow::Result<()> {
+    pub async fn set_fetcher_cache_entry(
+        &self,
+        cache_key: &str,
+        cache_value: &FetchResultJson,
+    ) -> anyhow::Result<()> {
         let now = Timestamptz(Utc::now());
+        let cache_value = serde_json::to_string(&cache_value).context("serializing cache")?;
         sqlx::query!(
-            "insert into extracted.fetcher_cache (key, timestamp_unix_ms, value) values (?, ?, ?)",
+            "insert or replace into extracted.fetcher_cache (key, timestamp_unix_ms, value) values (?, ?, ?)",
             cache_key,
             now,
             cache_value
@@ -483,13 +496,14 @@ impl DatyBasy {
             tag bigint NOT NULL REFERENCES tags (id),
             value*/
             let mut updated: usize = 0;
-            // TODO: transaction
+            let mut tx = self.db.begin().await?;
             for ele in chunk.into_iter().flatten().flatten() {
                 sqlx::query!("insert into extracted.extracted_events (event_id, timestamp_unix_ms, duration_ms, tag, value) values (?, ?, ?, ?, ?)", ele.event_id, ele.timestamp_unix_ms, ele.duration_ms, ele.tag, ele.value)
-                    .execute(&self.db)
+                    .execute(&mut tx)
                     .await.context("inserting extracted events")?;
                 updated += 1;
             }
+            tx.commit().await?;
             log::info!("inserted {} ({:?})", updated, now.elapsed());
         }
         /*if total_extracted > 0 && total_raw > 0 {
@@ -511,13 +525,16 @@ impl DatyBasy {
         Ok(())
     }
 
-    pub async fn insert_events(&self, events: Vec<NewDbEvent>) -> anyhow::Result<u64> {
+    pub async fn insert_events_if_needed(&self, events: Vec<NewDbEvent>) -> anyhow::Result<u64> {
         let mut inserted: u64 = 0;
+
+        let mut db = self.db.begin().await?;
         for event in &events {
-            let res = sqlx::query!("insert into raw_events.events (id, timestamp_unix_ms, data_type, duration_ms, data) values (?, ?, ?, ?, ?)",
-            event.id, event.timestamp_unix_ms, event.data_type, event.duration_ms, event.data).execute(&self.db).await.context("could not insert event")?;
+            let res = sqlx::query!("insert or ignore into raw_events.events (id, timestamp_unix_ms, data_type, duration_ms, data) values (?, ?, ?, ?, ?)",
+            event.id, event.timestamp_unix_ms, event.data_type, event.duration_ms, event.data).execute(&mut db).await.context("could not insert event")?;
             inserted += res.rows_affected();
         }
+        db.commit().await?;
 
         self.invalidate_extractions(&events)
             .await

@@ -147,8 +147,9 @@ struct ActRow {
     pid: i64,
 }
 
+#[async_trait]
 impl Importable for AppUsageImportArgs {
-    fn import(&self) -> ImportResult {
+    async fn import(&self) -> ImportResult {
         let mut archive =
             zip::read::ZipArchive::new(File::open(&self.filename).context("opening AUM file")?)
                 .context("opening AUM backup")?;

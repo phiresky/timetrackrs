@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, time::Duration};
 
 use super::tags::Tags;
 use crate::prelude::*;
@@ -31,13 +31,44 @@ pub fn get_simple_fetcher(id: &str) -> Option<&'static dyn SimpleFetcher> {
     SIMPLE_FETCHERS.get(id).map(|e| e.as_ref())
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum FetchResultJson {
+    Ok { value: String },
+    TemporaryFailure { reason: String, until: Timestamptz },
+    PermanentFailure { reason: String },
+}
+
+pub enum FetchError {
+    /// might succeed again if tried after the given duration
+    TemporaryFailure(Box<dyn std::error::Error>, Duration),
+    /// will not ever succeed, don't try again
+    PermanentFailure(Box<dyn std::error::Error>),
+}
+
+impl From<Result<String, FetchError>> for FetchResultJson {
+    fn from(r: Result<String, FetchError>) -> Self {
+        match r {
+            Ok(s) => FetchResultJson::Ok { value: s },
+            Err(FetchError::TemporaryFailure(e, d)) => FetchResultJson::TemporaryFailure {
+                reason: format!("{}", e),
+                until: Timestamptz(
+                    Utc::now() + chrono::Duration::from_std(d).expect("too large time"),
+                ),
+            },
+            Err(FetchError::PermanentFailure(e)) => FetchResultJson::PermanentFailure {
+                reason: format!("{}", e),
+            },
+        }
+    }
+}
 #[async_trait]
 pub trait ExternalFetcher: Sync + Send {
     fn get_id(&self) -> &'static str;
     fn get_regexes(&self) -> &[TagValueRegex];
     fn get_possible_output_tags(&self) -> &[&str];
     fn get_cache_key(&self, found: &[regex::Captures], tags: &Tags) -> Option<String>;
-    async fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String>;
+    async fn fetch_data(&self, cache_key: &str) -> Result<String, FetchError>;
     async fn process_data(
         &self,
         tags: &Tags,
@@ -115,4 +146,11 @@ impl SimpleFetcher for URLDomainMatcher {
         };
         Ok(tags)
     }
+}
+
+pub fn temporary<T>(duration_s: u64) -> impl Fn(T) -> FetchError
+where
+    T: Into<Box<dyn std::error::Error>>,
+{
+    return move |e: T| FetchError::TemporaryFailure(e.into(), Duration::from_secs(duration_s));
 }

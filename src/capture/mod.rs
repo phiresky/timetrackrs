@@ -72,7 +72,7 @@ pub async fn capture_loop(db: DatyBasy, config: CaptureConfig) -> anyhow::Result
         };
         let ins: NewDbEvent = act.try_into()?;
 
-        db.insert_events(vec![ins])
+        db.insert_events_if_needed(vec![ins])
             .await
             .context("Could not insert captured event")?;
     }

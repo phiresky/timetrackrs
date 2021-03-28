@@ -46,12 +46,13 @@ impl ExternalFetcher for WikidataIdFetcher {
         get_capture(found, "domain").map(|d| d.to_string())
     }
 
-    async fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
+    async fn fetch_data(&self, cache_key: &str) -> Result<String, FetchError> {
         log::debug!("fetching {} from wikidata", cache_key);
         let api = mediawiki::api::Api::new("https://www.wikidata.org/w/api.php")
             .await
             .map_err(|e| anyhow::anyhow!("{:?}", e))
-            .context("wikidata api initialization")?; // Will determine the SPARQL API URL via site info data
+            .context("wikidata api initialization")
+            .map_err(temporary(60))?; // Will determine the SPARQL API URL via site info data
 
         //let main_domain = public_suffixes.from_domain(cache_key);
         /*let query_api_url = api
@@ -107,14 +108,16 @@ impl ExternalFetcher for WikidataIdFetcher {
         let mutres = api
             .sparql_query(&query)
             .await
-            .context("Could not run SPARQL query")?;
+            .context("Could not run SPARQL query")
+            .map_err(temporary(60))?;
 
         let (full_domain_matches, main_domain_matches): (
             Vec<&serde_json::Value>,
             Vec<&serde_json::Value>,
         ) = mutres["results"]["bindings"]
             .as_array()
-            .context("unparseable response")?
+            .context("unparseable response")
+            .map_err(temporary(60 * 60))?
             .iter()
             .partition(|e| {
                 e["website_url"]["value"]
@@ -191,11 +194,12 @@ impl ExternalFetcher for WikidataCategoryFetcher {
         get_capture(found, "id").map(|d| d.to_string())
     }
 
-    async fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
+    async fn fetch_data(&self, cache_key: &str) -> Result<String, FetchError> {
         let api = mediawiki::api::Api::new("https://www.wikidata.org/w/api.php")
             .await
             .map_err(|e| anyhow::anyhow!("{:?}", e))
-            .context("wikidata api initialization")?; // Will determine the SPARQL API URL via site info data
+            .context("wikidata api initialization")
+            .map_err(|e| FetchError::TemporaryFailure(e.into(), Duration::from_secs(60)))?; // Will determine the SPARQL API URL via site info data
 
         let query = format!(
             r#"
@@ -212,7 +216,8 @@ impl ExternalFetcher for WikidataCategoryFetcher {
         let res = api
             .sparql_query(&query)
             .await
-            .context("Could not run SPARQL query")?;
+            .context("Could not run SPARQL query")
+            .map_err(|e| FetchError::TemporaryFailure(e.into(), Duration::from_secs(60)))?;
 
         Ok(format!("{}", res["results"]["bindings"]))
     }

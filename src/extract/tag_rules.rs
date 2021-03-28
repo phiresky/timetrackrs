@@ -187,55 +187,7 @@ impl TagRule {
             }
 
             TagRule::ExternalFetcher { fetcher_id } => {
-                let fetcher =
-                    get_external_fetcher(&fetcher_id).context("could not find fetcher")?;
-                let regexes = fetcher.get_regexes();
-                let caps = match_multi_regex(&regexes, &orig_tags);
-                log::trace!("fetcher {} matched regexes to {:?}", fetcher.get_id(), caps);
-                match caps {
-                    None => Ok(None),
-                    Some((caps, reason_tags)) => {
-                        let id = fetcher.get_id();
-                        if let Some(inner_cache_key) = fetcher.get_cache_key(&caps, orig_tags) {
-                            let global_cache_key = &format!("{}:{}", id, inner_cache_key);
-                            log::trace!(
-                                "matcher {} matched, cache key = {:?}",
-                                id,
-                                global_cache_key
-                            );
-                            let cached_data = db
-                                .get_cache_entry(global_cache_key)
-                                .await
-                                .context("get cache entry")?;
-                            let data = match cached_data {
-                                Some(data) => data,
-                                None => {
-                                    progress.inc(format!(
-                                        "Fetching data for {} {}",
-                                        id, inner_cache_key
-                                    ));
-                                    let data = fetcher
-                                        .fetch_data(&inner_cache_key)
-                                        .await
-                                        .context("fetching data")?;
-
-                                    db.set_cache_entry(&global_cache_key, &data)
-                                        .await
-                                        .context("saving to cache")?;
-                                    data
-                                }
-                            };
-                            let new_tags = fetcher
-                                .process_data(&orig_tags, &inner_cache_key, &data)
-                                .await
-                                .context("processing data")?;
-                            check_tags_match_filter(&new_tags, fetcher.get_possible_output_tags())?;
-                            Ok(Some((new_tags, reason_tags)))
-                        } else {
-                            Ok(None)
-                        }
-                    }
-                }
+                run_external_fetcher(db, &orig_tags, fetcher_id, progress).await
             }
             TagRule::InternalFetcher { fetcher_id } => {
                 let fetcher =
@@ -281,6 +233,69 @@ impl TagRule {
             TagRule::HasTag { .. } => Ok(()),
             TagRule::ExactTagValue { .. } => Ok(()),
             TagRule::TagValuePrefix { .. } => Ok(()),
+        }
+    }
+}
+
+async fn run_external_fetcher(
+    db: &DatyBasy,
+    orig_tags: &Tags,
+    fetcher_id: &str,
+    progress: &Progress,
+) -> anyhow::Result<Option<(Vec<TagValue>, Vec<TagValue>)>> {
+    let fetcher = get_external_fetcher(&fetcher_id).context("could not find fetcher")?;
+    let regexes = fetcher.get_regexes();
+    let caps = match_multi_regex(&regexes, &orig_tags);
+    log::trace!("fetcher {} matched regexes to {:?}", fetcher.get_id(), caps);
+    match caps {
+        None => Ok(None),
+        Some((caps, reason_tags)) => {
+            let id = fetcher.get_id();
+            if let Some(inner_cache_key) = fetcher.get_cache_key(&caps, orig_tags) {
+                let global_cache_key = &format!("{}:{}", id, inner_cache_key);
+                log::trace!("matcher {} matched, cache key = {:?}", id, global_cache_key);
+                let cached_data = db
+                    .get_fetcher_cache_entry(global_cache_key)
+                    .await
+                    .context("get cache entry")?;
+                let data = match cached_data {
+                    Some(FetchResultJson::Ok { value: data }) => data,
+                    Some(FetchResultJson::PermanentFailure { reason }) => {
+                        anyhow::bail!("cached permanent error")
+                    }
+                    Some(FetchResultJson::TemporaryFailure { reason, until })
+                        if until > Timestamptz(Utc::now()) =>
+                    {
+                        anyhow::bail!("cached temporary error")
+                    }
+                    _ => {
+                        progress.inc(format!("Fetching data for {} {}", id, inner_cache_key));
+                        let res: FetchResultJson =
+                            fetcher.fetch_data(&inner_cache_key).await.into();
+
+                        db.set_fetcher_cache_entry(&global_cache_key, &res)
+                            .await
+                            .context("saving to cache")?;
+                        match res {
+                            FetchResultJson::Ok { value } => value,
+                            FetchResultJson::TemporaryFailure { reason, until } => {
+                                anyhow::bail!(format!("temporary failure: {}, {}", reason, until.0))
+                            }
+                            FetchResultJson::PermanentFailure { reason } => {
+                                anyhow::bail!(format!("permanent failure: {}", reason))
+                            }
+                        }
+                    }
+                };
+                let new_tags = fetcher
+                    .process_data(&orig_tags, &inner_cache_key, &data)
+                    .await
+                    .context("processing data")?;
+                check_tags_match_filter(&new_tags, fetcher.get_possible_output_tags())?;
+                Ok(Some((new_tags, reason_tags)))
+            } else {
+                Ok(None)
+            }
         }
     }
 }

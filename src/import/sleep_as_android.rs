@@ -57,8 +57,9 @@ fn parse_saa_entry(
     }
 }
 
+#[async_trait]
 impl Importable for SleepAsAndroidImportArgs {
-    fn import(&self) -> ImportResult {
+    async fn import(&self) -> ImportResult {
         let mut entries = Vec::new();
         let mut csv = csv::ReaderBuilder::new()
             .has_headers(false)

@@ -81,7 +81,7 @@ mime_guess = "2.0.3"
 async-trait = "0.1.48"
 ansi-escapes = "0.1.0"
 tokio-stream = { version = "0.1.5", features = ["sync"] }
-
+tokio-timer = "0.2.13"
 [patch.crates-io]
 sqlx-macros = { path = "../sqlx/sqlx-macros" }
 

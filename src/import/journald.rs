@@ -60,8 +60,9 @@ lazy_static! {
     )
     .unwrap();
 }
+#[async_trait]
 impl Importable for JournaldImportArgs {
-    fn import(&self) -> ImportResult {
+    async fn import(&self) -> ImportResult {
         use std::io::{BufRead, BufReader};
         use std::process::{Command, Stdio};
         let os_info = util::get_os_info();

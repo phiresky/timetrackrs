@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::{tags::Tags, ExternalFetcher};
 use crate::prelude::*;
 use lazy_static::lazy_static;
@@ -107,13 +109,25 @@ impl ExternalFetcher for YoutubeFetcher {
         None
     }
 
-    async fn fetch_data(&self, cache_key: &str) -> anyhow::Result<String> {
+    async fn fetch_data(&self, cache_key: &str) -> Result<String, FetchError> {
         log::debug!("querying youtube for {}", cache_key);
         let data =
             youtube_dl::YoutubeDl::new(format!("https://www.youtube.com/watch?v={}", cache_key))
                 .run()
-                .with_context(|| format!("youtube-dl {}", cache_key))?;
-        serde_json::to_string(&data).context("serializing ytdl output")
+                .map_err(|e| match &e {
+                    youtube_dl::Error::ExitCode { code, stderr }
+                        if stderr.contains("unmatcheaaebale") =>
+                    {
+                        FetchError::PermanentFailure(Box::new(e))
+                    }
+                    youtube_dl::Error::Io(_)
+                    | youtube_dl::Error::Json(_)
+                    | youtube_dl::Error::ProcessTimeout
+                    | _ => FetchError::TemporaryFailure(Box::new(e), Duration::from_secs(5)),
+                })?;
+        serde_json::to_string(&data)
+            .context("serializing ytdl output")
+            .map_err(|e| FetchError::TemporaryFailure(e.into(), Duration::from_secs(1)))
     }
 
     async fn process_data(

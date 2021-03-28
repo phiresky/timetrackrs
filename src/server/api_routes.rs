@@ -1,11 +1,13 @@
+use std::time::Duration;
+
+use crate::api_types::*;
 use crate::db::models::{DbEvent, Timestamptz};
 use crate::extract::ExtractInfo;
 use crate::prelude::*;
 use crate::util::iso_string_to_datetime;
 use futures::StreamExt;
+use tokio_stream::StreamExt as TokioStreamExt;
 use warp::{reply::json, Filter, Rejection};
-
-use crate::api_types::*;
 
 pub mod progress_events {
     use std::sync::Arc;
@@ -22,7 +24,7 @@ pub mod progress_events {
     type SharedProgressReport = Arc<ProgressReport>;
 
     lazy_static::lazy_static! {
-        static ref CHAN: (Sender<SharedProgressReport>, Receiver<SharedProgressReport>) = tokio::sync::broadcast::channel(10);
+        static ref CHAN: (Sender<SharedProgressReport>, Receiver<SharedProgressReport>) = tokio::sync::broadcast::channel(1);
     }
     fn get_sender() -> Sender<SharedProgressReport> {
         CHAN.0.clone()
@@ -202,7 +204,8 @@ pub fn api_routes(
 
     let progress_events = warp::path("progress-events").and(warp::get()).map(|| {
         let events = tokio_stream::wrappers::BroadcastStream::new(progress_events::get_receiver());
-        let events = events.filter_map(|e| {
+        // filter out and ignore the Lagged() err caused by polling only sometimes
+        let events = StreamExt::filter_map(events, |e| {
             futures::future::ready(match e {
                 Ok(e) => Some(warp::sse::Event::default().json_data(e)),
                 Err(e) => {
@@ -211,6 +214,7 @@ pub fn api_routes(
                 }
             })
         });
+        let events = events.throttle(Duration::from_millis(250));
         warp::sse::reply(events)
     });
 

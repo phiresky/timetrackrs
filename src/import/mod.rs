@@ -2,7 +2,7 @@ pub mod app_usage_sqlite;
 // pub mod google_fitness;
 pub mod journald;
 pub mod sleep_as_android;
-pub mod trbtt;
+pub mod timetrackrs_db;
 
 use crate::prelude::*;
 
@@ -17,13 +17,14 @@ use structopt::StructOpt;
 pub enum ImportArgs {
     AppUsage(app_usage_sqlite::AppUsageImportArgs),
     Journald(journald::JournaldImportArgs),
-    Trbtt(trbtt::TrbttImportArgs),
+    Timetrackrs(timetrackrs_db::TimetrackrsImportArgs),
     SleepAsAndroid(sleep_as_android::SleepAsAndroidImportArgs),
 }
 
+#[async_trait]
 #[enum_dispatch(ImportArgs)]
 pub trait Importable {
-    fn import(&self) -> ImportResult;
+    async fn import(&self) -> ImportResult;
 }
 
 pub type ImportResult<'a> = anyhow::Result<BoxStream<'a, anyhow::Result<Vec<NewDbEvent>>>>;
