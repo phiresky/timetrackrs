@@ -46,7 +46,8 @@ export class Plot extends React.Component<{
 		}
 		console.log("total dur: ", totalDur / 1000 / 60 / 60 / 24)
 		const allChoices = [
-			{ value: 1000 * 60 * 10, name: "10 minutes" },
+			{ value: 1000 * 60 * 5, name: "5 minutes" },
+			{ value: 1000 * 60 * 20, name: "20 minutes" },
 			{ value: 1000 * 60 * 60, name: "Hourly" },
 			{ value: 1000 * 60 * 60 * 4, name: "4 h" },
 			{ value: 1000 * 60 * 60 * 24, name: "Daily" },
@@ -106,7 +107,7 @@ export class Plot extends React.Component<{
 		return this.getDayInfo(this.props.events)
 	}
 
-	getDayInfo(e: { timestamp_unix_ms: Date | number }[]) {
+	getDayInfo(e: { from: Date | number; to_exclusive: Date | number }[]) {
 		if (e.length === 0) {
 			return {
 				firstDay: new Date(),
@@ -117,8 +118,8 @@ export class Plot extends React.Component<{
 				durMs: 0,
 			}
 		}
-		const first = new Date(e[0].timestamp_unix_ms)
-		const last = new Date(e[e.length - 1].timestamp_unix_ms)
+		const first = new Date(e[0].from)
+		const last = new Date(+e[e.length - 1].to_exclusive - 1)
 		const firstDay = startOfDay(first)
 		const lastDay = startOfDay(last)
 		const days = differenceInDays(lastDay, firstDay) + 1
@@ -127,70 +128,55 @@ export class Plot extends React.Component<{
 		return { firstDay, lastDay, days, first, last, durMs }
 	}
 
-	@computed get data(): Plotly.Data[] {
-		const _gs = _.groupBy(this.props.events, (e) =>
-			getTag(e.tags, this.props.tag, this.deep),
-		)
-		const maxEventSeconds = 300
+	private getValue(value: string) {
+		if (this.deep) return value
+		else return value.split("/")[0]
+	}
 
+	@computed get data(): Plotly.Data[] {
 		const aggregator = this.aggregators.value
 		const binSize = this.binSizes.value.value
 		const { days } = this.dayInfo
 
-		const data: Plotly.Data[] = Object.entries(_gs).map(([key, es]) => {
-			const es2 = es.flatMap((e) => {
-				if (e.duration_ms / 1000 > maxEventSeconds) {
-					return Array(
-						Math.ceil(e.duration_ms / 1000 / maxEventSeconds),
-					)
-						.fill(0)
-						.map((_, i) => ({
-							...e,
-							timestamp_unix_ms: aggregator.mapper(
-								addSeconds(
-									new Date(e.timestamp_unix_ms),
-									maxEventSeconds * i,
-								),
-							),
-							duration: Math.min(
-								maxEventSeconds,
-								e.duration_ms / 1000 - maxEventSeconds * i,
-							),
-						}))
-				} else
-					return {
-						...e,
-						timestamp_unix_ms: aggregator.mapper(
-							new Date(e.timestamp_unix_ms),
-						),
-					}
-			})
-			console.log(key, es2)
-			es2.sort(
-				(a, b) =>
-					a.timestamp_unix_ms.getTime() -
-					b.timestamp_unix_ms.getTime(),
-			)
-			const { firstDay, lastDay, days: aggDays } = this.getDayInfo(es2)
+		type TagValue = string
+		type Bucket = string
+		type relative_duration = number
 
-			const aggFactor = aggDays / days
+		const outData = new Map<TagValue, Map<Bucket, relative_duration>>()
 
-			console.log(es2)
+		for (const timechunk of this.props.events) {
+			const bucket = aggregator
+				.mapper(new Date(timechunk.from - (timechunk.from % binSize)))
+				.toJSON()
+			for (const [tag, _value, duration] of timechunk.tags) {
+				if (tag !== this.props.tag) continue
+				const value = this.getValue(_value)
+				let tagdata = outData.get(value)
+				if (!tagdata) {
+					tagdata = new Map()
+					outData.set(value, tagdata)
+				}
+				const bucketdata = tagdata.get(bucket) || 0
+				tagdata.set(bucket, bucketdata + duration)
+			}
+		}
+		console.log("time buckets", this.props.events, outData)
+
+		//const { firstDay, lastDay, days: aggDays } = this.getDayInfo(data)
+
+		const data: Plotly.Data[] = [...outData].map(([key, es]) => {
+			//
+
+			const aggFactor = 1 // aggDays / days
+			const es2 = [...es]
 
 			return {
-				xaxis: {
+				/*xaxis: {
 					tick0: firstDay,
-				},
-				x: es2.map((x) => x.timestamp_unix_ms),
-				y: es2.map((x) => (x.duration_ms / binSize) * aggFactor),
-				type: "histogram",
-				xbins: {
-					start: firstDay.getTime(),
-					end: endOfDay(lastDay).getTime(),
-					size: binSize,
-					//x: days > 7 ? days : days > 1 ? days : 24,
-				},
-				histfunc: "sum",
+				},*/
+				x: es2.map((x) => x[0]),
+				y: es2.map((x) => (x[1] / binSize) * aggFactor),
+				type: "bar",
 				name: key,
 			}
 		})

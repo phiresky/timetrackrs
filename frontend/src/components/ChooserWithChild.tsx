@@ -43,9 +43,7 @@ export const ChooserWithChild: React.FC<{
 			}
 			return fromPromise(
 				api.getTimeRange(params).then((data) => {
-					data.sort(
-						(a, b) => a.timestamp_unix_ms - b.timestamp_unix_ms,
-					)
+					data.sort((a, b) => a.from - b.from)
 					console.log(data)
 					return data
 				}),

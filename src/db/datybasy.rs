@@ -4,7 +4,7 @@ use std::{
     time::Instant,
 };
 
-use crate::{api_types::SingleExtractedEvent, prelude::*};
+use crate::{api_types::SingleExtractedChunk, prelude::*};
 use futures::{future::join_all, stream::BoxStream, FutureExt};
 use futures::{StreamExt, TryStreamExt};
 use itertools::Itertools;
@@ -68,6 +68,66 @@ pub async fn fetch_tag_rules(db: &SqlitePool) -> anyhow::Result<Vec<TagRule>> {
         .flat_map(|g| g.data.0.into_iter_active_rules())
         .collect())
 }
+
+struct EventWithTagMap {
+    timestamp: Timestamptz,
+    duration_ms: i64,
+    tags: Vec<(i64, i64)>,
+}
+struct SingleExtractedChunkInfo {
+    timechunk: TimeChunk,
+    tag: String,
+    value: String,
+    duration_ms: i64,
+}
+struct ExtractedChunks {
+    // chunk -> (tag, value) -> duration_ms
+    data: HashMap<TimeChunk, HashMap<(i64, i64), i64>>,
+}
+impl ExtractedChunks {
+    fn new() -> ExtractedChunks {
+        ExtractedChunks {
+            data: HashMap::new(),
+        }
+    }
+    fn add(&mut self, event: EventWithTagMap) {
+        for (chunk, duration_ms) in get_affected_timechunks_duration_ms(
+            &event.timestamp,
+            &Timestamptz(event.timestamp.0 + chrono::Duration::milliseconds(event.duration_ms)),
+        ) {
+            let hm = self.data.entry(chunk).or_insert(HashMap::new());
+            for tag in &event.tags {
+                *hm.entry(*tag).or_insert(0) += duration_ms;
+            }
+        }
+    }
+    fn into_data(self) -> HashMap<TimeChunk, HashMap<(i64, i64), i64>> {
+        self.data
+    }
+}
+
+fn get_affected_timechunks_duration_ms(
+    from: &Timestamptz,
+    to: &Timestamptz,
+) -> Vec<(TimeChunk, i64)> {
+    let from_date = TimeChunk::containing(from.0).start();
+    let interval = chrono::Duration::minutes(CHUNK_LEN_MINS as i64);
+    let mut timechunk_start = from_date;
+    let mut affected = Vec::new();
+    while timechunk_start <= to.0 {
+        let timechunk_end = timechunk_start + interval;
+        let chunk = TimeChunk::at(timechunk_start)
+            .with_context(|| format!("chunk at {:?}", timechunk_start))
+            .unwrap();
+        let duration =
+            to.0.min(timechunk_end)
+                .signed_duration_since(from.0.max(timechunk_start));
+        affected.push((chunk, duration.num_milliseconds()));
+        timechunk_start = timechunk_end;
+    }
+    affected
+}
+
 impl DatyBasy {
     pub async fn get_fetcher_cache_entry(
         &self,
@@ -119,7 +179,7 @@ impl DatyBasy {
         to: &Timestamptz,
         tag: Option<&str>,
         progress: Progress,
-    ) -> anyhow::Result<Vec<SingleExtractedEvent>> {
+    ) -> anyhow::Result<Vec<SingleExtractedChunk>> {
         self.ensure_time_range_extracted_valid(
             from,
             to,
@@ -129,41 +189,39 @@ impl DatyBasy {
         .context("Could not update extracted events")?;
 
         let now = Instant::now();
-        let from = Timestamptz::from(from);
-        let to = Timestamptz::from(to);
+        let from = TimeChunk::containing(from.0);
+        let to = TimeChunk::containing(to.0);
         let q = if let Some(tag) = tag {
-            sqlx::query_as!(OutExtractedTag, r#"
-            select e.timestamp_unix_ms as "timestamp: _", e.duration_ms, tags.text as tag, tag_values.text as value, event_ids.raw_id as event_id
-            from extracted_events e
+            sqlx::query_as!(SingleExtractedChunkInfo, r#"
+            select e.timechunk as "timechunk: _", e.duration_ms, tags.text as tag, tag_values.text as value
+            from extracted_chunks e
             join tags on tags.id = e.tag
             join tag_values on tag_values.id = e.value
-            join event_ids on event_ids.id = e.event_id
-            where e.tag = (select id from tags where text = ?3) and e.timestamp_unix_ms >= ?1 and e.timestamp_unix_ms < ?2
-            order by e.timestamp_unix_ms desc"#, from, to, tag)
+            where e.tag = (select id from tags where text = ?3) and e.timechunk >= ?1 and e.timechunk <= ?2
+            order by e.timechunk desc"#, from, to, tag)
             .fetch_all(&self.db).await
             .context("querying extracted db")?
         } else {
-            sqlx::query_as!(OutExtractedTag, r#"
-            select e.timestamp_unix_ms as "timestamp: _", e.duration_ms, tags.text as tag, tag_values.text as value, event_ids.raw_id as event_id
-            from extracted_events e
+            sqlx::query_as!(SingleExtractedChunkInfo, r#"
+            select e.timechunk as "timechunk: _", e.duration_ms, tags.text as tag, tag_values.text as value
+            from extracted_chunks e
             join tags on tags.id = e.tag
             join tag_values on tag_values.id = e.value
-            join event_ids on event_ids.id = e.event_id
-            where e.timestamp_unix_ms >= ?1 and e.timestamp_unix_ms < ?2
-            order by e.timestamp_unix_ms desc"#, from, to)
-                .fetch_all(&self.db).await
-                .context("querying extracted db")?
+            where e.timechunk >= ?1 and e.timechunk <= ?2
+            order by e.timechunk desc"#, from, to)
+            .fetch_all(&self.db).await
+            .context("querying extracted db")?
         };
-        let ee = q.into_iter().group_by(|e| e.event_id.clone());
+        let ee = q.into_iter().group_by(|e| e.timechunk.clone());
         let e: Vec<_> = ee
             .into_iter()
             .map(|(id, group)| {
                 let mut group = group.peekable();
-                SingleExtractedEvent {
-                    id,
-                    timestamp_unix_ms: (&group.peek().unwrap().timestamp).into(),
-                    duration_ms: group.peek().unwrap().duration_ms,
-                    tags: group.map(|e| (e.tag, e.value)).collect(),
+                let timechunk = id;
+                SingleExtractedChunk {
+                    from: Timestamptz(timechunk.start()),
+                    to_exclusive: Timestamptz(timechunk.end_exclusive()),
+                    tags: group.map(|e| (e.tag, e.value, e.duration_ms)).collect(),
                 }
             })
             .collect();
@@ -176,25 +234,50 @@ impl DatyBasy {
         to: &Timestamptz,
         progress: Progress,
     ) -> anyhow::Result<()> {
-        let days = self.get_affected_utc_days_range(from, to);
+        let days = self.get_affected_timechunks_range(from, to);
         {
             let days_str = serde_json::to_string(&days)?;
-            let doesnt_need_update: Vec<DateUtc> = sqlx::query_scalar!( r#"select utc_date as "date_utc: _" from extracted.extracted_current where utc_date in (select value from json_each(?)) and extracted_timestamp_unix_ms > raw_events_changed_timestamp_unix_ms"#, days_str).fetch_all(&self.db).await.context("fetching currents")?;
-            let doesnt_need_update = HashSet::<DateUtc>::from_iter(doesnt_need_update.into_iter());
-            let needs_update: Vec<_> = days
+            let doesnt_need_update: Vec<TimeChunk> = sqlx::query_scalar!( r#"select timechunk as "timechunk: _" from extracted.extracted_current where timechunk in (select value from json_each(?)) and extracted_timestamp_unix_ms > raw_events_changed_timestamp_unix_ms"#, days_str).fetch_all(&self.db).await.context("fetching currents")?;
+            let doesnt_need_update =
+                HashSet::<TimeChunk>::from_iter(doesnt_need_update.into_iter());
+            let mut needs_update: Vec<_> = days
                 .into_iter()
                 .filter(|e| !doesnt_need_update.contains(e))
                 .collect();
             if needs_update.len() > 0 {
-                let count = needs_update.len() as i64;
-                progress.update(0, count, "Dates need update");
-                let futures = needs_update
+                needs_update.sort();
+
+                let mut all_out = vec![];
+                let mut current_out = (needs_update[0], needs_update[0]);
+                for ele in needs_update {
+                    let distance_to_start =
+                        ele.start().signed_duration_since(current_out.0.start());
+                    let distance_to_end = ele.start().signed_duration_since(current_out.1.start());
+                    // max 1 day
+                    if distance_to_start >= chrono::Duration::days(1)
+                        || distance_to_end > chrono::Duration::minutes(10)
+                    {
+                        all_out.push(current_out);
+                        current_out = (ele, ele);
+                    }
+                    current_out.1 = ele;
+                }
+                all_out.push(current_out);
+                let count = all_out.len() as i64;
+                progress.update(0, count, "Ranges need update");
+                let futures = all_out
                     .into_iter()
-                    .map(|day| {
+                    .map(|(start, end)| {
                         let datybasy = self.clone();
                         let progress = progress.clone();
                         tokio::spawn(async move {
-                            datybasy.extract_time_range_and_store(&progress, day).await
+                            datybasy
+                                .extract_time_range_and_store(
+                                    &progress,
+                                    Timestamptz(start.start()),
+                                    Timestamptz(end.end_exclusive()),
+                                )
+                                .await
                         })
                     })
                     .collect::<Vec<_>>();
@@ -212,66 +295,90 @@ impl DatyBasy {
     async fn extract_time_range_and_store(
         &self,
         progress: &Progress,
-        day: DateUtc,
+        start: Timestamptz,
+        end: Timestamptz,
     ) -> anyhow::Result<()> {
-        let progress = progress.child_inc(format!("extracting day {}", day.0));
-        let now = Timestamptz(Utc::now());
-        self.extract_time_range(
-            Timestamptz(day.0.and_hms(0, 0, 0)),
-            Timestamptz((day.0 + chrono::Duration::days(1)).and_hms(0, 0, 0)),
-            progress,
-        )
-        .await
-        .with_context(|| format!("Could not extract tags for day {:?}", day))?;
+        let progress = progress.child_inc(format!("extracting {:?} - {:?}", start, end));
+        self.extract_time_range(start, end, progress)
+            .await
+            .with_context(|| {
+                format!(
+                    "Could not extract tags for {:?} - {:?}",
+                    start.clone(),
+                    end.clone()
+                )
+            })?;
 
-        let updated = sqlx::query!("update extracted.extracted_current set extracted_timestamp_unix_ms = ? where utc_date = ?", now, day).execute(&self.db).await.with_context(|| format!("updating extracted timestamp {:?} {:?}", day, now))?.rows_affected();
-        if updated == 0 {
-            let zero = Timestamptz(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0));
-            sqlx::query!("insert into extracted.extracted_current (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms) values (?, ?, ?)", day, now, zero)
-                        .execute(&self.db).await
-                        .with_context(|| {
-                            format!("inserting extracted timestamp {:?} {:?}", day, now)
-                        })?;
-        }
+        self.mark_extractions_valid(start, end).await?;
         Ok(())
     }
-    fn get_affected_utc_days_range(&self, from: &Timestamptz, to: &Timestamptz) -> Vec<DateUtc> {
-        let from_date = from.0.date();
-        let to_date = to.0.date();
-        let day = chrono::Duration::days(1);
+    fn get_affected_timechunks_range(
+        &self,
+        from: &Timestamptz,
+        to: &Timestamptz,
+    ) -> Vec<TimeChunk> {
+        let from_date = TimeChunk::containing(from.0).start();
+        let to_date = to.0;
+        let interval = chrono::Duration::minutes(CHUNK_LEN_MINS as i64);
         let mut date = from_date;
         let mut affected = Vec::new();
         while date <= to_date {
-            affected.push(DateUtc(date));
-            date = date + day;
+            affected.push(
+                TimeChunk::at(date)
+                    .with_context(|| format!("chunk at {:?}", date))
+                    .unwrap(),
+            );
+            date = date + interval;
         }
         affected
     }
-    fn get_affected_utc_days_events<'a>(
+    fn get_affected_timechunks_events<'a>(
         &self,
         events: impl IntoIterator<Item = &'a NewDbEvent>,
-    ) -> HashSet<DateUtc> {
-        let days: HashSet<DateUtc> = events
+    ) -> HashSet<TimeChunk> {
+        let days: HashSet<TimeChunk> = events
             .into_iter()
-            .map(|e| DateUtc(e.timestamp_unix_ms.0.date()))
+            .map(|e| TimeChunk::containing(e.timestamp_unix_ms.0))
             .collect();
         days
     }
     async fn invalidate_extractions(&self, events: &[NewDbEvent]) -> anyhow::Result<()> {
-        let days = self.get_affected_utc_days_events(events);
-        let days_str = serde_json::to_string(&days).context("impossibo")?;
+        let chunks = self.get_affected_timechunks_events(events);
+        let chunks_str = serde_json::to_string(&chunks).context("impossibo")?;
         let now = Timestamptz(Utc::now());
         sqlx::query!(
             r#"insert into extracted.extracted_current
-                (utc_date, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms)
+                (timechunk, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms)
                 
-            select json.value as utc_date, 0, ?
+            select json.value as timechunk, 0, ?
             from json_each(?) as json where true
             
-            on conflict(utc_date) do update set raw_events_changed_timestamp_unix_ms = excluded.raw_events_changed_timestamp_unix_ms
+            on conflict(timechunk) do update set raw_events_changed_timestamp_unix_ms = excluded.raw_events_changed_timestamp_unix_ms
             "#,
             now,
-            days_str
+            chunks_str
+        ).execute(&self.db).await.context("Could not update extracted_current")?;
+        Ok(())
+    }
+    async fn mark_extractions_valid(
+        &self,
+        from: Timestamptz,
+        to: Timestamptz,
+    ) -> anyhow::Result<()> {
+        let chunks = self.get_affected_timechunks_range(&from, &to);
+        let chunks_str = serde_json::to_string(&chunks).context("impossibo")?;
+        let now = Timestamptz(Utc::now());
+        sqlx::query!(
+            r#"insert into extracted.extracted_current
+                (timechunk, extracted_timestamp_unix_ms, raw_events_changed_timestamp_unix_ms)
+                
+            select json.value as timechunk, ?, 0
+            from json_each(?) as json where true
+            
+            on conflict(timechunk) do update set extracted_timestamp_unix_ms = excluded.extracted_timestamp_unix_ms
+            "#,
+            now,
+            chunks_str
         ).execute(&self.db).await.context("Could not update extracted_current")?;
         Ok(())
     }
@@ -282,28 +389,21 @@ impl DatyBasy {
         r: Tags,
         progress: Progress,
         total_cache_get_dur: Arc<std::sync::RwLock<Duration>>,
-    ) -> anyhow::Result<Vec<InExtractedTag>> {
-        let aid = a.id.clone();
-
+    ) -> anyhow::Result<EventWithTagMap> {
         //total_extracted += 1;
         //total_tags += r.tag_count();
         //total_tag_values += r.total_value_count();
         let timestamp = a.timestamp_unix_ms.clone();
         let duration_ms = a.duration_ms;
         let now = Instant::now();
-        let event_id = self
-            .events_cache
-            .get_bind2(&aid, timestamp.0.timestamp_millis(), duration_ms)
-            .await;
         *total_cache_get_dur.write().unwrap() += now.elapsed();
         let _now = Instant::now();
         let (tags, _iterations) = get_tags(&self, r, progress).await;
         //total_extract_dur += now.elapsed();
         //total_extract_iterations += iterations;
 
-        Ok(futures::stream::iter(tags.into_iter())
+        let tags: Vec<(i64, i64)> = futures::stream::iter(tags.into_iter())
             .flat_map(move |(tag, values)| {
-                let timestamp = timestamp.clone();
                 let t = total_cache_get_dur.clone();
                 async move {
                     let now = Instant::now();
@@ -311,30 +411,29 @@ impl DatyBasy {
                     *t.write().unwrap() += now.elapsed();
 
                     futures::stream::iter(values).then(move |value| {
-                        let timestamp = timestamp.clone();
                         let t = t.clone();
                         async move {
                             let now = Instant::now();
                             let value = self.values_cache.get(&value).await;
                             *t.write().unwrap() += now.elapsed();
-                            InExtractedTag {
-                                timestamp_unix_ms: (&timestamp).into(),
-                                duration_ms,
-                                event_id,
-                                tag,
-                                value,
-                            }
+                            (tag, value)
                         }
                     })
                 }
                 .flatten_stream()
             })
             .collect()
-            .await)
+            .await;
+        Ok(EventWithTagMap {
+            timestamp,
+            duration_ms,
+            tags,
+        })
     }
 
     // https://github.com/rust-lang/rust/issues/64552
     // https://github.com/rust-lang/rust/issues/64650
+    // from and to must be timechunk-aligned
     pub async fn extract_time_range(
         &self,
         from: Timestamptz,
@@ -342,15 +441,6 @@ impl DatyBasy {
         progress: Progress,
     ) -> anyhow::Result<()> {
         let now = Instant::now();
-        progress.update(0, 3, "Removing stale events");
-        {
-            let res = sqlx::query!(
-                "delete from extracted_events where timestamp_unix_ms >= ? and timestamp_unix_ms < ?",
-                from, to)
-            .execute(&self.db).await
-            .context("Could not remove stale events")?;
-            log::debug!("removed {} stale events", res.rows_affected());
-        }
 
         /*let raws = YieldEventsFromTrbttDatabase {
             db: &*self.db_events,
@@ -359,15 +449,23 @@ impl DatyBasy {
             ascending: true,
         };*/
         progress.update(1, 3, "Fetching raw events");
+        let absolute_lower_bound =
+            Timestamptz(from.0 - chrono::Duration::seconds(MAX_EVENT_LEN_SECS));
         let raws = sqlx::query_as!(
             DbEvent,
             r#"select
                 insertion_sequence, id, timestamp_unix_ms as "timestamp_unix_ms: _",
                 data_type, duration_ms, data
-            from raw_events.events where timestamp_unix_ms >= ? and timestamp_unix_ms < ? order by timestamp_unix_ms asc"#,
-            from, to
+            from raw_events.events where
+            timestamp_unix_ms + duration_ms >= ? and timestamp_unix_ms < ?
+                and timestamp_unix_ms >= ? 
+            order by timestamp_unix_ms asc"#,
+            from,
+            to,
+            absolute_lower_bound // needed for perf
         )
-        .fetch_all(&self.db).await?;
+        .fetch_all(&self.db)
+        .await?;
         log::debug!(
             "Got {} raw events in range {} - {}",
             raws.len(),
@@ -384,7 +482,9 @@ impl DatyBasy {
         let mut total_extract_dur = Arc::new(std::sync::RwLock::new(Duration::from_secs(0)));
         let total_cache_get_dur = Arc::new(std::sync::RwLock::new(Duration::default()));
 
-        let mut extracted: BoxStream<Vec<Result<_, _>>> = Box::pin(
+        let mut extracted_chunks = ExtractedChunks::new();
+
+        let mut extracted: BoxStream<Result<_, _>> = Box::pin(
             futures::stream::iter(raws.into_iter().filter_map(|a| {
                 let r = a.deserialize_data();
                 let ex: Tags = match r {
@@ -394,7 +494,6 @@ impl DatyBasy {
                         return None;
                     }
                 };
-
                 Some((a, ex))
             }))
             .then(|(a, r)| {
@@ -409,28 +508,46 @@ impl DatyBasy {
                     *to.write().unwrap() += now.elapsed();
                     res
                 }
-            })
-            .chunks(1000),
+            }),
         );
+        while let Some(event) = extracted.next().await {
+            extracted_chunks.add(event?);
+        }
 
-        while let Some(chunk) = extracted.next().await {
-            let now = Instant::now();
+        let mut tx = self.db.begin().await?;
+        let mut updated: usize = 0;
+        let mut now = Instant::now();
+        for (timechunk, events) in extracted_chunks.into_data() {
             /*event_id bigint NOT NULL REFERENCES event_ids (id),
             timestamp_unix_ms bigint NOT NULL,
             duration_ms bigint NOT NULL,
             tag bigint NOT NULL REFERENCES tags (id),
             value*/
-            let mut updated: usize = 0;
-            let mut tx = self.db.begin().await?;
-            for ele in chunk.into_iter().flatten().flatten() {
-                sqlx::query!("insert into extracted.extracted_events (event_id, timestamp_unix_ms, duration_ms, tag, value) values (?, ?, ?, ?, ?)", ele.event_id, ele.timestamp_unix_ms, ele.duration_ms, ele.tag, ele.value)
+
+            sqlx::query!(
+                "delete from extracted.extracted_chunks where timechunk = ?",
+                timechunk
+            )
+            .execute(&mut tx)
+            .await
+            .context("Could not remove stale events")?;
+
+            for ((tag, value), duration_ms) in events.into_iter() {
+                sqlx::query!("insert into extracted.extracted_chunks (timechunk, tag, value, duration_ms) values (?, ?, ?, ?)", timechunk, tag, value, duration_ms)
                     .execute(&mut tx)
                     .await.context("inserting extracted events")?;
                 updated += 1;
             }
-            tx.commit().await?;
-            log::info!("inserted {} ({:?})", updated, now.elapsed());
+            if updated > 3000 {
+                log::info!("inserted {} ({:?})", updated, now.elapsed());
+                now = Instant::now();
+                tx.commit().await?;
+                updated = 0;
+                tx = self.db.begin().await?;
+            }
         }
+        tx.commit().await?;
+
         let total_extracted = total_extracted.load(Relaxed);
         if total_extracted > 0 && total_raw > 0 {
             log::debug!(

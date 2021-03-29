@@ -8,11 +8,10 @@ pub struct ApiResponse<T> {
 }
 
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
-pub struct SingleExtractedEvent {
-    pub id: String,
-    pub timestamp_unix_ms: Timestamptz,
-    pub duration_ms: i64,
-    pub tags: Tags,
+pub struct SingleExtractedChunk {
+    pub from: Timestamptz,
+    pub to_exclusive: Timestamptz,
+    pub tags: Vec<(String, String, i64)>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
@@ -69,7 +68,7 @@ make_thingois! {
     pub enum ApiTypesTS {
         time_range {
             request: TimeRangeRequest,
-            response: Vec<SingleExtractedEvent>
+            response: Vec<SingleExtractedChunk>
         },
         single_event {
             request: SingleEventRequest,

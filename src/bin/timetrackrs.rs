@@ -41,7 +41,7 @@ async fn ensure_past_month_valid(db: DatyBasy) -> anyhow::Result<Never> {
             .await
             .context("Could not update month data")
         {
-            log::warn!("{}", e);
+            log::warn!("{:?}", e);
         }
         sleep(Duration::from_secs(5 * 60)).await;
     }

@@ -100,7 +100,7 @@ export type ApiTypesTS =
 	| {
 			type: "time_range"
 			request: TimeRangeRequest
-			response: SingleExtractedEvent[]
+			response: SingleExtractedChunk[]
 	  }
 	| {
 			type: "single_event"
@@ -108,14 +108,8 @@ export type ApiTypesTS =
 			response: SingleExtractedEventWithRaw | null
 	  }
 	| { type: "rule_groups"; request: []; response: TagRuleGroup[] }
-	| { type: "update_rule_groups"; request: []; response: [] }
+	| { type: "update_rule_groups"; request: TagRuleGroup[]; response: [] }
 	| { type: "get_known_tags"; request: []; response: string[] }
-export type SingleExtractedEvent = {
-	id: string
-	timestamp_unix_ms: Timestamptz
-	duration_ms: number
-	tags: Tags
-}
 export type SingleExtractedEventWithRaw = {
 	id: string
 	timestamp_unix_ms: Timestamptz
@@ -125,7 +119,12 @@ export type SingleExtractedEventWithRaw = {
 	tags_reasons: { [key: string]: TagAddReason }
 }
 export type ApiResponse<T> = { data: T }
-export type Tags = { map: { [key in string]?: string[] } }
+export type SingleExtractedChunk = {
+	from: Timestamptz
+	to_exclusive: Timestamptz
+	tags: [string, string, number][]
+}
+export type Tags = [string, string, number]
 export type ProgressReport = {
 	call_id: string
 	call_desc: string
@@ -136,3 +135,4 @@ export type ProgressState = {
 	current: number
 	total: number | null
 }
+export type SingleExtractedEvent = SingleExtractedChunk

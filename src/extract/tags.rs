@@ -12,7 +12,7 @@ pub struct Tags {
     #[ts(ts_type = "{[key in string]?: string[]}")]
     map: HashMap<String, HashSet<String>>,
 }
-#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone, Hash)]
 pub struct TagValue {
     pub tag: String,
     pub value: String,

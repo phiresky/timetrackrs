@@ -5,7 +5,10 @@ pub mod models;
 use anyhow::Context;
 use sqlx::{sqlite::SqliteConnectOptions, Executor};
 use sqlx::{sqlite::SqlitePoolOptions, SqliteConnection, SqlitePool};
-use std::{env, path::PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 fn dbs_list() -> &'static [&'static str] {
     &["raw_events", "extracted", "config"]
@@ -19,10 +22,14 @@ pub async fn clear_wal_files(db: &SqlitePool) -> anyhow::Result<()> {
     }
     Ok(())
 }
-
 pub async fn connect(pool_size: Option<u32>) -> anyhow::Result<SqlitePool> {
-    let dir = get_database_dir_location();
-    let dir = dir.to_string_lossy().to_string();
+    connect_dir(
+        get_database_dir_location().to_string_lossy().to_string(),
+        pool_size,
+    )
+    .await
+}
+pub async fn connect_dir(dir: String, pool_size: Option<u32>) -> anyhow::Result<SqlitePool> {
     let main = format!("{}/lock.sqlite3", dir);
     log::debug!("Connecting to db at {}", dir);
     let db = SqlitePoolOptions::new()

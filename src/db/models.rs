@@ -24,7 +24,7 @@ impl DbEvent {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Debug, Clone, Eq, Hash)]
+#[derive(PartialEq, PartialOrd, Debug, Clone, Eq, Hash, Copy)]
 pub struct Timestamptz(pub DateTime<Utc>);
 
 impl sqlx::Type<Sqlite> for Timestamptz {
@@ -111,58 +111,100 @@ impl<'de> Deserialize<'de> for Timestamptz {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Debug, Clone, Eq, Hash)]
-pub struct DateUtc(pub Date<Utc>);
+#[derive(PartialEq, PartialOrd, Ord, Debug, Clone, Eq, Hash, Copy)]
+pub struct TimeChunk(DateTime<Utc>);
 
-impl sqlx::Type<Sqlite> for DateUtc {
+pub const MAX_EVENT_LEN_SECS: i64 = 24 * 60 * 60;
+pub const CHUNK_LEN_MINS: u32 = 5;
+impl TimeChunk {
+    pub fn containing(time: DateTime<Utc>) -> TimeChunk {
+        let time = time
+            .with_nanosecond(0)
+            .unwrap()
+            .with_second(0)
+            .unwrap()
+            .with_minute(time.minute() - time.minute() % CHUNK_LEN_MINS)
+            .unwrap();
+        TimeChunk(time)
+    }
+    pub fn at(time: DateTime<Utc>) -> anyhow::Result<TimeChunk> {
+        if time.minute() % CHUNK_LEN_MINS != 0 {
+            anyhow::bail!("not {}-minute chunk", CHUNK_LEN_MINS);
+        }
+        if time.second() != 0 {
+            anyhow::bail!("second != 0");
+        }
+        if time.nanosecond() != 0 {
+            anyhow::bail!("nanosecond != 0")
+        }
+        Ok(TimeChunk(time))
+    }
+    fn to_string(&self) -> String {
+        format!("{}", self.0.format("%F-%R"))
+    }
+    fn from_string(s: &str) -> anyhow::Result<TimeChunk> {
+        let time = DateTime::from_utc(
+            NaiveDateTime::parse_from_str(s, "%F-%R").context("timechunk parser")?,
+            Utc,
+        );
+
+        Ok(TimeChunk::at(time)?)
+    }
+    pub fn start(&self) -> DateTime<Utc> {
+        self.0
+    }
+    pub fn end_exclusive(&self) -> DateTime<Utc> {
+        self.0 + chrono::Duration::minutes(CHUNK_LEN_MINS as i64)
+    }
+}
+
+impl sqlx::Type<Sqlite> for TimeChunk {
     fn type_info() -> SqliteTypeInfo {
         <String as sqlx::Type<Sqlite>>::type_info()
     }
 }
-impl sqlx::Encode<'_, Sqlite> for DateUtc {
+impl sqlx::Encode<'_, Sqlite> for TimeChunk {
     fn encode_by_ref(&self, buf: &mut Vec<SqliteArgumentValue<'_>>) -> sqlx::encode::IsNull {
-        sqlx::Encode::<Sqlite>::encode(format!("{}", self.0.format("%F")), buf)
+        sqlx::Encode::<Sqlite>::encode(self.to_string(), buf)
     }
 }
-impl Decode<'_, Sqlite> for DateUtc {
+impl Decode<'_, Sqlite> for TimeChunk {
     fn decode(
         value: SqliteValueRef,
-    ) -> Result<DateUtc, Box<dyn std::error::Error + 'static + Send + Sync>> {
+    ) -> Result<TimeChunk, Box<dyn std::error::Error + 'static + Send + Sync>> {
         let value = <String as Decode<Sqlite>>::decode(value)?;
-        Ok(DateUtc(util::iso_string_to_date(&value)?))
+        Ok(TimeChunk::from_string(&value)?)
     }
 }
 
-struct DateUtcVisitor;
+struct TimeChunkVisitor;
 
-impl<'de> Visitor<'de> for DateUtcVisitor {
-    type Value = DateUtc;
+impl<'de> Visitor<'de> for TimeChunkVisitor {
+    type Value = TimeChunk;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a date")
+        formatter.write_str("a time chunk value")
     }
 
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(DateUtc(
-            util::iso_string_to_date(value).map_err(serde::de::Error::custom)?,
-        ))
+        Ok(TimeChunk::from_string(value).map_err(serde::de::Error::custom)?)
     }
 }
-impl<'de> Deserialize<'de> for DateUtc {
-    fn deserialize<D>(deserializer: D) -> Result<DateUtc, D::Error>
+impl<'de> Deserialize<'de> for TimeChunk {
+    fn deserialize<D>(deserializer: D) -> Result<TimeChunk, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_string(DateUtcVisitor)
+        deserializer.deserialize_string(TimeChunkVisitor)
     }
 }
 
-impl Serialize for DateUtc {
+impl Serialize for TimeChunk {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&format!("{}", self.0.format("%F")))
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -189,22 +231,6 @@ pub struct NewDbEvent {
     pub data_type: String,
     pub duration_ms: i64,
     pub data: String,
-}
-
-pub struct InExtractedTag {
-    pub timestamp_unix_ms: Timestamptz,
-    pub duration_ms: i64,
-    pub event_id: i64,
-    pub tag: i64,
-    pub value: i64,
-}
-#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
-pub struct OutExtractedTag {
-    pub timestamp: Timestamptz,
-    pub duration_ms: i64,
-    pub tag: String,
-    pub value: String,
-    pub event_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone, sqlx::Type)]
