@@ -211,7 +211,7 @@ Derivation:
 1. The data source `x11_v2` has the intrinsic tag `software-window-title:Bloons TD 6 - YouTube - https://www.youtube.com/watch?v=bs-AUJF9nhs — Firefox`
 2. The tag software-window-title matched the regex `^.*(?P<url>https?://[-a-zA-Z0-9@:%._\+~#=]{1,256}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)).*$`, so the rule `browse-url:$url` in `Default Rules` added the tag `browse-url:https://www.youtube.com/watch?v=bs-AUJF9nhs`
 3. The InternalFetcher url-domain-matcher matched on the tag `browse-url` and added the tag `browse-main-domain:youtube.com`
-4. The ExternalFetcher youtube-meta-json matched on the tag `browse-main-domain:youtube.com` and added the tag `youtube-category:Gaming`
+4. The ExternalFetcher youtube-meta-json matched on the tag `browse-main-domain:youtube.com` and queried YouTube to get the tags and categories, adding the tag `youtube-category:Gaming`.
 5. The tag youtube-category matched the regex `^(Gaming|Entertainment)$` so a rule in `Default Rules` added the tag category:Entertainment/Video.
 
 ### Compression notes
