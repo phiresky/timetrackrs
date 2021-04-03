@@ -247,7 +247,7 @@ pub fn api_routes(
 
     let progress_events = warp::path("progress-events").and(warp::get()).map(|| {
         let events = tokio_stream::wrappers::BroadcastStream::new(progress_events::get_receiver());
-        // filter out and ignore the Lagged() err caused by polling only sometimes
+        // filter out and ignore the Lagged() err caused by polling behind a throttle
         let events = StreamExt::filter_map(events, |e| {
             futures::future::ready(match e {
                 Ok(e) => Some(warp::sse::Event::default().json_data(e)),
