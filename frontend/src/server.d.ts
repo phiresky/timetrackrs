@@ -64,6 +64,7 @@ export type OsInfo = {
 	username: string | null
 	machine_id: string | null
 }
+export type Json<T> = T
 export type TagRuleGroup = { global_id: string; data: Json<TagRuleGroupData> }
 export type TagRuleGroupData = { version: "V1"; data: TagRuleGroupV1 }
 export type TagRuleWithMeta = { enabled: boolean; rule: TagRule }

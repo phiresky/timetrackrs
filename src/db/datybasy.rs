@@ -488,7 +488,12 @@ impl DatyBasy {
             futures::stream::iter(raws.into_iter().filter_map(|a| {
                 let r = a.deserialize_data();
                 let ex: Tags = match r {
-                    Ok(r) => r.extract_info()?,
+                    Ok(r) => {
+                        let mut tags = r.extract_info()?;
+                        tags.add("timetrackrs-tracked", "true");
+                        tags.add("timetrackrs-data-source", &a.data_type);
+                        tags
+                    }
                     Err(e) => {
                         log::warn!("{:#?}", e);
                         return None;

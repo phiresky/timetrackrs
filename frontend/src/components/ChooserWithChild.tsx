@@ -8,7 +8,11 @@ import {
 import { observer, useLocalObservable } from "mobx-react"
 import { IPromiseBasedObservable, fromPromise } from "mobx-utils"
 import React, { useEffect } from "react"
-import { TimeRangeMode, TimeRangeSelector } from "./TimeRangeSelector"
+import {
+	TimeRangeMode,
+	TimeRangeSelector,
+	TimeRangeTarget,
+} from "./TimeRangeSelector"
 import * as dfn from "date-fns"
 import * as api from "../api"
 import { SingleExtractedEvent } from "../server"
@@ -128,6 +132,52 @@ export const ChooserWithChild: React.FC<{
 					},
 				})}
 			</div>
+		</div>
+	)
+})
+
+export const LoadEvents: React.FC<{
+	child: React.ComponentType<{ events: SingleExtractedEvent[]; tag: string }>
+
+	containerClass?: string
+	timeRange: TimeRangeTarget
+	tag: string
+}> = observer((p) => {
+	const store = useLocalObservable(() => ({
+		get data(): IPromiseBasedObservable<SingleExtractedEvent[]> {
+			const params = {
+				after: p.timeRange.from,
+				before: p.timeRange.to,
+				tag: p.tag,
+				limit: 100000,
+			}
+			return fromPromise(
+				api.getTimeRange(params).then((data) => {
+					data.sort((a, b) => a.from - b.from)
+					console.log(data)
+					return data
+				}),
+			)
+		},
+	}))
+
+	return (
+		<div className={`container ${p.containerClass || ""}`}>
+			{store.data.case({
+				fulfilled: (v) => (
+					<>
+						{React.createElement(p.child, {
+							events: v,
+							tag: p.tag,
+						})}
+					</>
+				),
+				pending: () => <>Loading events...</>,
+				rejected: (e) => {
+					console.error("o", e)
+					return <>{String(e)}</>
+				},
+			})}
 		</div>
 	)
 })

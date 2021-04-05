@@ -20,6 +20,9 @@ export function NavLink<A extends RouteArgs, Q extends QueryArgs>(p: {
 	if (!routing) return <a>[router gone]</a>
 	const isCurrent = routing.currentRouteInformation?.matcher === p.route
 	return (
-		<Link {...p} aProps={{ className: isCurrent ? "active" : undefined }} />
+		<Link
+			{...p}
+			aProps={{ className: isCurrent ? "active nav-link" : "nav-link" }}
+		/>
 	)
 }

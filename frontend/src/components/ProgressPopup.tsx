@@ -9,8 +9,10 @@ export const ProgressPopup = observer(() => {
 		progresses: new Map<string, ProgressReport>(),
 		es: null as EventSource | null,
 		updateProgress(p: ProgressReport) {
+			console.log("updating progress", p)
 			if (p.state.length === 0) {
 				obs.progresses.delete(p.call_id)
+				console.log("deleted", obs.progresses, this.progresses)
 				return
 			}
 			const prog = obs.progresses.get(p.call_id)

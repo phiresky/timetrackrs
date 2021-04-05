@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{future::ready, time::Duration};
 
 use crate::api_types::*;
 use crate::db::models::{DbEvent, Timestamptz};
@@ -6,7 +6,7 @@ use crate::extract::ExtractInfo;
 use crate::prelude::*;
 use crate::util::iso_string_to_datetime;
 use futures::StreamExt;
-use tokio_stream::StreamExt as TokioStreamExt;
+use futures::TryStreamExt;
 use warp::{reply::json, Filter, Rejection};
 
 pub mod progress_events {
@@ -20,6 +20,11 @@ pub mod progress_events {
         call_id: String,
         call_desc: String,
         state: Vec<ProgressState>,
+    }
+    impl ProgressReport {
+        pub fn is_end(&self) -> bool {
+            self.state.len() == 0
+        }
     }
     type SharedProgressReport = Arc<ProgressReport>;
 
@@ -54,6 +59,7 @@ pub mod progress_events {
 
     pub fn new_progress(desc: impl Into<String>) -> Progress {
         let id = libxid::new_generator().new_id().unwrap().encode();
+        println!("new id generated: {}", id);
         Progress::root(Arc::new(StreamingReporter {
             call_id: id,
             call_desc: desc.into(),
@@ -246,16 +252,32 @@ pub fn api_routes(
         });
 
     let progress_events = warp::path("progress-events").and(warp::get()).map(|| {
+        let end_events =
+            tokio_stream::wrappers::BroadcastStream::new(progress_events::get_receiver());
         let events = tokio_stream::wrappers::BroadcastStream::new(progress_events::get_receiver());
+
         // filter out and ignore the Lagged() err caused by polling behind a throttle
         let events = StreamExt::filter_map(events, |e| {
-            futures::future::ready(match e {
-                Ok(e) => Some(warp::sse::Event::default().json_data(e)),
+            ready(match e {
+                Ok(e) if !e.is_end() => Some(warp::sse::Event::default().json_data(e)),
+                Ok(_) => None, // end events handled separately
                 Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(_)) => None,
             })
         });
-        let events = events.throttle(Duration::from_millis(250));
-        warp::sse::reply(events)
+        // separate stream for end progress events that's not throttled
+        let end_events = end_events
+            .try_filter(|e| ready(e.is_end()))
+            .filter_map(|e| {
+                ready(match e {
+                    Ok(e) => Some(warp::sse::Event::default().json_data(e)),
+                    Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(l)) => {
+                        log::warn!("end progress event missed! {}", l);
+                        None
+                    }
+                })
+            });
+        let events = tokio_stream::StreamExt::throttle(events, Duration::from_millis(250));
+        warp::sse::reply(futures::stream::select(events, end_events))
     });
 
     let filter = warp::get()

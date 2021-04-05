@@ -1,12 +1,14 @@
 import React, { useContext } from "react"
 import { CategoryChart } from "./components/CategoryChart"
 import { ChooserWithChild } from "./components/ChooserWithChild"
+import { Page } from "./components/Page"
 import { PlotPage } from "./components/Plot"
 import { SingleEventInfo } from "./components/SingleEventInfo"
 import { TagRuleEditorPage } from "./components/TagRuleEditor"
 // import { Switch, Route, Redirect, RouteComponentProps } from "react-router-dom"
 import { TagTreePage } from "./components/TagTree"
 import { TimelinePage } from "./components/Timeline"
+import { Dashboard } from "./pages/Dashboard"
 import { asQueryArgs, Route, Router, Routing } from "./router-lib"
 
 const rootQueryArgs = asQueryArgs({
@@ -21,6 +23,7 @@ const chooserQueryArgs = asQueryArgs({
 
 export const routes = {
 	root: Route.create("/").withQueryArgs(rootQueryArgs),
+	dashboard: Route.create("/dashboard"),
 	plot: Route.create("/plot")
 		.withQueryArgs(rootQueryArgs)
 		.withQueryArgs(chooserQueryArgs),
@@ -61,6 +64,11 @@ export const router = Router.create<React.ComponentType>()
 		)
 	})
 	.with(routes.singleEvent, (p) => () => <SingleEventInfo id={p.args.id} />)
+	.with(routes.dashboard, (p) => () => (
+		<Page>
+			<Dashboard />
+		</Page>
+	))
 
 export type RoutingType = Routing<
 	typeof router["_tdata"],

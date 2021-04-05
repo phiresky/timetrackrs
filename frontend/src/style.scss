@@ -1,6 +1,9 @@
-@import url("https://fonts.googleapis.com/css?family=Fira+Sans:200,400,500");
+@import "~@fontsource/open-sans/300.css";
+@import "~@fontsource/open-sans/400.css";
+@import "~@fontsource/open-sans/600.css";
+@import "~@fontsource/open-sans/700.css";
 
-* {
+/* * {
 	border: 0;
 	margin: 0;
 	padding: 0;
@@ -20,36 +23,6 @@ html {
 
 ul {
 	padding-left: 40px;
-}
-#root {
-	height: inherit;
-	display: flex;
-	flex-direction: column;
-	font-family: "Fira Sans", sans-serif;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	color: #79838c;
-}
-a {
-	color: #50585f;
-	text-decoration: none;
-	&:hover {
-		color: #383e44;
-	}
-}
-.header {
-	.nav-bar {
-		a {
-			color: #bfbfbf;
-			&:hover {
-				color: #fff;
-			}
-			&.active {
-				color: #fff;
-				text-decoration: underline;
-			}
-		}
-	}
 }
 
 div.item {
@@ -79,7 +52,7 @@ div.header {
 			to bottom,
 			rgba(255, 255, 255, 1) 20%,
 			rgba(255, 255, 255, 0) 100%
-		); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+		);
 	}
 	h1 {
 		margin: {
@@ -228,20 +201,11 @@ div.header {
 						&:not(:first-child) {
 							margin-top: 0.5rem;
 						}
-						/*> div {
-						display: inline;
-					}*/
 					}
 				}
 			}
 		}
 	}
-}
-
-.centerbody {
-	max-width: 1200px;
-	margin: 0 auto;
-	padding: 0 1em;
 }
 .ReactModal__Overlay {
 	z-index: 1000;
@@ -292,10 +256,6 @@ details.rule-group {
 	}
 }
 
-.maxwidth {
-	width: 100%;
-}
-
 .time-range-selector {
 	display: inline-block;
 	font-size: 19px;
@@ -307,6 +267,7 @@ details.rule-group {
 		vertical-align: middle;
 	}
 }
+*/
 
 .progress-popup {
 	position: fixed;
@@ -316,4 +277,8 @@ details.rule-group {
 	border: 1px solid gray;
 	box-shadow: 10 10;
 	border-radius: 5px;
+}
+
+.maxwidth {
+	width: 100%;
 }

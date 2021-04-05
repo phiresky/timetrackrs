@@ -9,14 +9,27 @@ import {
 	SingleDatePicker,
 } from "react-dates"
 import moment from "moment"
+import { Button, Card, Row as div } from "reactstrap"
 
 const Modes = ["day", "week", "month"] as const
 export type TimeRangeMode = typeof Modes[number]
 
-export const TimeRangeSelector: React.FC<{
-	target: { from: Date; to: Date; mode: TimeRangeMode }
-}> = observer(({ target }) => {
-	const state = useLocalObservable(() => ({
+export type TimeRangeTarget = {
+	from: Date
+	to: Date
+	mode: TimeRangeMode
+}
+type TimeRangeStore = {
+	focusedW: "startDate" | "endDate" | null
+	focused: boolean
+	setMode(mode: TimeRangeMode): void
+	setDate(d: Date | undefined): void
+	back(): void
+	forward(): void
+}
+
+export function useTimeRange(target: TimeRangeTarget): TimeRangeStore {
+	const store = useLocalObservable(() => ({
 		focusedW: null as "startDate" | "endDate" | null,
 		focused: false,
 		setMode(mode: TimeRangeMode) {
@@ -62,6 +75,12 @@ export const TimeRangeSelector: React.FC<{
 			}
 		},
 	}))
+	return store
+}
+export const TimeRangeSelector: React.FC<{
+	target: TimeRangeTarget
+}> = observer(({ target }) => {
+	const state = useTimeRange(target)
 	const commonProps = {
 		key: target.mode,
 		displayFormat: "YYYY-MM-DD",
@@ -117,36 +136,39 @@ export const TimeRangeSelector: React.FC<{
 			/>
 		)
 	return (
-		<div className="time-range-selector">
-			<button
-				title="day before"
-				className="caretbutton"
-				onClick={() => state.back()}
-			>
-				{"<"}
-			</button>
-			<select
-				value={target.mode}
-				onChange={(e) =>
-					state.setMode(e.currentTarget.value as TimeRangeMode)
-				}
-			>
-				{Modes.map((mode) => (
-					<option key={mode} value={mode}>
-						{mode}
-					</option>
-				))}
-			</select>
-			{picker}
-			{target.to < new Date() && (
-				<button
+		<Card className="time-range-selector mt-3 mb-4">
+			<div>
+				<Button
+					title="day before"
 					className="caretbutton"
-					title="day after"
-					onClick={() => state.forward()}
+					onClick={() => state.back()}
 				>
-					{">"}
-				</button>
-			)}
-		</div>
+					{"<"}
+				</Button>
+				<select
+					className="btn"
+					value={target.mode}
+					onChange={(e) =>
+						state.setMode(e.currentTarget.value as TimeRangeMode)
+					}
+				>
+					{Modes.map((mode) => (
+						<option key={mode} value={mode}>
+							{mode}
+						</option>
+					))}
+				</select>
+				{picker}
+				{target.to < new Date() && (
+					<Button
+						className="caretbutton"
+						title="day after"
+						onClick={() => state.forward()}
+					>
+						{">"}
+					</Button>
+				)}
+			</div>
+		</Card>
 	)
 })

@@ -34,6 +34,7 @@ impl Drop for ProgressInner {
         // println!("dropping progress {:?}", self);
         match &self.parent {
             Mode::Root(r) => {
+                println!("reporting root done");
                 r.report(vec![]);
             }
             Mode::Child(parent) => {

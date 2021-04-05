@@ -53,6 +53,7 @@ impl Default for OsInfo {
 }
 impl OsInfo {
     pub fn to_partial_general_software(&self, tags: &mut Tags) {
+        tags.add("use-device", "computer");
         tags.add("device-os-type".to_string(), &self.os_type);
         tags.add("device-os-version".to_string(), &self.version);
         tags.add("device-hostname".to_string(), &self.hostname);

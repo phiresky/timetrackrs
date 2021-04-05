@@ -8,14 +8,27 @@ import { action, observable, runInAction } from "mobx"
 import { generateId, intersperse } from "../util"
 import { useState } from "react"
 import { RegexEditor } from "./RegexEditor"
-import { O_DIRECTORY } from "constants"
 import AutosizeInput from "./AutosizeInput"
 import { Choices, Select } from "./Select"
+import {
+	Button,
+	Card,
+	CardBody,
+	CardHeader,
+	CardTitle,
+	Collapse,
+	Container,
+	Row,
+} from "reactstrap"
 
 export function TagRuleEditorPage(): React.ReactElement {
 	return (
 		<Page>
-			<TagRuleEditor />
+			<Container fluid className="bg-gradient-info pt-md-5">
+				<Container>
+					<TagRuleEditor />
+				</Container>
+			</Container>
 		</Page>
 	)
 }
@@ -41,29 +54,31 @@ const TagRuleEditor: React.FC = observer(() => {
 				fulfilled(v) {
 					return (
 						<>
-							<button
-								onClick={(_) =>
-									v.unshift({
-										global_id: generateId(),
-										data: {
-											version: "V1",
+							<Row className="mb-3">
+								<Button
+									onClick={(_) =>
+										v.unshift({
+											global_id: generateId(),
 											data: {
-												description: "",
-												editable: true,
-												enabled: true,
-												name:
-													prompt(
-														"Group Name",
-														"Untitled Group",
-													) || "Untitled Group",
-												rules: [],
+												version: "V1",
+												data: {
+													description: "",
+													editable: true,
+													enabled: true,
+													name:
+														prompt(
+															"Group Name",
+															"Untitled Group",
+														) || "Untitled Group",
+													rules: [],
+												},
 											},
-										},
-									})
-								}
-							>
-								Create New Group
-							</button>
+										})
+									}
+								>
+									Create New Group
+								</Button>
+							</Row>
 							{v.map((g) => (
 								<TagRuleGroupEditor
 									key={g.global_id}
@@ -95,48 +110,62 @@ const TagRuleGroupEditor: React.FC<{
 		throw Error("unexpected group data version")
 	const g = group.data.data
 	const [dirty, setDirty] = useState(false)
+	const [isOpen, setIsOpen] = useState(false)
 	return (
-		<details className="rule-group">
-			<summary>
-				<h2>
-					Group <em>{g.name}</em> {!g.editable && <>(Not editable)</>}
-					{dirty && (
-						<button
-							onClick={async () => {
-								await save()
-								setDirty(false)
-							}}
-						>
-							Save changes
-						</button>
-					)}
-				</h2>
-			</summary>
-			<div className="rule-group-detail">
-				Description: {g.description}
-				<h3>Rules:</h3>
-				{g.rules.map((r, i) => (
-					<RuleEditor
-						key={i}
-						index={i}
-						rule={r}
-						editable={g.editable}
-						dirty={() => setDirty(true)}
-					/>
-				))}
-				{g.editable && (
-					<Select
-						getValue={(v) => v.type}
-						getName={(v) => v.type}
-						target={Choices(tagRulePrototypes())}
-						onChange={(v) =>
-							v.type !== "Add Rule" &&
-							g.rules.push({ enabled: true, rule: { ...v } })
-						}
-					/>
-				)}
-			</div>
-		</details>
+		<Row className="mb-3 col-md-12">
+			<Card className="shadow w-100">
+				<a href="#">
+					<CardHeader className="border-0">
+						<CardTitle tag="h3" onClick={(_) => setIsOpen(!isOpen)}>
+							Group <em>{g.name}</em>{" "}
+							{!g.editable && <>(Not editable)</>}
+							{dirty && (
+								<button
+									onClick={async () => {
+										await save()
+										setDirty(false)
+									}}
+								>
+									Save changes
+								</button>
+							)}
+						</CardTitle>
+					</CardHeader>
+				</a>
+
+				<Collapse isOpen={isOpen}>
+					<CardBody>
+						<div className="rule-group-detail">
+							Description: {g.description}
+							<h3>Rules:</h3>
+							{g.rules.map((r, i) => (
+								<RuleEditor
+									key={i}
+									index={i}
+									rule={r}
+									editable={g.editable}
+									dirty={() => setDirty(true)}
+								/>
+							))}
+							{g.editable && (
+								<Select
+									getValue={(v) => v.type}
+									getName={(v) => v.type}
+									target={Choices(tagRulePrototypes())}
+									onChange={(v) =>
+										v.type !== "Add Rule" &&
+										g.rules.push({
+											enabled: true,
+											rule: { ...v },
+										})
+									}
+								/>
+							)}
+						</div>
+					</CardBody>
+				</Collapse>
+			</Card>
+		</Row>
 	)
 })
 
