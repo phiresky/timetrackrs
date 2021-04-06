@@ -42,18 +42,29 @@ import {
 	Row,
 	Table,
 } from "reactstrap"
-import "../assets/plugins/nucleo/css/nucleo.css"
-import "../assets/scss/argon-dashboard-react.scss"
 import { LoadEvents } from "../components/ChooserWithChild"
+import { Page } from "../components/Page"
 import { InnerPlot } from "../components/Plot"
 import { SingleNumberValue } from "../components/SingleNumberValue"
 import {
 	TimeRangeSelector,
+	TimeRangeSelectorSimple,
 	TimeRangeTarget,
 } from "../components/TimeRangeSelector"
 // core components
-import { chartExample2, chartOptions, parseOptions } from "./charts"
+import { chartOptions, parseOptions } from "./charts"
 
+function NotEnoughDataPlot(p: { dark?: boolean }) {
+	return (
+		<table style={{ height: 400, width: "100%" }}>
+			<tr>
+				<td className="align-middle">
+					<h2 className="text-muted text-center">Not enough data</h2>
+				</td>
+			</tr>
+		</table>
+	)
+}
 export const Dashboard: React.FC = observer((_) => {
 	const store = useLocalObservable(() => ({
 		timeRange: {
@@ -62,6 +73,9 @@ export const Dashboard: React.FC = observer((_) => {
 			mode: "day",
 		} as TimeRangeTarget,
 		deep: false,
+		setDeep(n: boolean) {
+			this.deep = n
+		},
 	}))
 
 	if (window.Chart) {
@@ -69,14 +83,17 @@ export const Dashboard: React.FC = observer((_) => {
 	}
 
 	return (
-		<>
-			<div className="header bg-gradient-info pb-8 pt-5 pt-md-5">
+		<Page
+			navRight={() => (
+				<div className="pr-0 pt-1" style={{ color: "white" }}>
+					Showing data for{" "}
+					<TimeRangeSelectorSimple target={store.timeRange} />
+				</div>
+			)}
+		>
+			<div className="header bg-gradient-info pb-8 pt-7 pt-md-7">
 				<Container fluid>
 					<div className="header-body">
-						<div className="d-flex">
-							<TimeRangeSelector target={store.timeRange} />
-						</div>
-
 						{/* Card stats */}
 						<Row>
 							<Col lg="6" xl="3">
@@ -88,7 +105,7 @@ export const Dashboard: React.FC = observer((_) => {
 													tag="h5"
 													className="text-uppercase text-muted mb-0"
 												>
-													Total tracked time today
+													Total tracked time
 												</CardTitle>
 												<span className="h2 font-weight-bold mb-0">
 													<SingleNumberValue
@@ -167,7 +184,7 @@ export const Dashboard: React.FC = observer((_) => {
 													tag="h5"
 													className="text-uppercase text-muted mb-0"
 												>
-													Uncategorized time today
+													Uncategorized time
 												</CardTitle>
 												<span className="h2 font-weight-bold mb-0">
 													<SingleNumberValue
@@ -275,10 +292,10 @@ export const Dashboard: React.FC = observer((_) => {
 								<Row className="align-items-center">
 									<div className="col">
 										<h6 className="text-uppercase text-light ls-1 mb-1">
-											Overview
+											Time spent by category
 										</h6>
 										<h2 className="text-white mb-0">
-											Time spent by category
+											History
 										</h2>
 									</div>
 									<div className="col">
@@ -291,13 +308,13 @@ export const Dashboard: React.FC = observer((_) => {
 													className={classnames(
 														"py-2 px-3",
 														{
-															active: store.deep,
+															active: !store.deep,
 														},
 													)}
 													href="#"
 													onClick={(e) => {
 														e.preventDefault()
-														store.deep = false
+														store.setDeep(false)
 													}}
 												>
 													<span className="d-none d-md-block">
@@ -313,14 +330,14 @@ export const Dashboard: React.FC = observer((_) => {
 													className={classnames(
 														"py-2 px-3",
 														{
-															active: !store.deep,
+															active: store.deep,
 														},
 													)}
 													data-toggle="tab"
-													href="#pablo"
+													href="#"
 													onClick={(e) => {
 														e.preventDefault()
-														store.deep = false
+														store.setDeep(true)
 													}}
 												>
 													<span className="d-none d-md-block">
@@ -339,19 +356,28 @@ export const Dashboard: React.FC = observer((_) => {
 								<LoadEvents
 									timeRange={store.timeRange}
 									tag="category"
-									child={(p) => (
-										<InnerPlot
-											events={p.events}
-											tag={p.tag}
-											binSize={20 * 1000 * 60}
-											aggregator={{
-												name: "none",
-												mapper: (d) => d,
-												visible: true,
-											}}
-											deep={false}
-										/>
-									)}
+									child={(p) => {
+										if (p.events.length < 3)
+											return (
+												<NotEnoughDataPlot
+													dark
+												></NotEnoughDataPlot>
+											)
+										return (
+											<InnerPlot
+												events={p.events}
+												tag={p.tag}
+												binSize={20 * 1000 * 60}
+												aggregator={{
+													name: "none",
+													mapper: (d) => d,
+													visible: true,
+												}}
+												deep={store.deep}
+												dark={true}
+											/>
+										)
+									}}
 								/>
 								{/* Chart 
 								<div className="chart">
@@ -372,20 +398,36 @@ export const Dashboard: React.FC = observer((_) => {
 								<Row className="align-items-center">
 									<div className="col">
 										<h6 className="text-uppercase text-muted ls-1 mb-1">
-											Performance
+											Time spent by category
 										</h6>
-										<h2 className="mb-0">Total orders</h2>
+										<h2 className="mb-0">Overview</h2>
 									</div>
 								</Row>
 							</CardHeader>
 							<CardBody>
-								{/* Chart */}
-								<div className="chart">
-									<Bar
-										data={chartExample2.data}
-										options={chartExample2.options}
-									/>
-								</div>
+								<LoadEvents
+									timeRange={store.timeRange}
+									tag="category"
+									child={(p) => {
+										if (p.events.length < 3)
+											return <NotEnoughDataPlot />
+										return (
+											<InnerPlot
+												events={p.events}
+												chartType="pie"
+												tag={p.tag}
+												binSize={Infinity}
+												aggregator={{
+													name: "none",
+													mapper: (d) => d,
+													visible: true,
+												}}
+												deep={store.deep}
+												dark={false}
+											/>
+										)
+									}}
+								/>
 							</CardBody>
 						</Card>
 					</Col>
@@ -598,6 +640,6 @@ export const Dashboard: React.FC = observer((_) => {
 					</Col>
 				</Row>
 			</Container>
-		</>
+		</Page>
 	)
 })

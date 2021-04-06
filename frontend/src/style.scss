@@ -3,6 +3,8 @@
 @import "~@fontsource/open-sans/600.css";
 @import "~@fontsource/open-sans/700.css";
 
+@import "assets/plugins/nucleo/css/nucleo.css";
+@import "assets/scss/argon-dashboard-react.scss";
 /* * {
 	border: 0;
 	margin: 0;
@@ -268,6 +270,10 @@ details.rule-group {
 	}
 }
 */
+.caretbutton {
+	padding-left: 0.4rem;
+	padding-right: 0.4rem;
+}
 
 .progress-popup {
 	position: fixed;
@@ -281,4 +287,19 @@ details.rule-group {
 
 .maxwidth {
 	width: 100%;
+}
+
+.js-plotly-plot .icon {
+	width: unset;
+	height: unset;
+	vertical-align: unset;
+}
+
+.navbar-dark .navbar-brand {
+	color: white;
+}
+
+.navbar-dark .navbar-nav .nav-link.active {
+	color: $navbar-dark-color;
+	border-bottom: 2px solid $navbar-dark-color;
 }

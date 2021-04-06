@@ -9,7 +9,16 @@ import {
 	SingleDatePicker,
 } from "react-dates"
 import moment from "moment"
-import { Button, Card, Row as div } from "reactstrap"
+import {
+	Button,
+	ButtonGroup,
+	Card,
+	DropdownItem,
+	DropdownMenu,
+	DropdownToggle,
+	Row as div,
+	UncontrolledDropdown,
+} from "reactstrap"
 
 const Modes = ["day", "week", "month"] as const
 export type TimeRangeMode = typeof Modes[number]
@@ -170,5 +179,63 @@ export const TimeRangeSelector: React.FC<{
 				)}
 			</div>
 		</Card>
+	)
+})
+
+export const TimeRangeSelectorSimple: React.FC<{
+	target: TimeRangeTarget
+}> = observer(({ target }) => {
+	const state = useTimeRange(target)
+	let picker: string
+	if (target.mode === "day") {
+		const date = dfn.isToday(target.from)
+			? "today"
+			: dfn.isYesterday(target.from)
+			? "yesterday"
+			: dfn.format(target.from, "yyyy-MM-dd")
+		picker = date
+	} else if (target.mode === "week") {
+		picker =
+			dfn.format(target.from, "yyyy-MM-dd") +
+			" to " +
+			dfn.format(target.to, "yyyy-MM-dd")
+	} else if (target.mode === "month") {
+		picker = dfn.format(target.from, "MMM. yyyy")
+	} else {
+		throw Error(`unknown mode ${target.mode}`)
+	}
+
+	return (
+		<ButtonGroup>
+			<Button
+				title="day before"
+				className="caretbutton"
+				onClick={() => state.back()}
+			>
+				{"<"}
+			</Button>
+			<UncontrolledDropdown className="btn-group">
+				<DropdownToggle caret>{picker}</DropdownToggle>
+				<DropdownMenu>
+					{Modes.map((mode) => (
+						<DropdownItem
+							key={mode}
+							onClick={() => state.setMode(mode)}
+						>
+							{mode === target.mode ? picker : mode}
+						</DropdownItem>
+					))}
+				</DropdownMenu>
+			</UncontrolledDropdown>
+			{target.to < new Date() && (
+				<Button
+					className="caretbutton"
+					title="day after"
+					onClick={() => state.forward()}
+				>
+					{">"}
+				</Button>
+			)}
+		</ButtonGroup>
 	)
 })

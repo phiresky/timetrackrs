@@ -11,20 +11,23 @@ export const ProgressPopup = observer(() => {
 		updateProgress(p: ProgressReport) {
 			console.log("updating progress", p)
 			if (p.state.length === 0) {
-				obs.progresses.delete(p.call_id)
-				console.log("deleted", obs.progresses, this.progresses)
-				return
+				// obs.progresses.delete(p.call_id)
+				// console.log("deleted", p.call_id)
+				// return
 			}
 			const prog = obs.progresses.get(p.call_id)
-			if (prog) Object.assign(prog, p)
-			else {
+			if (prog) {
+				// event already ended, ignore update
+				if (prog.done) return
+				Object.assign(prog, p)
+			} else {
 				obs.progresses.set(p.call_id, p)
 			}
 		},
 	}))
 	useEffect(() => {
 		console.log("opening events connection")
-		obs.es = progressEvents((p) => obs.updateProgress(p))
+		obs.es = progressEvents((p) => p.forEach((p) => obs.updateProgress(p)))
 		return () => {
 			console.log("closing events connection")
 			obs.es?.close()
@@ -33,24 +36,26 @@ export const ProgressPopup = observer(() => {
 	if (obs.progresses.size === 0) return null
 	return (
 		<div className="progress-popup">
-			{[...obs.progresses.values()].map((prog) => (
-				<div key={prog.call_id}>
-					<p>Task {prog.call_desc}</p>
-					{prog.state.map((state, i) => (
-						<div key={i}>
-							{state.desc}:{" "}
-							{state.total
-								? `${(
-										(state.current / state.total) *
-										100
-								  ).toFixed(0)}% (${state.current}/${
-										state.total
-								  })`
-								: state.current}
-						</div>
-					))}
-				</div>
-			))}
+			{[...obs.progresses.values()]
+				.filter((prog) => !prog.done)
+				.map((prog) => (
+					<div key={prog.call_id}>
+						<p>Task {prog.call_desc}</p>
+						{prog.state.map((state, i) => (
+							<div key={i}>
+								{state.desc}:{" "}
+								{state.total
+									? `${(
+											(state.current / state.total) *
+											100
+									  ).toFixed(0)}% (${state.current}/${
+											state.total
+									  })`
+									: state.current}
+							</div>
+						))}
+					</div>
+				))}
 		</div>
 	)
 })

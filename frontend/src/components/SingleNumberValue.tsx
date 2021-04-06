@@ -6,6 +6,8 @@ import * as dfn from "date-fns"
 import { SingleExtractedChunk } from "../server"
 import { ProgressPlugin } from "webpack"
 import { observer } from "mobx-react"
+import { useMobxEffect } from "../util"
+import { observable } from "mobx"
 
 type TagFilter = string | { tag: string; value?: string; valuePrefix?: string }
 type Expression =
@@ -60,17 +62,21 @@ function applyExpression(data: SingleExtractedChunk[], e: Expression): number {
 	throw Error(`unknown expression ${JSON.stringify(e)}`)
 }
 
-export const SingleNumberValue: React.FC<Props> = observer((props) => {
+export const SingleNumberValue: React.FC<Props> = observer((_props) => {
 	const [data, setData] = useState(null as null | number)
-	useEffect(async () => {
+	const props = observable(_props, observable.struct)
+	useMobxEffect(async () => {
+		const { calculation } = props
+		console.log("calculation", calculation)
+		// console.log("props", )
 		setData(null)
 		const data = await getTimeRange({
 			after: props.time.from,
 			before: props.time.to,
 			tag: props.fetchFilter,
 		})
-		setData(applyExpression(data, props.calculation))
-	}, [props.time.from, props.time.to, props.fetchFilter, props.calculation])
+		setData(applyExpression(data, calculation))
+	})
 	if (data !== null) {
 		const value = numberWithUnitToString(data, props.unit)
 		return <span>{value}</span>

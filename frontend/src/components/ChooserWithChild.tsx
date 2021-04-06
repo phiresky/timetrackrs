@@ -1,23 +1,16 @@
-import {
-	observable,
-	autorun,
-	computed,
-	makeAutoObservable,
-	makeObservable,
-} from "mobx"
+import * as dfn from "date-fns"
 import { observer, useLocalObservable } from "mobx-react"
-import { IPromiseBasedObservable, fromPromise } from "mobx-utils"
-import React, { useEffect } from "react"
+import { fromPromise, IPromiseBasedObservable } from "mobx-utils"
+import React from "react"
+import Select from "react-select"
+import * as api from "../api"
+import { SingleExtractedEvent } from "../server"
+import { useMobxEffect } from "../util"
 import {
 	TimeRangeMode,
 	TimeRangeSelector,
 	TimeRangeTarget,
 } from "./TimeRangeSelector"
-import * as dfn from "date-fns"
-import * as api from "../api"
-import { SingleExtractedEvent } from "../server"
-import Select from "react-select"
-import { RoutingType } from "../routes"
 
 type QA = Partial<{ tag: string; from: string; to: string; range: string }>
 export type CWCRouteMatch = {
@@ -67,26 +60,24 @@ export const ChooserWithChild: React.FC<{
 			label: p.routeMatch.queryArgs.tag || "category",
 		},
 	}))
-	useEffect(() =>
-		autorun(() => {
-			const oldArgs = p.routeMatch.queryArgs
-			const newArgs = {
-				tag: store.tag.value,
-				from: dfn.format(store.timeRange.from, "yyyy-MM-dd"),
-				to: dfn.format(store.timeRange.to, "yyyy-MM-dd"),
-				range: store.timeRange.mode,
-			}
-			if (
-				newArgs.tag !== oldArgs.tag ||
-				newArgs.from !== oldArgs.from ||
-				newArgs.to !== oldArgs.to ||
-				newArgs.range !== oldArgs.range
-			) {
-				console.log("new args!", newArgs, "oldArgs", oldArgs)
-				p.routeMatch.replace(undefined, undefined, newArgs)
-			}
-		}),
-	)
+	useMobxEffect(() => {
+		const oldArgs = p.routeMatch.queryArgs
+		const newArgs = {
+			tag: store.tag.value,
+			from: dfn.format(store.timeRange.from, "yyyy-MM-dd"),
+			to: dfn.format(store.timeRange.to, "yyyy-MM-dd"),
+			range: store.timeRange.mode,
+		}
+		if (
+			newArgs.tag !== oldArgs.tag ||
+			newArgs.from !== oldArgs.from ||
+			newArgs.to !== oldArgs.to ||
+			newArgs.range !== oldArgs.range
+		) {
+			console.log("new args!", newArgs, "oldArgs", oldArgs)
+			p.routeMatch.replace(undefined, undefined, newArgs)
+		}
+	})
 
 	return (
 		<div className={`container ${p.containerClass || ""}`}>

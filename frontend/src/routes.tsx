@@ -64,11 +64,7 @@ export const router = Router.create<React.ComponentType>()
 		)
 	})
 	.with(routes.singleEvent, (p) => () => <SingleEventInfo id={p.args.id} />)
-	.with(routes.dashboard, (p) => () => (
-		<Page>
-			<Dashboard />
-		</Page>
-	))
+	.with(routes.dashboard, (p) => () => <Dashboard />)
 
 export type RoutingType = Routing<
 	typeof router["_tdata"],

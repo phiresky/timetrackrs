@@ -1,3 +1,5 @@
+import { autorun } from "mobx"
+import React from "react"
 import { SingleExtractedEvent } from "./server"
 
 export function totalDurationSeconds(entries: SingleExtractedEvent[]): number {
@@ -12,6 +14,11 @@ export function durationToString(duration: number): string {
 	if (duration >= 60)
 		return `${Math.floor(duration / 60)} h ${duration % 60} min`
 	return `${duration} min`
+}
+
+/** same as useEffect, but dependencies determined by mobx instead of manually */
+export function useMobxEffect(effect: () => unknown): void {
+	return React.useEffect(() => autorun(effect), [])
 }
 
 export class DefaultMap<K, V> extends Map<K, V> {

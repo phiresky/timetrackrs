@@ -13,6 +13,7 @@ pub mod progress_events {
     use std::sync::Arc;
 
     use crate::prelude::*;
+    use futures::Sink;
     use tokio::sync::broadcast::{Receiver, Sender};
 
     #[derive(Debug, Serialize, TypeScriptify)]
@@ -20,38 +21,46 @@ pub mod progress_events {
         call_id: String,
         call_desc: String,
         state: Vec<ProgressState>,
-    }
-    impl ProgressReport {
-        pub fn is_end(&self) -> bool {
-            self.state.len() == 0
-        }
+        done: bool,
     }
     type SharedProgressReport = Arc<ProgressReport>;
 
     lazy_static::lazy_static! {
-        static ref CHAN: (Sender<SharedProgressReport>, Receiver<SharedProgressReport>) = tokio::sync::broadcast::channel(1);
+        static ref LOSSY_CHAN: (Sender<SharedProgressReport>, Receiver<SharedProgressReport>) = tokio::sync::broadcast::channel(1);
+        static ref END_CHAN: (Sender<SharedProgressReport>, Receiver<SharedProgressReport>) = tokio::sync::broadcast::channel(100);
     }
-    fn get_sender() -> Sender<SharedProgressReport> {
-        CHAN.0.clone()
+    fn get_sender() -> (Sender<SharedProgressReport>, Sender<SharedProgressReport>) {
+        (LOSSY_CHAN.0.clone(), END_CHAN.0.clone())
     }
-    pub fn get_receiver() -> Receiver<SharedProgressReport> {
-        CHAN.0.subscribe()
+    pub fn get_receiver() -> (
+        Receiver<SharedProgressReport>,
+        Receiver<SharedProgressReport>,
+    ) {
+        (LOSSY_CHAN.0.subscribe(), END_CHAN.0.subscribe())
     }
 
     #[derive(Debug)]
     struct StreamingReporter {
         call_id: String,
         call_desc: String,
-        sender: Sender<SharedProgressReport>,
+        progress_sender: Sender<SharedProgressReport>,
+        end_sender: Sender<SharedProgressReport>,
     }
     impl ProgressReporter for StreamingReporter {
-        fn report(&self, p: Vec<ProgressState>) {
+        fn report(&self, state: Vec<ProgressState>) {
+            let done = state.len() == 0;
             let report = ProgressReport {
                 call_id: self.call_id.clone(),
                 call_desc: self.call_desc.clone(),
-                state: p,
+                state,
+                done,
             };
-            self.sender
+            let sender = if report.done {
+                &self.end_sender
+            } else {
+                &self.progress_sender
+            };
+            sender
                 .send(Arc::new(report))
                 .expect("Could not send progress");
         }
@@ -60,10 +69,12 @@ pub mod progress_events {
     pub fn new_progress(desc: impl Into<String>) -> Progress {
         let id = libxid::new_generator().new_id().unwrap().encode();
         println!("new id generated: {}", id);
+        let (progress_sender, end_sender) = get_sender();
         Progress::root(Arc::new(StreamingReporter {
             call_id: id,
             call_desc: desc.into(),
-            sender: get_sender(),
+            progress_sender,
+            end_sender,
         }))
     }
 }
@@ -252,32 +263,34 @@ pub fn api_routes(
         });
 
     let progress_events = warp::path("progress-events").and(warp::get()).map(|| {
-        let end_events =
-            tokio_stream::wrappers::BroadcastStream::new(progress_events::get_receiver());
-        let events = tokio_stream::wrappers::BroadcastStream::new(progress_events::get_receiver());
+        let (lossy_progress_events, end_events) = progress_events::get_receiver();
+        let end_events = tokio_stream::wrappers::BroadcastStream::new(end_events);
+        let events = tokio_stream::wrappers::BroadcastStream::new(lossy_progress_events);
 
         // filter out and ignore the Lagged() err caused by polling behind a throttle
         let events = StreamExt::filter_map(events, |e| {
             ready(match e {
-                Ok(e) if !e.is_end() => Some(warp::sse::Event::default().json_data(e)),
-                Ok(_) => None, // end events handled separately
+                Ok(e) => Some(e),
                 Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(_)) => None,
             })
-        });
+        })
+        .map(|e| vec![e]);
         // separate stream for end progress events that's not throttled
         let end_events = end_events
-            .try_filter(|e| ready(e.is_end()))
             .filter_map(|e| {
                 ready(match e {
-                    Ok(e) => Some(warp::sse::Event::default().json_data(e)),
+                    Ok(e) => Some(e),
                     Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(l)) => {
                         log::warn!("end progress event missed! {}", l);
                         None
                     }
                 })
-            });
+            })
+            .ready_chunks(10);
         let events = tokio_stream::StreamExt::throttle(events, Duration::from_millis(250));
-        warp::sse::reply(futures::stream::select(events, end_events))
+        let merged = futures::stream::select(events, end_events)
+            .map(|e| warp::sse::Event::default().json_data(e));
+        warp::sse::reply(merged)
     });
 
     let filter = warp::get()

@@ -7,7 +7,7 @@ const backend =
 	new URL("/api", location.href).toString()
 
 export function progressEvents(
-	subscriber: (event: ProgressReport) => void,
+	subscriber: (event: ProgressReport[]) => void,
 ): EventSource {
 	const eventSource = new EventSource(backend + "/progress-events")
 	eventSource.addEventListener("message", (event) => {

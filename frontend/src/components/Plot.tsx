@@ -10,6 +10,7 @@ import { SingleExtractedEvent } from "../server"
 import { ChooserWithChild, CWCRouteMatch } from "./ChooserWithChild"
 import { Page } from "./Page"
 import { Choices, Select } from "./Select"
+import { SingleEventInfo } from "./SingleEventInfo"
 const dark = {
 	data: {
 		bar: [
@@ -401,66 +402,147 @@ export function PlotPage(p: { routeMatch: CWCRouteMatch }): React.ReactElement {
 
 type Aggregator = { mapper: (d: Date) => Date; name: string; visible: boolean }
 
+function getValue(deep: boolean, value: string) {
+	if (deep) return value
+	else return value.split("/")[0]
+}
+function aggregateData({
+	aggregator,
+	binSize,
+	events,
+	tag,
+	deep,
+}: {
+	aggregator: (d: Date) => Date
+	binSize: number
+	events: SingleExtractedEvent[]
+	tag: string
+	deep: boolean
+}) {
+	// const { days } = this.dayInfo
+
+	type TagValue = string
+	type Bucket = string
+	type relative_duration = number
+
+	const outData = new Map<TagValue, Map<Bucket, relative_duration>>()
+
+	for (const timechunk of events) {
+		const bucket = aggregator(
+			new Date(timechunk.from - (timechunk.from % binSize)),
+		).toJSON()
+		for (const [mtag, _value, duration] of timechunk.tags) {
+			if (tag !== mtag) continue
+			const value = getValue(deep, _value)
+			let tagdata = outData.get(value)
+			if (!tagdata) {
+				tagdata = new Map()
+				outData.set(value, tagdata)
+			}
+			const bucketdata = tagdata.get(bucket) || 0
+			tagdata.set(bucket, bucketdata + duration)
+		}
+	}
+
+	//const { firstDay, lastDay, days: aggDays } = this.getDayInfo(data)
+	return outData
+}
+const colorScale = [
+	"#636EFA",
+	"#EF553B",
+	"#00CC96",
+	"#AB63FA",
+	"#FFA15A",
+	"#19D3F3",
+	"#FF6692",
+	"#B6E880",
+	"#FF97FF",
+	"#FECB52",
+]
+
+const fixedColors: Record<string, string> = {
+	Productivity: colorScale[0],
+	Entertainment: colorScale[1],
+	Communication: colorScale[2],
+}
+const usedColors = new Set(Object.values(fixedColors))
+const unusedColors = colorScale.filter((c) => !usedColors.has(c))
+function getColors(labels: string[]): string[] {
+	const availableColors = new Set(unusedColors)
+	return labels.map((label) => {
+		if (label in fixedColors) {
+			return fixedColors[label]
+		} else {
+			const c = availableColors[Symbol.iterator]().next()
+			if (!c.done) {
+				availableColors.delete(c.value)
+				return c.value
+			} else {
+				return colorScale[(Math.random() * colorScale.length) | 0]
+			}
+		}
+	})
+}
 export class InnerPlot extends React.Component<{
 	events: SingleExtractedEvent[]
+	chartType?: "stacked-bar" | "pie"
 	tag: string
 	deep: boolean
 	aggregator: Aggregator
 	binSize: number
+	dark: boolean
 }> {
 	@computed get data(): Plotly.Data[] {
-		const aggregator = this.props.aggregator.mapper
 		const binSize = this.props.binSize
-		// const { days } = this.dayInfo
-
-		type TagValue = string
-		type Bucket = string
-		type relative_duration = number
-
-		const outData = new Map<TagValue, Map<Bucket, relative_duration>>()
-
-		for (const timechunk of this.props.events) {
-			const bucket = aggregator(
-				new Date(timechunk.from - (timechunk.from % binSize)),
-			).toJSON()
-			for (const [tag, _value, duration] of timechunk.tags) {
-				if (tag !== this.props.tag) continue
-				const value = this.getValue(_value)
-				let tagdata = outData.get(value)
-				if (!tagdata) {
-					tagdata = new Map()
-					outData.set(value, tagdata)
-				}
-				const bucketdata = tagdata.get(bucket) || 0
-				tagdata.set(bucket, bucketdata + duration)
-			}
-		}
-		console.log("time buckets", this.props.events, outData)
-
-		//const { firstDay, lastDay, days: aggDays } = this.getDayInfo(data)
-
-		const data: Plotly.Data[] = [...outData].map(([key, es]) => {
-			//
-
-			const aggFactor = 1 // aggDays / days
-			const es2 = [...es]
-
-			return {
-				/*xaxis: {
-					tick0: firstDay,
-				},*/
-				x: es2.map((x) => x[0]),
-				y: es2.map((x) => (x[1] / binSize) * aggFactor),
-				type: "bar",
-				name: key,
-			}
+		const outData = aggregateData({
+			aggregator: this.props.aggregator.mapper,
+			binSize,
+			events: this.props.events,
+			tag: this.props.tag,
+			deep: this.props.deep,
 		})
-		return data
-	}
+		const { chartType = "stacked-bar" } = this.props
+		const labels = [...outData.keys()]
+		if (chartType === "pie") {
+			return [
+				{
+					type: "pie",
+					labels,
+					values: [...outData.values()].map(
+						(es) => [...es.values()][0],
+					),
+					marker: {
+						colors: getColors(labels),
+					},
+				},
+			]
+		} else if (chartType === "stacked-bar") {
+			const colors = new Map(
+				getColors(labels).map((e, i) => [labels[i], e]),
+			)
+			const data: Plotly.Data[] = [...outData].map(([key, es]) => {
+				//
 
-	private getValue(value: string) {
-		if (this.props.deep) return value
-		else return value.split("/")[0]
+				const aggFactor = 1 // aggDays / days
+				const es2 = [...es]
+
+				return {
+					/*xaxis: {
+						tick0: firstDay,
+					},*/
+					x: es2.map((x) => x[0]),
+					y: es2.map((x) => (x[1] / binSize) * aggFactor),
+					type: "bar",
+					name: key,
+					marker: {
+						color: colors.get(key),
+					},
+				}
+			})
+			return data
+		} else {
+			throw Error(`unknown chart type ${chartType}`)
+		}
 	}
 
 	render() {
@@ -470,9 +552,18 @@ export class InnerPlot extends React.Component<{
 				className="maxwidth"
 				data={this.data}
 				layout={{
+					height: 400,
+					margin: {
+						// reduce margins because of missing title
+						l: 0,
+						r: 0,
+						b: 0,
+						t: 0,
+						pad: 4,
+					},
 					plot_bgcolor: "#0000",
 					paper_bgcolor: "#0000",
-					template: dark,
+					template: this.props.dark ? dark : undefined,
 					autosize: true,
 					// title: null, // `Time spent by ${this.props.tag}`,
 					barmode: "stack",

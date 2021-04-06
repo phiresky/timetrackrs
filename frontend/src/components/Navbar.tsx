@@ -15,7 +15,7 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
-import React from "react"
+import React, { FC } from "react"
 // reactstrap components
 import {
 	DropdownMenu,
@@ -39,7 +39,7 @@ import {
 import { NavLink } from "../router-lib/components/NavLink"
 import { routes } from "../routes"
 
-export const MyNavbar = (props) => {
+export const MyNavbar: FC<{ navRight?: React.ComponentType }> = (props) => {
 	return (
 		<>
 			<Navbar
@@ -92,6 +92,7 @@ export const MyNavbar = (props) => {
 								Rule Editor
 							</NavLink>
 						</NavItem>
+
 						{/*<UncontrolledDropdown nav>
 							<DropdownToggle className="pr-0" nav>
 								<Media className="align-items-center">
@@ -160,6 +161,7 @@ export const MyNavbar = (props) => {
 							</DropdownMenu>
                                         </UncontrolledDropdown>*/}
 					</Nav>
+					{props.navRight && React.createElement(props.navRight)}
 				</Container>
 			</Navbar>
 		</>
