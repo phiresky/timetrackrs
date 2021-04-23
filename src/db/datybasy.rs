@@ -175,8 +175,8 @@ impl DatyBasy {
 
     pub async fn get_extracted_for_time_range(
         &self,
-        from: &Timestamptz,
-        to: &Timestamptz,
+        from: Timestamptz,
+        to: Timestamptz,
         tag: Option<&str>,
         progress: Progress,
     ) -> anyhow::Result<Vec<SingleExtractedChunk>> {
@@ -230,8 +230,8 @@ impl DatyBasy {
     }
     pub async fn ensure_time_range_extracted_valid(
         &self,
-        from: &Timestamptz,
-        to: &Timestamptz,
+        from: Timestamptz,
+        to: Timestamptz,
         progress: Progress,
     ) -> anyhow::Result<()> {
         let days = self.get_affected_timechunks_range(from, to);
@@ -312,11 +312,7 @@ impl DatyBasy {
         self.mark_extractions_valid(start, end).await?;
         Ok(())
     }
-    fn get_affected_timechunks_range(
-        &self,
-        from: &Timestamptz,
-        to: &Timestamptz,
-    ) -> Vec<TimeChunk> {
+    fn get_affected_timechunks_range(&self, from: Timestamptz, to: Timestamptz) -> Vec<TimeChunk> {
         let from_date = TimeChunk::containing(from.0).start();
         let to_date = to.0;
         let interval = chrono::Duration::minutes(CHUNK_LEN_MINS as i64);
@@ -342,8 +338,20 @@ impl DatyBasy {
             .collect();
         days
     }
-    async fn invalidate_extractions(&self, events: &[NewDbEvent]) -> anyhow::Result<()> {
+    pub async fn invalidate_timechunks_events(&self, events: &[NewDbEvent]) -> anyhow::Result<()> {
         let chunks = self.get_affected_timechunks_events(events);
+        self.invalidate_timechunks(&chunks).await
+    }
+    pub async fn invalidate_timechunks_range(
+        &self,
+        from: Timestamptz,
+        to: Timestamptz,
+    ) -> anyhow::Result<()> {
+        let chunks = self.get_affected_timechunks_range(from, to);
+        self.invalidate_timechunks(&chunks).await
+    }
+    // TODO: accept HashSet<TimeChunk> and Vec<TimeChunk> only
+    async fn invalidate_timechunks(&self, chunks: impl Serialize) -> anyhow::Result<()> {
         let chunks_str = serde_json::to_string(&chunks).context("impossibo")?;
         let now = Timestamptz(Utc::now());
         sqlx::query!(
@@ -365,7 +373,7 @@ impl DatyBasy {
         from: Timestamptz,
         to: Timestamptz,
     ) -> anyhow::Result<()> {
-        let chunks = self.get_affected_timechunks_range(&from, &to);
+        let chunks = self.get_affected_timechunks_range(from, to);
         let chunks_str = serde_json::to_string(&chunks).context("impossibo")?;
         let now = Timestamptz(Utc::now());
         sqlx::query!(
@@ -590,7 +598,7 @@ impl DatyBasy {
         db.commit().await?;
 
         // TODO: filter invalidation by RETURNING timestamp_unix_ms above
-        self.invalidate_extractions(&events)
+        self.invalidate_timechunks_events(&events)
             .await
             .context("Could not invalidate extractions")?;
 

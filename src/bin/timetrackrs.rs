@@ -34,8 +34,8 @@ async fn ensure_past_month_valid(db: DatyBasy) -> anyhow::Result<Never> {
         let month_ago = now - chrono::Duration::days(31);
         if let Err(e) = db
             .ensure_time_range_extracted_valid(
-                &Timestamptz(month_ago),
-                &Timestamptz(now),
+                Timestamptz(month_ago),
+                Timestamptz(now),
                 timetrackrs::server::api_routes::progress_events::new_progress("Background work"),
             )
             .await

@@ -30,6 +30,12 @@ pub struct TimeRangeRequest {
     pub tag: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
+pub struct InvalidateRangeRequest {
+    pub from: String,
+    pub to: String,
+}
+
 macro_rules! make_thingois {
     (pub enum $name:ident {
         $($r:ident { request: $req:ty, response: $resp:ty }),+
@@ -77,6 +83,10 @@ make_thingois! {
         rule_groups {
             request: (),
             response: Vec<TagRuleGroup>
+        },
+        invalidate_extractions {
+            request: InvalidateRangeRequest,
+            response: ()
         },
         update_rule_groups {
             request: Vec<TagRuleGroup>,

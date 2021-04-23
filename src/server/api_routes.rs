@@ -100,8 +100,8 @@ async fn time_range(db: DatyBasy, req: Api::time_range::request) -> Api::time_ra
     let now = Instant::now();
     let data = db
         .get_extracted_for_time_range(
-            &Timestamptz(after),
-            &Timestamptz(before),
+            Timestamptz(after),
+            Timestamptz(before),
             req.tag.as_deref(),
             progress,
         )
@@ -110,6 +110,17 @@ async fn time_range(db: DatyBasy, req: Api::time_range::request) -> Api::time_ra
 
     log::debug!("time-range request took {:?}", now.elapsed());
     Ok(ApiResponse { data })
+}
+
+async fn invalidate_extractions(
+    db: DatyBasy,
+    req: Api::invalidate_extractions::request,
+) -> Api::invalidate_extractions::response {
+    let from = iso_string_to_datetime(&req.from).context("could not parse before date")?;
+    let to = iso_string_to_datetime(&req.to).context("could not parse after date")?;
+    db.invalidate_timechunks_range(Timestamptz(from), Timestamptz(to))
+        .await?;
+    Ok(ApiResponse { data: () })
 }
 
 async fn single_event(
