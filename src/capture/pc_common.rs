@@ -34,6 +34,13 @@ fn match_cmdline_to_filepath(cwd: &str, cmdline: &[String]) -> anyhow::Result<St
 }
 
 /**
+ * todo: smarter logic based on open program category?
+ */
+pub fn is_idle(duration: Duration) -> bool {
+    return duration > Duration::from_secs(120);
+}
+
+/**
 try to get structured info about a program from title etc
 */
 pub fn match_software(

@@ -24,7 +24,6 @@ uuid = { version = "0.8.2", features = ["serde", "v4"] }
 regex = "1.4.5"
 battery = "0.7.8"
 os_info = "3.0.2"
-hostname = "0.3.1"
 url = "2.2.1"
 structopt = "0.3.21"
 base64 = "0.13.0"
@@ -42,7 +41,6 @@ enum_dispatch = "0.3.5"
 zstd = "0.7.0"
 tempfile = "3.2.0"
 concat-reader = "0.1.0"
-google-fitness1 = "2.0.3"
 yup-oauth2 = "5.1.0"
 hyper = "0.14.5"
 hyper-rustls = "0.22.1"
@@ -59,7 +57,7 @@ directories-next = "2.0.0"
 serde_regex = "1.1.0"
 mediawiki = "0.2.7"
 itertools = "0.10.0"
-datachannel = { version = "0.5.0", features = ["static"] }
+datachannel = { version = "0.5.0", features = ["static"], optional=true }
 tokio = { version = "1.5.0", features = ["full"] }
 tungstenite = "0.13.0"
 futures-util = "0.3.14"
@@ -71,9 +69,8 @@ multimap = "0.8.3"
 paste = "1.0.5"
 lru = { version = "0.6.5", features = ["nightly"] } # https://github.com/jeromefroe/lru-rs/pull/40
 owning_ref = "0.4.1"
-libxid = "0.1.5"
 rust-embed = { version = "5.9.0", features = ["compression"] }
-sqlx = { version = "0.5.1", features = ["sqlite", "any", "runtime-tokio-native-tls", "json"], path="../sqlx" }
+sqlx = { version = "0.5.1", features = ["sqlite", "any", "runtime-tokio-native-tls", "json"], git="https://github.com/phiresky/sqlx" }
 warp = { version = "0.3.1", features = ["compression"] }
 mime_guess = "2.0.3"
 async-trait = "0.1.49"
@@ -81,6 +78,11 @@ ansi-escapes = "0.1.0"
 tokio-stream = { version = "0.1.5", features = ["sync"] }
 tokio-timer = "0.2.13"
 addr = "0.14.0"
+crc32fast = "1.2.1"
+gethostname = "0.2.1"
+md5 = "0.7.0"
+wmi = "0.8.1"
+user-idle = "0.4.0"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["winuser", "processthreadsapi","handleapi", "psapi"] }
@@ -90,9 +92,20 @@ x11rb = { version = "0.8.1", features = ["screensaver"] }
 xcb = "0.9.0"
 nl80211 = {git="https://github.com/Eonm/nl80211", branch="master"}
 
+[features]
+sync = ["datachannel"]
 
 [profile.dev.package."*"]
 opt-level = 3
 
 #[profile.release]
 #lto="fat"
+
+
+[[bin]]
+name = "trbtt-sync"
+required-features = ["sync"]
+
+[[bin]]
+name = "trbtt-signalling-server"
+required-features = ["sync"]

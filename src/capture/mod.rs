@@ -56,7 +56,7 @@ pub async fn capture_loop(db: DatyBasy, config: CaptureConfig) -> anyhow::Result
         .create_capturer()
         .with_context(|| format!("Could not create capturer from {:?}", &args))?;
 
-    let idgen = libxid::new_generator();
+    let idgen = crate::libxid::new_generator();
 
     let mut interval = tokio::time::interval(config.interval);
     loop {

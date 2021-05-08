@@ -2,11 +2,9 @@ use std::{future::ready, time::Duration};
 
 use crate::api_types::*;
 use crate::db::models::{DbEvent, Timestamptz};
-use crate::extract::ExtractInfo;
 use crate::prelude::*;
 use crate::util::iso_string_to_datetime;
 use futures::StreamExt;
-use futures::TryStreamExt;
 use warp::{reply::json, Filter, Rejection};
 
 pub mod progress_events {
@@ -67,7 +65,7 @@ pub mod progress_events {
     }
 
     pub fn new_progress(desc: impl Into<String>) -> Progress {
-        let id = libxid::new_generator().new_id().unwrap().encode();
+        let id = crate::libxid::new_generator().new_id().unwrap().encode();
         println!("new id generated: {}", id);
         let (progress_sender, end_sender) = get_sender();
         Progress::root(Arc::new(StreamingReporter {

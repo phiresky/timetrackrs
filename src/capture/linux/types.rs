@@ -128,8 +128,7 @@ impl ExtractInfo for X11EventData {
     fn extract_info(&self) -> Option<Tags> {
         let mut tags = Tags::new();
         let x = &self;
-        // unused for 2 minutes, assume AFK
-        if x.ms_since_user_input > 120 * 1000 {
+        if super::super::pc_common::is_idle(Duration::from_millis(x.ms_since_user_input as u64)) {
             return None;
         }
         x.os_info.to_partial_general_software(&mut tags);

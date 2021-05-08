@@ -1,0 +1,13 @@
+{
+    "capturers": [
+        {
+            "interval": {
+                "secs": 30,
+                "nanos": 0
+            },
+            "args": {
+                "NativeDefault": {}
+            }
+        }
+    ]
+}

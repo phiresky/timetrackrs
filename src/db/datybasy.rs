@@ -5,10 +5,10 @@ use std::{
 };
 
 use crate::{api_types::SingleExtractedChunk, prelude::*};
+use futures::StreamExt;
 use futures::{stream::BoxStream, FutureExt};
-use futures::{StreamExt};
 use itertools::Itertools;
-use sqlx::{SqlitePool};
+use sqlx::SqlitePool;
 use std::iter::FromIterator;
 use std::sync::atomic::Ordering::Relaxed;
 use tokio::sync::RwLock;

@@ -89,9 +89,7 @@ pub fn get_os_info() -> OsInfo {
     OsInfo {
         os_type: os_info1.os_type().to_string(),
         version: format!("{}", os_info1.version()),
-        hostname: hostname::get()
-            .map(|e| e.to_string_lossy().to_string())
-            .unwrap_or_else(|_| "".to_string()),
+        hostname: gethostname::gethostname().to_string_lossy().to_string(),
         machine_id,
         batteries,
         username: Some(whoami::username()),
