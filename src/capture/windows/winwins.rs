@@ -69,11 +69,9 @@ fn get_wifi_ssid() -> anyhow::Result<Option<String>> {
         .output()
         .context("could not run netsh")?;
     let output = String::from_utf8_lossy(&output.stdout);
-    println!("output was {}", output);
     let matched = SSID_MATCH
         .captures(&output)
         .map(|m| m.get(1).unwrap().as_str().to_string());
-    println!("capture: {:?}", matched);
     return Ok(matched);
 }
 #[allow(dead_code)]
