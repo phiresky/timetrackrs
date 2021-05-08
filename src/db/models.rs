@@ -148,7 +148,7 @@ impl TimeChunk {
             Utc,
         );
 
-        Ok(TimeChunk::at(time)?)
+        TimeChunk::at(time)
     }
     pub fn start(&self) -> DateTime<Utc> {
         self.0
@@ -190,7 +190,7 @@ impl<'de> Visitor<'de> for TimeChunkVisitor {
     where
         E: serde::de::Error,
     {
-        Ok(TimeChunk::from_string(value).map_err(serde::de::Error::custom)?)
+        TimeChunk::from_string(value).map_err(serde::de::Error::custom)
     }
 }
 impl<'de> Deserialize<'de> for TimeChunk {

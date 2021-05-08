@@ -133,7 +133,7 @@ impl SimpleFetcher for URLDomainMatcher {
         if let url::Host::Domain(domain) = &host {
             let domain = addr::psl::List
                 .parse_domain_name(&domain)
-                .map_err(|e| anyhow::anyhow!("cant parse domain"))?;
+                .map_err(|_e| anyhow::anyhow!("cant parse domain"))?;
             tags.add("browse-full-domain", domain.to_string());
             if let Some(root) = domain.root() {
                 tags.add("browse-main-domain", root.to_string());
@@ -150,5 +150,5 @@ pub fn temporary<T>(duration_s: u64) -> impl Fn(T) -> FetchError
 where
     T: Into<Box<dyn std::error::Error>>,
 {
-    return move |e: T| FetchError::TemporaryFailure(e.into(), Duration::from_secs(duration_s));
+    move |e: T| FetchError::TemporaryFailure(e.into(), Duration::from_secs(duration_s))
 }

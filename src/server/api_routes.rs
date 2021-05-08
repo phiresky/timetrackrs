@@ -13,7 +13,7 @@ pub mod progress_events {
     use std::sync::Arc;
 
     use crate::prelude::*;
-    use futures::Sink;
+    
     use tokio::sync::broadcast::{Receiver, Sender};
 
     #[derive(Debug, Serialize, TypeScriptify)]
@@ -48,7 +48,7 @@ pub mod progress_events {
     }
     impl ProgressReporter for StreamingReporter {
         fn report(&self, state: Vec<ProgressState>) {
-            let done = state.len() == 0;
+            let done = state.is_empty();
             let report = ProgressReport {
                 call_id: self.call_id.clone(),
                 call_desc: self.call_desc.clone(),
@@ -263,7 +263,7 @@ pub fn api_routes(
                 .map_err(map_error)
         });
 
-    let update_rule_groups = with_db(db.clone())
+    let update_rule_groups = with_db(db)
         .and(warp::path("update-rule-groups"))
         .and(warp::body::json())
         .and_then(|db, req| async move {

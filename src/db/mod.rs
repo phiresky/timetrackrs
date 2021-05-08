@@ -7,7 +7,7 @@ use sqlx::{sqlite::SqliteConnectOptions, Executor};
 use sqlx::{sqlite::SqlitePoolOptions, SqliteConnection, SqlitePool};
 use std::{
     env,
-    path::{Path, PathBuf},
+    path::{PathBuf},
 };
 
 fn dbs_list() -> &'static [&'static str] {

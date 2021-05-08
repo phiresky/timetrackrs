@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-use futures::{future::BoxFuture, never::Never, stream::FuturesUnordered};
+use futures::{never::Never, stream::FuturesUnordered};
 use futures::{StreamExt, TryStreamExt};
 
 use timetrackrs::{config::TimetrackrsConfig, prelude::*};
 use timetrackrs::{db::clear_wal_files, util::init_logging};
 use tokio::{
-    task::{JoinError, JoinHandle},
+    task::{JoinHandle},
     time::sleep,
 };
 

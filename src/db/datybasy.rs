@@ -5,10 +5,10 @@ use std::{
 };
 
 use crate::{api_types::SingleExtractedChunk, prelude::*};
-use futures::{future::join_all, stream::BoxStream, FutureExt};
-use futures::{StreamExt, TryStreamExt};
+use futures::{stream::BoxStream, FutureExt};
+use futures::{StreamExt};
 use itertools::Itertools;
-use sqlx::{Sqlite, SqlitePool};
+use sqlx::{SqlitePool};
 use std::iter::FromIterator;
 use std::sync::atomic::Ordering::Relaxed;
 use tokio::sync::RwLock;
@@ -212,11 +212,11 @@ impl DatyBasy {
             .fetch_all(&self.db).await
             .context("querying extracted db")?
         };
-        let ee = q.into_iter().group_by(|e| e.timechunk.clone());
+        let ee = q.into_iter().group_by(|e| e.timechunk);
         let e: Vec<_> = ee
             .into_iter()
             .map(|(id, group)| {
-                let mut group = group.peekable();
+                let group = group.peekable();
                 let timechunk = id;
                 SingleExtractedChunk {
                     from: Timestamptz(timechunk.start()),
@@ -244,7 +244,7 @@ impl DatyBasy {
                 .into_iter()
                 .filter(|e| !doesnt_need_update.contains(e))
                 .collect();
-            if needs_update.len() > 0 {
+            if !needs_update.is_empty() {
                 needs_update.sort();
 
                 let mut all_out = vec![];
@@ -401,7 +401,7 @@ impl DatyBasy {
         //total_extracted += 1;
         //total_tags += r.tag_count();
         //total_tag_values += r.total_value_count();
-        let timestamp = a.timestamp_unix_ms.clone();
+        let timestamp = a.timestamp_unix_ms;
         let duration_ms = a.duration_ms;
         let now = Instant::now();
         *total_cache_get_dur.write().unwrap() += now.elapsed();
@@ -448,7 +448,7 @@ impl DatyBasy {
         to: Timestamptz,
         progress: Progress,
     ) -> anyhow::Result<()> {
-        let now = Instant::now();
+        let _now = Instant::now();
 
         /*let raws = YieldEventsFromTrbttDatabase {
             db: &*self.db_events,
@@ -481,13 +481,13 @@ impl DatyBasy {
             to.0
         );
 
-        let now = Instant::now();
-        let mut total_raw: usize = raws.len();
-        let mut total_extracted = Arc::new(AtomicUsize::new(0));
-        let mut total_tags: usize = 0;
-        let mut total_tag_values: usize = 0;
-        let mut total_extract_iterations: usize = 0;
-        let mut total_extract_dur = Arc::new(std::sync::RwLock::new(Duration::from_secs(0)));
+        let _now = Instant::now();
+        let total_raw: usize = raws.len();
+        let total_extracted = Arc::new(AtomicUsize::new(0));
+        let total_tags: usize = 0;
+        let total_tag_values: usize = 0;
+        let total_extract_iterations: usize = 0;
+        let total_extract_dur = Arc::new(std::sync::RwLock::new(Duration::from_secs(0)));
         let total_cache_get_dur = Arc::new(std::sync::RwLock::new(Duration::default()));
 
         let mut extracted_chunks = ExtractedChunks::new();
@@ -510,7 +510,7 @@ impl DatyBasy {
                 Some((a, ex))
             }))
             .then(|(a, r)| {
-                let ts = a.timestamp_unix_ms.clone();
+                let ts = a.timestamp_unix_ms;
                 let p = progress.child(2, 3, format!("Extracting data for event {}", ts.0));
                 let to = total_extract_dur.clone();
                 let t2 = total_cache_get_dur.clone();

@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::prelude::*;
 use futures::StreamExt;
-use sqlx::{sqlite::SqliteConnectOptions, ConnectOptions, SqliteConnection, SqlitePool};
+use sqlx::{sqlite::SqliteConnectOptions, ConnectOptions};
 
 #[derive(StructOpt)]
 pub struct TimetrackrsImportArgs {
