@@ -64,7 +64,6 @@ export type OsInfo = {
 	username: string | null
 	machine_id: string | null
 }
-export type Json<T> = T
 export type TagRuleGroup = { global_id: string; data: Json<TagRuleGroupData> }
 export type TagRuleGroupData = { version: "V1"; data: TagRuleGroupV1 }
 export type TagRuleWithMeta = { enabled: boolean; rule: TagRule }
@@ -109,6 +108,11 @@ export type ApiTypesTS =
 			response: SingleExtractedEventWithRaw | null
 	  }
 	| { type: "rule_groups"; request: []; response: TagRuleGroup[] }
+	| {
+			type: "invalidate_extractions"
+			request: InvalidateRangeRequest
+			response: []
+	  }
 	| { type: "update_rule_groups"; request: TagRuleGroup[]; response: [] }
 	| { type: "get_known_tags"; request: []; response: string[] }
 export type SingleExtractedEventWithRaw = {
@@ -125,15 +129,14 @@ export type SingleExtractedChunk = {
 	to_exclusive: Timestamptz
 	tags: [string, string, number][]
 }
-export type Tags = [string, string, number]
 export type ProgressReport = {
 	call_id: string
 	call_desc: string
 	state: ProgressState[]
+	done: boolean
 }
 export type ProgressState = {
 	desc: string
 	current: number
 	total: number | null
 }
-export type SingleExtractedEvent = SingleExtractedChunk

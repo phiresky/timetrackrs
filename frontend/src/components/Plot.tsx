@@ -6,7 +6,8 @@ import { observer } from "mobx-react"
 import React from "react"
 import Plotly from "react-plotly.js"
 import { Container } from "reactstrap"
-import { SingleExtractedEvent } from "../server"
+import { SingleExtractedChunk } from "../server"
+import { DefaultMap, expectNever, NeatMap } from "../util"
 import { ChooserWithChild, CWCRouteMatch } from "./ChooserWithChild"
 import { Page } from "./Page"
 import { Choices, Select } from "./Select"
@@ -389,7 +390,7 @@ const dark = {
 export function PlotPage(p: { routeMatch: CWCRouteMatch }): React.ReactElement {
 	return (
 		<Page title="Plot">
-			<Container fluid className="bg-gradient-info pt-md-5">
+			<Container fluid className="bg-gradient-info pt-md-6">
 				<ChooserWithChild
 					routeMatch={p.routeMatch}
 					child={Plot}
@@ -415,7 +416,7 @@ function aggregateData({
 }: {
 	aggregator: (d: Date) => Date
 	binSize: number
-	events: SingleExtractedEvent[]
+	events: SingleExtractedChunk[]
 	tag: string
 	deep: boolean
 }) {
@@ -423,9 +424,13 @@ function aggregateData({
 
 	type TagValue = string
 	type Bucket = string
-	type relative_duration = number
+	type absolute_duration = number
 
-	const outData = new Map<TagValue, Map<Bucket, relative_duration>>()
+	const outData = new DefaultMap<
+		TagValue,
+		NeatMap<Bucket, absolute_duration>
+	>(() => new NeatMap<string, number>())
+	const totalDuration = new NeatMap<Bucket, number>()
 
 	for (const timechunk of events) {
 		const bucket = aggregator(
@@ -434,18 +439,13 @@ function aggregateData({
 		for (const [mtag, _value, duration] of timechunk.tags) {
 			if (tag !== mtag) continue
 			const value = getValue(deep, _value)
-			let tagdata = outData.get(value)
-			if (!tagdata) {
-				tagdata = new Map()
-				outData.set(value, tagdata)
-			}
-			const bucketdata = tagdata.get(bucket) || 0
-			tagdata.set(bucket, bucketdata + duration)
+			outData.get(value).addDelta(bucket, duration)
+			totalDuration.addDelta(bucket, duration)
 		}
 	}
 
 	//const { firstDay, lastDay, days: aggDays } = this.getDayInfo(data)
-	return outData
+	return { outData, totalDuration }
 }
 const colorScale = [
 	"#636EFA",
@@ -484,17 +484,18 @@ function getColors(labels: string[]): string[] {
 	})
 }
 export class InnerPlot extends React.Component<{
-	events: SingleExtractedEvent[]
+	events: SingleExtractedChunk[]
 	chartType?: "stacked-bar" | "pie"
 	tag: string
 	deep: boolean
+	scaleTo100: boolean
 	aggregator: Aggregator
 	binSize: number
 	dark: boolean
 }> {
 	@computed get data(): Plotly.Data[] {
 		const binSize = this.props.binSize
-		const outData = aggregateData({
+		const { outData, totalDuration } = aggregateData({
 			aggregator: this.props.aggregator.mapper,
 			binSize,
 			events: this.props.events,
@@ -525,13 +526,17 @@ export class InnerPlot extends React.Component<{
 
 				const aggFactor = 1 // aggDays / days
 				const es2 = [...es]
+				const scaleFactor = (bucket: string) =>
+					this.props.scaleTo100
+						? 1 / (totalDuration.get(bucket) || 1)
+						: aggFactor / binSize
 
 				return {
 					/*xaxis: {
 						tick0: firstDay,
 					},*/
 					x: es2.map((x) => x[0]),
-					y: es2.map((x) => (x[1] / binSize) * aggFactor),
+					y: es2.map((x) => x[1] * scaleFactor(x[0])),
 					type: "bar",
 					name: key,
 					marker: {
@@ -541,7 +546,7 @@ export class InnerPlot extends React.Component<{
 			})
 			return data
 		} else {
-			throw Error(`unknown chart type ${chartType}`)
+			throw Error(`unknown chart type ${expectNever<string>(chartType)}`)
 		}
 	}
 
@@ -567,6 +572,7 @@ export class InnerPlot extends React.Component<{
 					autosize: true,
 					// title: null, // `Time spent by ${this.props.tag}`,
 					barmode: "stack",
+					bargap: 0,
 					legend: { orientation: "h" },
 
 					yaxis: {
@@ -593,7 +599,7 @@ export class InnerPlot extends React.Component<{
 }
 @observer
 export class Plot extends React.Component<{
-	events: SingleExtractedEvent[]
+	events: SingleExtractedChunk[]
 	tag: string
 }> {
 	r = React.createRef<HTMLDivElement>()
@@ -601,6 +607,7 @@ export class Plot extends React.Component<{
 	plot: Plotly.PlotlyHTMLElement | null = null
 
 	@observable deep = false
+	@observable scaleTo100 = false
 	@computed get binSizes() {
 		let totalDur: number
 		if (this.aggregators.value.name === "Daily")
@@ -722,12 +729,24 @@ export class Plot extends React.Component<{
 						onChange={(e) => (this.deep = e.currentTarget.checked)}
 					/>
 				</label>
+				<label>
+					Relative{" "}
+					<input
+						type="checkbox"
+						checked={this.scaleTo100}
+						onChange={(e) =>
+							(this.scaleTo100 = e.currentTarget.checked)
+						}
+					/>
+				</label>
 				<InnerPlot
 					events={this.props.events}
+					dark={false}
 					tag={this.props.tag}
 					deep={this.deep}
 					aggregator={this.aggregators.value}
 					binSize={this.binSizes.value.value}
+					scaleTo100={this.scaleTo100}
 				/>
 			</div>
 		)

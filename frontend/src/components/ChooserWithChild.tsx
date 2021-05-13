@@ -4,7 +4,7 @@ import { fromPromise, IPromiseBasedObservable } from "mobx-utils"
 import React from "react"
 import Select from "react-select"
 import * as api from "../api"
-import { SingleExtractedEvent } from "../server"
+import { SingleExtractedChunk } from "../server"
 import { useMobxEffect } from "../util"
 import {
 	TimeRangeMode,
@@ -18,7 +18,7 @@ export type CWCRouteMatch = {
 	replace(route: undefined, args: undefined, queryArgs: QA): void
 }
 export const ChooserWithChild: React.FC<{
-	child: React.ComponentType<{ events: SingleExtractedEvent[]; tag: string }>
+	child: React.ComponentType<{ events: SingleExtractedChunk[]; tag: string }>
 
 	containerClass?: string
 	routeMatch: CWCRouteMatch
@@ -31,7 +31,7 @@ export const ChooserWithChild: React.FC<{
 			to: dfn.endOfDay(new Date(p.routeMatch.queryArgs.to || new Date())),
 			mode: (p.routeMatch.queryArgs.range || "day") as TimeRangeMode,
 		},
-		get data(): IPromiseBasedObservable<SingleExtractedEvent[]> {
+		get data(): IPromiseBasedObservable<SingleExtractedChunk[]> {
 			const params = {
 				after: this.timeRange.from,
 				before: this.timeRange.to,
@@ -128,14 +128,14 @@ export const ChooserWithChild: React.FC<{
 })
 
 export const LoadEvents: React.FC<{
-	child: React.ComponentType<{ events: SingleExtractedEvent[]; tag: string }>
+	child: React.ComponentType<{ events: SingleExtractedChunk[]; tag: string }>
 
 	containerClass?: string
 	timeRange: TimeRangeTarget
 	tag: string
 }> = observer((p) => {
 	const store = useLocalObservable(() => ({
-		get data(): IPromiseBasedObservable<SingleExtractedEvent[]> {
+		get data(): IPromiseBasedObservable<SingleExtractedChunk[]> {
 			const params = {
 				after: p.timeRange.from,
 				before: p.timeRange.to,

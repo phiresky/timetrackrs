@@ -8,15 +8,16 @@ import { Entry } from "./Entry"
 import { Page } from "./Page"
 import { TagTree } from "./TagTree"
 import { Choices, Select } from "./Select"
-import { SingleExtractedEvent, Tags } from "../server"
+import { SingleExtractedChunk } from "../server"
 import { subDays } from "date-fns"
+import { Container } from "reactstrap"
 
 export function getTag(
-	tags: Tags,
+	tags: [string, string, number][],
 	tag: string,
 	deep = true,
 ): string | undefined {
-	const value = tags.map[tag]?.[0]
+	const value = tags.find((t) => t[0] === tag)?.[1]
 	if (!deep) {
 		return value?.split("/")[0]
 	}
@@ -27,9 +28,9 @@ type Filter = { tagName: string }
 
 interface Grouper {
 	name: string
-	shouldGroup(a: SingleExtractedEvent, b: SingleExtractedEvent): boolean
+	shouldGroup(a: SingleExtractedChunk, b: SingleExtractedChunk): boolean
 	component: React.ComponentType<{
-		entries: SingleExtractedEvent[]
+		entries: SingleExtractedChunk[]
 		filter: Filter
 	}>
 }
@@ -56,8 +57,8 @@ const groupers: Grouper[] = [
 	{
 		name: "Daily",
 		shouldGroup(a, b) {
-			const d1 = new Date(a.timestamp_unix_ms)
-			const d2 = new Date(b.timestamp_unix_ms)
+			const d1 = new Date(a.from)
+			const d2 = new Date(b.from)
 			return (
 				d1.toISOString().slice(0, 10) === d2.toISOString().slice(0, 10)
 			)
@@ -77,7 +78,7 @@ const groupers: Grouper[] = [
 			)
 		},
 	},
-	{
+	/*{
 		name: "None",
 		shouldGroup(a, b) {
 			return true
@@ -86,7 +87,7 @@ const groupers: Grouper[] = [
 			return (
 				<ul>
 					{p.entries.map((e) => (
-						<li key={e.id}>
+						<li key={e.from}>
 							<EntriesTime entries={[e]} />
 							<Entry {...e} />
 						</li>
@@ -94,15 +95,15 @@ const groupers: Grouper[] = [
 				</ul>
 			)
 		},
-	},
+	},*/
 ]
 
 function group(
 	grouper: Grouper,
-	entries: SingleExtractedEvent[],
-): SingleExtractedEvent[][] {
-	const res: SingleExtractedEvent[][] = []
-	let last: SingleExtractedEvent | null = null
+	entries: SingleExtractedChunk[],
+): SingleExtractedChunk[][] {
+	const res: SingleExtractedChunk[][] = []
+	let last: SingleExtractedChunk | null = null
 	let start = 0
 	for (const [i, entry] of entries.entries()) {
 		if (!last || grouper.shouldGroup(last, entry)) {
@@ -142,7 +143,7 @@ export const timeFmt = new Intl.DateTimeFormat("en-US", {
 	return bg[inx].g
 }*/
 function RenderGroup(props: {
-	entries: SingleExtractedEvent[]
+	entries: SingleExtractedChunk[]
 	filter: Filter
 	grouper: Grouper
 }) {
@@ -152,7 +153,7 @@ function RenderGroup(props: {
 	return (
 		<>
 			{groups.map((entries) => (
-				<section key={entries[0].timestamp_unix_ms}>
+				<section key={entries[0].from}>
 					<h4>
 						<EntriesTime entries={entries} /> [{grouper.name}]
 					</h4>
@@ -170,7 +171,11 @@ export function TimelinePage(): ReactElement {
 			headerClass="fade-in"
 			containerClass="timeline-container"
 		>
-			<Timeline />
+			<Container fluid className="bg-gradient-info pt-md-6">
+				<Container>
+					<Timeline />
+				</Container>
+			</Container>
 		</Page>
 	)
 }
@@ -181,7 +186,7 @@ const detailBy = [
 ]
 @observer
 export class Timeline extends React.Component {
-	@observable data = new Map<string, SingleExtractedEvent[]>()
+	@observable data = new Map<string, SingleExtractedChunk[]>()
 	@observable loading = false
 
 	@observable errored = false
@@ -212,11 +217,11 @@ export class Timeline extends React.Component {
 				before: this.oldestData,
 				after: subDays(this.oldestData, 1),
 			})
-			data.sort((a, b) => -a.timestamp_unix_ms - b.timestamp_unix_ms)
+			data.sort((a, b) => -a.from - b.from)
 			runInAction(() => {
 				let l = null
 				for (const d of data) {
-					const ts = new Date(d.timestamp_unix_ms)
+					const ts = new Date(d.from)
 					const k = ts.toISOString().slice(0, 10)
 					l = ts
 					let z = this.data.get(k)

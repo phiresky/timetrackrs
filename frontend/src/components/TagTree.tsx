@@ -3,9 +3,10 @@ import { computed, makeObservable } from "mobx"
 import { observer, useLocalObservable } from "mobx-react"
 import * as React from "react"
 import { useState } from "react"
+import { Container } from "reactstrap"
 import { setTextRange } from "typescript"
 import * as api from "../api"
-import { SingleExtractedEvent } from "../server"
+import { SingleExtractedChunk } from "../server"
 import {
 	Counter,
 	DefaultMap,
@@ -26,7 +27,7 @@ interface Tree<T> {
 	leaves: T[]
 	children: Map<string, Tree<T>>
 }
-type ATree = Tree<SingleExtractedEvent>
+type ATree = Tree<SingleExtractedChunk>
 
 function rootTree<T>(): Tree<T> {
 	return { children: new Map<string, Tree<T>>(), leaves: [] }
@@ -88,13 +89,13 @@ a -> b -> foo
 
 */
 
-function collectRecurse(tree: ATree, add: (e: SingleExtractedEvent) => void) {
+function collectRecurse(tree: ATree, add: (e: SingleExtractedChunk) => void) {
 	tree.leaves.forEach(add)
 	for (const c of tree.children.values()) collectRecurse(c, add)
 }
 function collect(tree: ATree) {
-	const map = new Map<string, SingleExtractedEvent>()
-	collectRecurse(tree, (e) => map.set(e.id, e))
+	const map = new Map<number, SingleExtractedChunk>()
+	collectRecurse(tree, (e) => map.set(e.from, e))
 	return [...map.values()]
 }
 
@@ -106,7 +107,7 @@ function TotalDuration(props: { tree: ATree }) {
 	)
 }
 
-const TreeLeaves: React.FC<{ leaves: SingleExtractedEvent[] }> = observer(
+const TreeLeaves: React.FC<{ leaves: SingleExtractedChunk[] }> = observer(
 	({ leaves }) => {
 		const [children, setChildren] = React.useState(5)
 		const store = useLocalObservable(() => {
@@ -116,13 +117,9 @@ const TreeLeaves: React.FC<{ leaves: SingleExtractedEvent[] }> = observer(
 				() => new Counter(),
 			)
 			for (const l of leaves) {
-				for (const [tagKey, tagValues = []] of Object.entries(
-					l.tags.map,
-				)) {
-					for (const value of tagValues) {
-						totalCounts.add(tagKey)
-						valueCounter.get(tagKey).add(value)
-					}
+				for (const [tagKey, value, duration] of l.tags) {
+					totalCounts.add(tagKey)
+					valueCounter.get(tagKey).add(value)
 				}
 			}
 			// somewhat incorrect: the total counts differ on each tags because events can have multiple tags
@@ -164,7 +161,7 @@ const TreeLeaves: React.FC<{ leaves: SingleExtractedEvent[] }> = observer(
 			inner = (
 				<ul>
 					{leaves.slice(0, children).map((l) => (
-						<li key={l.id}>
+						<li key={l.from}>
 							<Entry {...l} />
 						</li>
 					))}
@@ -260,22 +257,28 @@ export function TagTreePage(p: {
 	const [tag, setTag] = useState("")
 	return (
 		<Page title="Category Trees">
-			Filter Tag:{" "}
-			<input
-				type="text"
-				value={tag}
-				onChange={(e) => setTag(e.currentTarget.value)}
-			/>
-			<ChooserWithChild
-				routeMatch={p.routeMatch}
-				child={(e) => <TagTree tagName={tag || undefined} {...e} />}
-			/>
+			<Container fluid className="bg-gradient-info pt-md-6">
+				<Container>
+					Filter Tag:{" "}
+					<input
+						type="text"
+						value={tag}
+						onChange={(e) => setTag(e.currentTarget.value)}
+					/>
+					<ChooserWithChild
+						routeMatch={p.routeMatch}
+						child={(e) => (
+							<TagTree tagName={tag || undefined} {...e} />
+						)}
+					/>
+				</Container>
+			</Container>
 		</Page>
 	)
 }
 @observer
 export class TagTree extends React.Component<{
-	events: SingleExtractedEvent[]
+	events: SingleExtractedChunk[]
 	tagName?: string
 	chart?: boolean
 }> {
@@ -284,23 +287,19 @@ export class TagTree extends React.Component<{
 		makeObservable(this)
 	}
 	@computed get tagTree(): ATree {
-		const tree = rootTree<SingleExtractedEvent>()
+		const tree = rootTree<SingleExtractedChunk>()
 		for (const event of this.props.events) {
 			let added = false
-			let toIter: [string, string[] | undefined][]
+			let toIter: [string, string, number][]
 			if (this.props.tagName) {
-				toIter = [
-					[this.props.tagName, event.tags.map[this.props.tagName]],
-				]
+				toIter = event.tags.filter((t) => t[0] === this.props.tagName)
 			} else {
-				toIter = Object.entries(event.tags.map)
+				toIter = event.tags
 			}
-			for (const [tagName, tagValues = []] of toIter) {
-				for (const tagValue of tagValues) {
-					addToTree(tree, [tagName, ...tagValue.split("/")], event)
+			for (const [tagName, tagValue, duration] of toIter) {
+				addToTree(tree, [tagName, ...tagValue.split("/")], event)
 
-					added = true
-				}
+				added = true
 			}
 			if (this.props.tagName && !added) {
 				addToTree(tree, [this.props.tagName, "[untagged]"], event)

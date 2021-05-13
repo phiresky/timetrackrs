@@ -92,8 +92,8 @@ impl ExtractedChunks {
     }
     fn add(&mut self, event: EventWithTagMap) {
         for (chunk, duration_ms) in get_affected_timechunks_duration_ms(
-            &event.timestamp,
-            &Timestamptz(event.timestamp.0 + chrono::Duration::milliseconds(event.duration_ms)),
+            event.timestamp,
+            Timestamptz(event.timestamp.0 + chrono::Duration::milliseconds(event.duration_ms)),
         ) {
             let hm = self.data.entry(chunk).or_insert(HashMap::new());
             for tag in &event.tags {
@@ -107,8 +107,8 @@ impl ExtractedChunks {
 }
 
 fn get_affected_timechunks_duration_ms(
-    from: &Timestamptz,
-    to: &Timestamptz,
+    from: Timestamptz,
+    to: Timestamptz,
 ) -> Vec<(TimeChunk, i64)> {
     let from_date = TimeChunk::containing(from.0).start();
     let interval = chrono::Duration::minutes(CHUNK_LEN_MINS as i64);
@@ -603,5 +603,19 @@ impl DatyBasy {
             .context("Could not invalidate extractions")?;
 
         Ok(inserted)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_get_affected_timechunks_duration_ms() {
+        let from = Timestamptz(Utc.timestamp(1620585292, 562 * 1_000_000));
+        let res = get_affected_timechunks_duration_ms(
+            from,
+            Timestamptz(from.0 + chrono::Duration::milliseconds(30000)),
+        );
+        println!("resulting chunks: {:?}", res);
     }
 }

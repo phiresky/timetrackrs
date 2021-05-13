@@ -409,7 +409,7 @@ fn get_pid() -> u32 {
     // form of container and use the content of cpuset xor-ed with the PID in
     // order get a reasonable machine global unique PID.
     #[cfg(target_os = "linux")]
-    match fs::read("/proc/self/cpuset") {
+    match std::fs::read("/proc/self/cpuset") {
         Err(_) => {}
 
         Ok(buff) => {
@@ -452,14 +452,7 @@ fn read_machine_id() -> [u8; 3] {
 
 #[cfg(target_os = "linux")]
 fn platform_machine_id() -> Result<String, io::Error> {
-    // XXX: unlikely to work if read with an unpriviledged user
-    let mut file = File::open("/sys/class/dmi/id/product_uuid")?;
-
-    let mut contents = String::new();
-
-    file.read_to_string(&mut contents)?;
-
-    Ok(contents)
+    Err(io::Error::new(io::ErrorKind::NotFound, "unsupported"))
 }
 #[cfg(not(target_os = "linux"))]
 fn platform_machine_id() -> Result<String, io::Error> {

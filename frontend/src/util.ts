@@ -1,9 +1,9 @@
 import { autorun } from "mobx"
 import React from "react"
-import { SingleExtractedEvent } from "./server"
+import { SingleExtractedChunk } from "./server"
 
-export function totalDurationSeconds(entries: SingleExtractedEvent[]): number {
-	return entries.reduce((sum, b) => sum + b.duration_ms, 0) / 1000
+export function totalDurationSeconds(entries: SingleExtractedChunk[]): number {
+	return entries.reduce((sum, b) => sum + b.to_exclusive - b.from, 0) / 1000
 }
 
 export function durationToString(duration: number): string {
@@ -21,7 +21,18 @@ export function useMobxEffect(effect: () => unknown): void {
 	return React.useEffect(() => autorun(effect), [])
 }
 
-export class DefaultMap<K, V> extends Map<K, V> {
+export function expectNever<T = any>(n: never): T {
+	return n as T
+}
+
+export class NeatMap<K, V> extends Map<K, V> {
+	addDelta(this: NeatMap<K, number>, k: K, delta: number): number {
+		const newValue = (this.get(k) || 0) + delta
+		this.set(k, newValue)
+		return newValue
+	}
+}
+export class DefaultMap<K, V> extends NeatMap<K, V> {
 	constructor(private def: () => V, entries?: [K, V][]) {
 		super(entries)
 	}

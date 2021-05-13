@@ -7,6 +7,7 @@ import { MyNavbar } from "./Navbar"
 
 export const Page: React.FC<{
 	navRight?: React.ComponentType
+	title?: string
 }> = ({ children, navRight }) => {
 	return (
 		<div className="main-content">
