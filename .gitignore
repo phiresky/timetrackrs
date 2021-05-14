@@ -1,6 +1,4 @@
-/.dev-db
 /target
-/.env
 /*.sqlite3*
 /notes
 /result
