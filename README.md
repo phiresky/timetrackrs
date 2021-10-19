@@ -1,5 +1,7 @@
 **How did you spend your day?**
 
+![teaser](docs/dashboard-teaser.png)
+
 ![plot screenshot](docs/screenshots/2020-12-14-15-15-11.png)
 
 **Track which projects you are working on and how much**
