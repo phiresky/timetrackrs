@@ -438,7 +438,9 @@ export const Dashboard: React.FC = observer((_) => {
 							<CardHeader className="border-0">
 								<Row className="align-items-center">
 									<div className="col">
-										<h3 className="mb-0">Page visits</h3>
+										<h3 className="mb-0">
+											Todo some table
+										</h3>
 									</div>
 									<div className="col text-right">
 										<Button
@@ -519,7 +521,7 @@ export const Dashboard: React.FC = observer((_) => {
 							<CardHeader className="border-0">
 								<Row className="align-items-center">
 									<div className="col">
-										<h3 className="mb-0">Social traffic</h3>
+										<h3 className="mb-0">Some right bar</h3>
 									</div>
 									<div className="col text-right">
 										<Button
