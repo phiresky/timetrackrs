@@ -32,6 +32,22 @@ For example, an event can may have the following tags:
 
 Which means in the UI you can figure out the time spent on software development, or on a specific project (not necessarily software development), or on a specific device.
 
+## Setup / Building
+
+Note that this tool is not yet finished. There are no finished builds available yet.
+
+```bash
+git clone https://github.com/phiresky/timetrackrs.git
+cd timetrackrs
+# build frontend first
+cd frontend
+yarn install
+yarn build
+cd ..
+# build and install `timetrackrs` binary to ~/.cargo/bin
+cargo install --path .
+```
+
 ## Data Sources
 
 ### Working Data Sources
