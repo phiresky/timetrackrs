@@ -34,7 +34,7 @@ Which means in the UI you can figure out the time spent on software development,
 
 ## Setup / Building
 
-Note that this tool is not yet finished. There are no finished builds available yet.
+Note that this tool is not yet finished. There are no prebuilt binaries available yet.
 
 ```bash
 git clone https://github.com/phiresky/timetrackrs.git
@@ -47,6 +47,10 @@ cd ..
 # build and install `timetrackrs` binary to ~/.cargo/bin
 cargo install --path .
 ```
+
+You should start `timetrackrs` on user login. It will start the UI at <http://localhost:52714/dashboard> and start the default window tracking data source.
+
+If you use systemd, you can use the included [timetrackrs.service] service file to auto-start timetrackrs. 
 
 ## Data Sources
 
