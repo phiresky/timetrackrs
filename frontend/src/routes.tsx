@@ -57,6 +57,7 @@ export const router = Router.create<React.ComponentType>()
 		return (
 			<ChooserWithChild
 				routeMatch={p}
+				chooseTag={true}
 				child={(p2) => (
 					<CategoryChart {...p2} deep={!!p.queryArgs.deep} />
 				)}
