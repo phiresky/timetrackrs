@@ -52,7 +52,7 @@ async function doApiRequest<N extends keyof ApiTypes>(
 	const params = new URLSearchParams(
 		JSON.parse(JSON.stringify(info)),
 	).toString()
-	const url = new URL(`${backend}/${path.replace("_", "-")}?${params}`)
+	const url = new URL(`${backend}/${path.replace(/_/g, "-")}?${params}`)
 	const resp = await fetch(url.toString())
 	if (!resp.ok) {
 		return await handleError(resp)

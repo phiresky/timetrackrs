@@ -5,7 +5,7 @@ import * as React from "react"
 import { useState } from "react"
 import { Container } from "reactstrap"
 import * as api from "../api"
-import { SingleExtractedChunk } from "../server"
+import { SingleExtractedChunk, Timestamptz } from "../server"
 import {
 	Counter,
 	DefaultMap,
@@ -101,7 +101,7 @@ function collectRecurse(tree: ATree, add: (e: ALeaf) => void) {
 	for (const c of tree.children.values()) collectRecurse(c, add)
 }
 function collect(tree: ATree): ALeaf[] {
-	const map = new Map<number, ALeaf>()
+	const map = new Map<Timestamptz, ALeaf>()
 	collectRecurse(tree, (e) => map.set(e.timeChunk.from, e))
 	return [...map.values()]
 }

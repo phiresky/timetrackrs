@@ -1,5 +1,6 @@
 type DateTime<T> = string
 type Local = unknown
+type Json<T> = T
 type Timestamptz = string | number
 type Utc = void
 type Regex = string

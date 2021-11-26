@@ -3,10 +3,11 @@ import * as d from "date-fns/esm"
 import { startOfDay } from "date-fns/esm"
 import { computed, makeObservable, observable } from "mobx"
 import { observer } from "mobx-react"
+import { Template } from "plotly.js"
 import React from "react"
 import Plotly from "react-plotly.js"
-import { Container } from "reactstrap"
-import { SingleExtractedChunk } from "../server"
+import { Card, Container } from "reactstrap"
+import { SingleExtractedChunk, Timestamptz } from "../server"
 import { DefaultMap, expectNever, NeatMap } from "../util"
 import { ChooserWithChild, CWCRouteMatch } from "./ChooserWithChild"
 import { Page } from "./Page"
@@ -391,11 +392,14 @@ export function PlotPage(p: { routeMatch: CWCRouteMatch }): React.ReactElement {
 	return (
 		<Page title="Plot">
 			<Container fluid className="bg-gradient-info py-6">
-				<ChooserWithChild
-					routeMatch={p.routeMatch}
-					child={Plot}
-					containerClass="mx-auto"
-				/>
+				<Card>
+					<ChooserWithChild
+						chooseTag={true}
+						routeMatch={p.routeMatch}
+						child={Plot}
+						containerClass="mx-auto"
+					/>
+				</Card>
 			</Container>
 		</Page>
 	)
@@ -568,7 +572,9 @@ export class InnerPlot extends React.Component<{
 					},
 					plot_bgcolor: "#0000",
 					paper_bgcolor: "#0000",
-					template: this.props.dark ? dark : undefined,
+					template: this.props.dark
+						? (dark as unknown as Template)
+						: undefined,
 					autosize: true,
 					// title: null, // `Time spent by ${this.props.tag}`,
 					barmode: "stack",
@@ -599,7 +605,7 @@ export class InnerPlot extends React.Component<{
 }
 @observer
 export class Plot extends React.Component<{
-	events: SingleExtractedChunk[]
+	timeChunks: SingleExtractedChunk[]
 	tag: string
 }> {
 	r = React.createRef<HTMLDivElement>()
@@ -678,10 +684,10 @@ export class Plot extends React.Component<{
 	}*/
 
 	@computed get dayInfo() {
-		return this.getDayInfo(this.props.events)
+		return this.getDayInfo(this.props.timeChunks)
 	}
 
-	getDayInfo(e: { from: Date | number; to_exclusive: Date | number }[]) {
+	getDayInfo(e: { from: Timestamptz; to_exclusive: Timestamptz }[]) {
 		if (e.length === 0) {
 			return {
 				firstDay: new Date(),
@@ -740,7 +746,7 @@ export class Plot extends React.Component<{
 					/>
 				</label>
 				<InnerPlot
-					events={this.props.events}
+					events={this.props.timeChunks}
 					dark={false}
 					tag={this.props.tag}
 					deep={this.deep}

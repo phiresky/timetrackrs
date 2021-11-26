@@ -16,6 +16,9 @@ import { SingleExtractedChunk } from "../server"
 import { endOfDay, subDays } from "date-fns"
 import { Card, CardBody, CardHeader, Container, Row } from "reactstrap"
 
+/**
+ * TODO: support multi-value tags
+ */
 export function getTag(
 	tags: [string, string, number][],
 	tag: string,
@@ -26,6 +29,15 @@ export function getTag(
 		return value?.split("/")[0]
 	}
 	return value
+}
+export function getTags(
+	tags: [string, string, number][],
+	tag: string,
+	deep = true,
+): [string, number][] {
+	return tags
+		.filter((t) => t[0] === tag)
+		.map(([_, v, dur]) => [deep ? v : v.split("/")[0], dur])
 }
 
 type Filter = { tagName: string }

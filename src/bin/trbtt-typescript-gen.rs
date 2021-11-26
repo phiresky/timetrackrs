@@ -45,6 +45,7 @@ fn main() -> anyhow::Result<()> {
     let mut ofile = std::fs::File::create("frontend/src/server.d.ts")?;
     writeln!(ofile, "type DateTime<T> = string;")?;
     writeln!(ofile, "type Local = unknown;")?;
+    writeln!(ofile, "type Json<T> = T;")?;
     writeln!(ofile, "type Timestamptz = string | number;")?;
     writeln!(ofile, "type Utc = void;")?;
     writeln!(ofile, "type Regex = string;")?;

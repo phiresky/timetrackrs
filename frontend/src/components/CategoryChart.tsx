@@ -4,11 +4,12 @@ import Plot from "react-plotly.js"
 import { DefaultMap, KeyedSet, totalDurationSeconds } from "../util"
 import { ModalLink } from "./ModalLink"
 import { AiOutlineBarChart } from "react-icons/ai"
-import { SingleExtractedEvent } from "../server"
 import { routes } from "../routes"
+import { SingleExtractedChunk, Timestamptz } from "../server"
+import { getTag, getTags } from "./Timeline"
 
 type CategoryChartProps = {
-	events: SingleExtractedEvent[]
+	timeChunks: SingleExtractedChunk[]
 	tag: string
 	deep: boolean
 }
@@ -26,20 +27,15 @@ export function CategoryChartModal(p: CategoryChartProps): React.ReactElement {
 }
 export class CategoryChart extends React.Component<CategoryChartProps> {
 	@computed get data() {
-		const prefix = this.props.tag
-		const groups = new DefaultMap<string, KeyedSet<SingleExtractedEvent>>(
-			() => new KeyedSet((e) => e.id),
-		)
-		for (const event of this.props.events) {
-			for (let cat of event.tags.map[prefix] || []) {
-				if (!this.props.deep) cat = cat.split("/")[0]
-				groups.get(cat).add(event)
+		const tag = this.props.tag
+		const groups = new DefaultMap<string, number>(() => 0)
+		for (const timeChunk of this.props.timeChunks) {
+			for (const [val, dur] of getTags(timeChunk.tags, tag)) {
+				groups.addDelta(val, dur)
 			}
 		}
 		const x = [...groups.keys()]
-		const y = [...groups.values()].map(
-			(s) => totalDurationSeconds([...s]) / 60 / 60,
-		)
+		const y = [...groups.values()].map((s) => s / 60 / 60)
 		return { x, y }
 	}
 	render(): React.ReactNode {

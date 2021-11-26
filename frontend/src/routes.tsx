@@ -46,7 +46,7 @@ export const router = Router.create<React.ComponentType>()
 	.with(routes.root, () => () => {
 		// TODO: this redirect be ugly
 		const c = useContext(RouterContext)
-		c?.replace(routes.timeline, {}, {})
+		c?.replace(routes.dashboard, {}, {})
 		return <></>
 	})
 	.with(routes.plot, (p) => () => <PlotPage routeMatch={p} />)
