@@ -17,16 +17,26 @@ export type CWCRouteMatch = {
 	queryArgs: QA
 	replace(route: undefined, args: undefined, queryArgs: QA): void
 }
-export const ChooserWithChild: React.FC<{
+type A = {
 	child: React.ComponentType<{
 		timeChunks: SingleExtractedChunk[]
-		tag?: string
+		tag: undefined
 	}>
-	chooseTag?: boolean
-
-	containerClass?: string
-	routeMatch: CWCRouteMatch
-}> = observer((p) => {
+	chooseTag: false
+}
+type B = {
+	child: React.ComponentType<{
+		timeChunks: SingleExtractedChunk[]
+		tag: string
+	}>
+	chooseTag: true
+}
+export const ChooserWithChild: React.FC<
+	{
+		containerClass?: string
+		routeMatch: CWCRouteMatch
+	} & (A | B)
+> = observer((p) => {
 	const store = useLocalObservable(() => ({
 		timeRange: {
 			from: dfn.startOfDay(
@@ -115,7 +125,7 @@ export const ChooserWithChild: React.FC<{
 				{store.data.case({
 					fulfilled: (v) => (
 						<>
-							{React.createElement(p.child, {
+							{React.createElement(p.child as any, {
 								timeChunks: v,
 								...(p.chooseTag
 									? { tag: store.tag.value }

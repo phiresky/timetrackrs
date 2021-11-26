@@ -13,6 +13,8 @@ import { ChooserWithChild, CWCRouteMatch } from "./ChooserWithChild"
 import { Page } from "./Page"
 import { Choices, Select } from "./Select"
 import { SingleEventInfo } from "./SingleEventInfo"
+import { Temporal, Intl, toTemporalInstant } from "@js-temporal/polyfill"
+
 const dark = {
 	data: {
 		bar: [
@@ -437,9 +439,16 @@ function aggregateData({
 	const totalDuration = new NeatMap<Bucket, number>()
 
 	for (const timechunk of events) {
-		const bucket = aggregator(
+		const bucketD = aggregator(
 			new Date(timechunk.from - (timechunk.from % binSize)),
-		).toJSON()
+		)
+		// to local time text
+		const bucket = toTemporalInstant
+			.call(bucketD)
+
+			.toZonedDateTimeISO(Temporal.Now.timeZone())
+			.toPlainDateTime()
+			.toString()
 		for (const [mtag, _value, duration] of timechunk.tags) {
 			if (tag !== mtag) continue
 			const value = getValue(deep, _value)
@@ -548,6 +557,7 @@ export class InnerPlot extends React.Component<{
 					},
 				}
 			})
+			console.log("data", data)
 			return data
 		} else {
 			throw Error(`unknown chart type ${expectNever<string>(chartType)}`)

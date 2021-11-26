@@ -324,7 +324,9 @@ export class TagTree extends React.Component<{
 							{kind}{" "}
 							{!chart && (
 								<CategoryChartModalLink
-									events={collect(tree)}
+									timeChunks={collect(tree).map(
+										(t) => t.timeChunk,
+									)}
 									deep={false}
 									tag={kind}
 								/>
@@ -332,7 +334,9 @@ export class TagTree extends React.Component<{
 						</h3>
 						{chart && (
 							<CategoryChart
-								events={collect(tree)}
+								timeChunks={collect(tree).map(
+									(t) => t.timeChunk,
+								)}
 								deep={false}
 								tag={kind + ":"}
 							/>

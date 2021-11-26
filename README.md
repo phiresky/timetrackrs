@@ -64,7 +64,7 @@ To continuously rebuild the frontend, do
 
 ```bash
 cd frontend
-yarn dev
+yarn webpack --watch
 ```
 
 ## Data Sources

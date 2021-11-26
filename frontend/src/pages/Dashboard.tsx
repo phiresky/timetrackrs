@@ -371,6 +371,7 @@ export const Dashboard: React.FC = observer((_) => {
 												}}
 												deep={store.deep}
 												dark={true}
+												scaleTo100={false}
 											/>
 										)
 									}}
@@ -420,6 +421,7 @@ export const Dashboard: React.FC = observer((_) => {
 												}}
 												deep={store.deep}
 												dark={false}
+												scaleTo100={false}
 											/>
 										)
 									}}

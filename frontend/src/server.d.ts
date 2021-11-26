@@ -1,7 +1,7 @@
 type DateTime<T> = string
 type Local = unknown
 type Json<T> = T
-type Timestamptz = string | number
+type Timestamptz = number
 type Utc = void
 type Regex = string
 type ExternalFetcher = string

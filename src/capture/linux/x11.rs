@@ -198,7 +198,7 @@ impl<C: Connection + Send> Capturer for X11Capturer<C> {
 
             let process = if let Some(pid) = pid {
                 system.refresh_process(pid as i32);
-                if let Some(procinfo) = system.get_process(pid as i32) {
+                if let Some(procinfo) = system.process(pid as i32) {
                     Some(ProcessData {
                         pid: procinfo.pid(),
                         name: procinfo.name().to_string(),
