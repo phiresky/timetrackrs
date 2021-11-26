@@ -2,15 +2,19 @@ import { makeObservable, observable, runInAction } from "mobx"
 import { observer } from "mobx-react"
 import React, { ReactElement } from "react"
 import * as api from "../api"
-import { durationToString, totalDurationSeconds } from "../util"
+import {
+	durationToString,
+	totalDurationSeconds,
+	totalDurationSecondsTag,
+} from "../util"
 import { EntriesTime } from "./EntriesTime"
 import { Entry } from "./Entry"
 import { Page } from "./Page"
 import { TagTree } from "./TagTree"
 import { Choices, Select } from "./Select"
 import { SingleExtractedChunk } from "../server"
-import { subDays } from "date-fns"
-import { Container } from "reactstrap"
+import { endOfDay, subDays } from "date-fns"
+import { Card, CardBody, CardHeader, Container, Row } from "reactstrap"
 
 export function getTag(
 	tags: [string, string, number][],
@@ -68,7 +72,13 @@ const groupers: Grouper[] = [
 				<ul>
 					<li>
 						Total tracked time:{" "}
-						{durationToString(totalDurationSeconds(p.entries))}:
+						{durationToString(
+							totalDurationSecondsTag(
+								p.entries,
+								"timetrackrs-tracked",
+							),
+						)}
+						:
 						<TagTree
 							timeChunks={p.entries}
 							tagName={p.filter.tagName}
@@ -166,14 +176,24 @@ function RenderGroup(props: {
 
 export function TimelinePage(): ReactElement {
 	return (
-		<Page
-			title="Timeline"
-			headerClass="fade-in"
-			containerClass="timeline-container"
-		>
-			<Container fluid className="bg-gradient-info pt-md-6">
+		<Page title="Timeline">
+			<Container fluid className="bg-gradient-info py-6">
 				<Container>
-					<Timeline />
+					<Card>
+						<CardHeader className="bg-transparent">
+							<Row className="align-items-center">
+								<div className="col">
+									<h6 className="text-uppercase text-muted ls-1 mb-1">
+										Event log
+									</h6>
+									<h2 className="mb-0">Timeline</h2>
+								</div>
+							</Row>
+						</CardHeader>
+						<CardBody>
+							<Timeline />
+						</CardBody>
+					</Card>
 				</Container>
 			</Container>
 		</Page>
@@ -191,7 +211,7 @@ export class Timeline extends React.Component {
 
 	@observable errored = false
 	@observable loadState = "unloaded"
-	@observable oldestData = new Date()
+	@observable lastRequested = endOfDay(new Date())
 	@observable gotOldestEver = false
 	@observable readonly detailBy = Choices(detailBy)
 	@observable readonly aggBy = Choices(
@@ -199,6 +219,7 @@ export class Timeline extends React.Component {
 		groupers.find((g) => g.name === "Daily"),
 	)
 	@observable scrollDiv = React.createRef<HTMLDivElement>()
+	oldestTimestamp: Date | null = null
 
 	constructor(p: Record<string, unknown>) {
 		super(p)
@@ -211,12 +232,25 @@ export class Timeline extends React.Component {
 		if (this.loading) return
 		try {
 			this.loading = true
-			this.loadState = `loading from ${this.oldestData.toISOString()}`
-			const now = new Date()
+			if (!this.oldestTimestamp) {
+				this.oldestTimestamp = new Date(
+					(await api.timestampSearch({
+						backwards: false,
+						from: 0,
+					})) as number,
+				)
+			}
+			this.loadState = `loading ${this.lastRequested.toLocaleDateString()}`
+			const newLastRequested = subDays(this.lastRequested, 1)
 			const data = await api.getTimeRange({
-				before: this.oldestData,
-				after: subDays(this.oldestData, 1),
+				before: this.lastRequested,
+				after: newLastRequested,
 			})
+			this.lastRequested = newLastRequested
+			if (newLastRequested < this.oldestTimestamp) {
+				this.gotOldestEver = true
+				console.log(`got oldest!!`, data)
+			}
 			data.sort((a, b) => -a.from - b.from)
 			runInAction(() => {
 				let l = null
@@ -231,11 +265,6 @@ export class Timeline extends React.Component {
 					}
 					z.push(d)
 				}
-				if (data.length < 10) {
-					this.gotOldestEver = true
-					console.log(`got oldest!!`, data)
-				}
-				if (l) this.oldestData = l
 				this.loadState = "loaded"
 			})
 		} catch (e) {
@@ -270,7 +299,7 @@ export class Timeline extends React.Component {
 	render(): React.ReactNode {
 		//const da = groupBy(this.data.data);
 		return (
-			<div className="timeline">
+			<div className="timeline" style={{ maxHeight: "500px" }}>
 				<div className="timeline-config">
 					<h2>{this.loadState}</h2>
 					<div>

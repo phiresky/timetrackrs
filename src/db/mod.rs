@@ -72,7 +72,7 @@ pub async fn connect_dir(dir: String, pool_size: Option<u32>) -> anyhow::Result<
         .await
         .with_context(|| format!("Establishing connection to db {}", main))?;
     let migrator = sqlx::migrate!();
-    log::info!("Running {} migrations", migrator.iter().count());
+    log::info!("Running {} migrations ", migrator.iter().count());
     migrator.run(&db).await.context("running migrations")?;
     Ok(db)
 }

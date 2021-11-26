@@ -1,0 +1,1 @@
+delete from extracted.extracted_current;

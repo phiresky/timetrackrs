@@ -390,7 +390,7 @@ const dark = {
 export function PlotPage(p: { routeMatch: CWCRouteMatch }): React.ReactElement {
 	return (
 		<Page title="Plot">
-			<Container fluid className="bg-gradient-info pt-md-6">
+			<Container fluid className="bg-gradient-info py-6">
 				<ChooserWithChild
 					routeMatch={p.routeMatch}
 					child={Plot}

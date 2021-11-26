@@ -1,6 +1,6 @@
 type DateTime<T> = string
 type Local = unknown
-type Timestamptz = number
+type Timestamptz = string | number
 type Utc = void
 type Regex = string
 type ExternalFetcher = string
@@ -115,6 +115,11 @@ export type ApiTypesTS =
 	  }
 	| { type: "update_rule_groups"; request: TagRuleGroup[]; response: [] }
 	| { type: "get_known_tags"; request: []; response: string[] }
+	| {
+			type: "timestamp_search"
+			request: TimestampSearchRequest
+			response: Timestamptz | null
+	  }
 export type SingleExtractedEventWithRaw = {
 	id: string
 	timestamp_unix_ms: Timestamptz
@@ -128,6 +133,16 @@ export type SingleExtractedChunk = {
 	from: Timestamptz
 	to_exclusive: Timestamptz
 	tags: [string, string, number][]
+}
+// search for the timestamp of the next existing raw event, starting at `from` and searching backwards / forwards
+export type TimestampSearchRequest = {
+	backwards: boolean
+	from: Timestamptz | null
+}
+export type TimeRangeRequest = {
+	before: string
+	after: string
+	tag: string | null
 }
 export type ProgressReport = {
 	call_id: string

@@ -7,6 +7,7 @@ use typescript_definitions::TypeScriptifyTrait;
 
 #[cfg(debug_assertions)]
 const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
+    // TODO: auto-generate this list
     // DbEvent::type_script_ify,
     EventData::type_script_ify,
     linux::types::X11EventData::type_script_ify,
@@ -28,6 +29,8 @@ const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
     api_types::SingleExtractedEventWithRaw::type_script_ify,
     api_types::ApiResponse::<String>::type_script_ify,
     api_types::SingleExtractedChunk::type_script_ify,
+    api_types::TimestampSearchRequest::type_script_ify,
+    api_types::TimeRangeRequest::type_script_ify,
     ProgressReport::type_script_ify,
     ProgressState::type_script_ify,
 ];
@@ -42,7 +45,7 @@ fn main() -> anyhow::Result<()> {
     let mut ofile = std::fs::File::create("frontend/src/server.d.ts")?;
     writeln!(ofile, "type DateTime<T> = string;")?;
     writeln!(ofile, "type Local = unknown;")?;
-    writeln!(ofile, "type Timestamptz = number;")?;
+    writeln!(ofile, "type Timestamptz = string | number;")?;
     writeln!(ofile, "type Utc = void;")?;
     writeln!(ofile, "type Regex = string;")?;
     writeln!(ofile, "type ExternalFetcher = string;")?;

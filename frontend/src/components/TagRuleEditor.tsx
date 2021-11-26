@@ -24,7 +24,7 @@ import {
 export function TagRuleEditorPage(): React.ReactElement {
 	return (
 		<Page>
-			<Container fluid className="bg-gradient-info pt-md-6">
+			<Container fluid className="bg-gradient-info py-6">
 				<Container>
 					<TagRuleEditor />
 				</Container>

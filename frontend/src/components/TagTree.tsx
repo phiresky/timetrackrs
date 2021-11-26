@@ -272,7 +272,7 @@ export function TagTreePage(p: {
 }): React.ReactElement {
 	return (
 		<Page title="Category Trees">
-			<Container fluid className="bg-gradient-info pt-md-6">
+			<Container fluid className="bg-gradient-info py-6">
 				<Container>
 					<ChooserWithChild
 						routeMatch={p.routeMatch}

@@ -27,12 +27,6 @@ ul {
 	padding-left: 40px;
 }
 
-div.item {
-	display: flex;
-	flex: auto;
-	overflow-y: auto;
-	padding: 0rem 1rem 0rem 1rem;
-}
 
 div.header {
 	height: auto;
@@ -87,18 +81,18 @@ div.header {
 	overflow: scroll;
 }
 
-.container {
-	max-height: 100%;
-}
-.timeline-container {
-	display: flex;
-	flex-direction: column;
-}
+*/
 .timeline {
 	display: flex;
 	flex: auto;
 	flex-direction: column;
 	overflow-y: auto;
+	div.item {
+		display: flex;
+		flex: auto;
+		overflow-y: auto;
+		padding: 0rem 1rem 0rem 1rem;
+	}
 	.timeline-config {
 		position: absolute;
 		margin-top: 200px;
@@ -209,6 +203,7 @@ div.header {
 		}
 	}
 }
+/*
 .ReactModal__Overlay {
 	z-index: 1000;
 }

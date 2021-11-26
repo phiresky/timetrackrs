@@ -5,6 +5,17 @@ import { SingleExtractedChunk } from "./server"
 export function totalDurationSeconds(entries: { duration: number }[]): number {
 	return entries.reduce((sum, b) => sum + b.duration, 0) / 1000
 }
+export function totalDurationSecondsTag(
+	entries: SingleExtractedChunk[],
+	tag: string,
+) {
+	return (
+		entries.reduce(
+			(sum, b) => sum + (b.tags.find((t) => t[0] === tag)?.[2] ?? 0),
+			0,
+		) / 1000
+	)
+}
 
 export function durationToString(duration: number): string {
 	if (duration < 60) {

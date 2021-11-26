@@ -195,12 +195,10 @@ export const Dashboard: React.FC = observer((_) => {
 																{
 																	div: [
 																		{
-																			tag:
-																				"category",
+																			tag: "category",
 																		},
 																		{
-																			tag:
-																				"timetrackrs-tracked",
+																			tag: "timetrackrs-tracked",
 																		},
 																	],
 																},
@@ -246,14 +244,12 @@ export const Dashboard: React.FC = observer((_) => {
 														calculation={{
 															div: [
 																{
-																	tag:
-																		"category",
+																	tag: "category",
 																	valuePrefix:
 																		"Productivity/",
 																},
 																{
-																	tag:
-																		"category",
+																	tag: "category",
 																},
 															],
 														}}

@@ -3353,7 +3353,7 @@ dependencies = [
 [[package]]
 name = "sqlx"
 version = "0.5.9"
-source = "git+https://github.com/phiresky/sqlx#a8c462d693dcb08dfd08a01634476b382225dbfa"
+source = "git+https://github.com/phiresky/sqlx#55a30d70a12cb9f781e457fea80751270b0b2350"
 dependencies = [
  "sqlx-core",
  "sqlx-macros",
@@ -3362,7 +3362,7 @@ dependencies = [
 [[package]]
 name = "sqlx-core"
 version = "0.5.9"
-source = "git+https://github.com/phiresky/sqlx#a8c462d693dcb08dfd08a01634476b382225dbfa"
+source = "git+https://github.com/phiresky/sqlx#55a30d70a12cb9f781e457fea80751270b0b2350"
 dependencies = [
  "ahash",
  "atoi",
@@ -3405,7 +3405,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros"
 version = "0.5.9"
-source = "git+https://github.com/phiresky/sqlx#a8c462d693dcb08dfd08a01634476b382225dbfa"
+source = "git+https://github.com/phiresky/sqlx#55a30d70a12cb9f781e457fea80751270b0b2350"
 dependencies = [
  "cached",
  "dotenv",
@@ -3426,7 +3426,7 @@ dependencies = [
 [[package]]
 name = "sqlx-rt"
 version = "0.5.9"
-source = "git+https://github.com/phiresky/sqlx#a8c462d693dcb08dfd08a01634476b382225dbfa"
+source = "git+https://github.com/phiresky/sqlx#55a30d70a12cb9f781e457fea80751270b0b2350"
 dependencies = [
  "native-tls",
  "once_cell",

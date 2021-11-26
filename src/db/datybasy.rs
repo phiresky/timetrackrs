@@ -198,7 +198,8 @@ impl DatyBasy {
             from extracted_chunks e
             join tags on tags.id = e.tag
             join tag_values on tag_values.id = e.value
-            where e.tag = (select id from tags where text = ?3) and e.timechunk >= ?1 and e.timechunk <= ?2
+            where e.tag = (select id from tags where text = ?3)
+            and e.timechunk >= ?1 and e.timechunk <= ?2
             order by e.timechunk desc"#, from, to, tag)
             .fetch_all(&self.db).await
             .context("querying extracted db")?
@@ -238,7 +239,12 @@ impl DatyBasy {
         let chunks = self.get_affected_timechunks_range(from, to);
         {
             let days_str = serde_json::to_string(&chunks)?;
-            let doesnt_need_update: Vec<TimeChunk> = sqlx::query_scalar!( r#"select timechunk as "timechunk: _" from extracted.extracted_current where timechunk in (select value from json_each(?)) and extracted_timestamp_unix_ms > raw_events_changed_timestamp_unix_ms"#, days_str).fetch_all(&self.db).await.context("fetching currents")?;
+            let doesnt_need_update: Vec<TimeChunk> = sqlx::query_scalar!( r#"
+                select timechunk as "timechunk: _"
+                from extracted.extracted_current
+                where timechunk in (select value from json_each(?))
+                and extracted_timestamp_unix_ms > raw_events_changed_timestamp_unix_ms"#,
+                days_str).fetch_all(&self.db).await.context("fetching currents")?;
             let doesnt_need_update =
                 HashSet::<TimeChunk>::from_iter(doesnt_need_update.into_iter());
             let mut needs_update: Vec<_> = chunks

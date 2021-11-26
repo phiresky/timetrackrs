@@ -11,7 +11,7 @@ pub mod progress_events {
     use std::sync::Arc;
 
     use crate::prelude::*;
-    
+
     use tokio::sync::broadcast::{Receiver, Sender};
 
     #[derive(Debug, Serialize, TypeScriptify)]
@@ -87,9 +87,34 @@ async fn get_known_tags(
     Ok(ApiResponse { data: tags })
 }
 
+async fn timestamp_search(
+    db: DatyBasy,
+    req: Api::timestamp_search::request,
+) -> Api::timestamp_search::response {
+    if req.backwards {
+        let timestamp: Option<Option<Timestamptz>> = sqlx::query_scalar!(
+            r#"select max(timestamp_unix_ms) as "e: Timestamptz" from raw_events.events where timestamp_unix_ms < ?"#,
+            req.from
+        )
+        .fetch_optional(&db.db)
+        .await?;
+        Ok(ApiResponse {
+            data: timestamp.flatten(),
+        })
+    } else {
+        let timestamp: Option<Option<Timestamptz>> = sqlx::query_scalar!(
+        r#"select min(timestamp_unix_ms) as "e: Timestamptz" from raw_events.events where timestamp_unix_ms > ?"#,
+        req.from
+    )
+    .fetch_optional(&db.db)
+    .await?;
+        Ok(ApiResponse {
+            data: timestamp.flatten(),
+        })
+    }
+}
+
 async fn time_range(db: DatyBasy, req: Api::time_range::request) -> Api::time_range::response {
-    // println!("handling...");
-    // println!("querying...");
     let before = iso_string_to_datetime(&req.before).context("could not parse before date")?;
     let after = iso_string_to_datetime(&req.after).context("could not parse after date")?;
 
@@ -242,6 +267,16 @@ pub fn api_routes(
                 .map_err(map_error)
         });
 
+    let timestamp_search = with_db(db.clone())
+        .and(warp::path("timestamp-search"))
+        .and(warp::query::<Api::timestamp_search::request>())
+        .and_then(|db, query| async {
+            timestamp_search(db, query)
+                .await
+                .map(|e| json(&e))
+                .map_err(map_error)
+        });
+
     let get_known_tags = with_db(db.clone())
         .and(warp::path("get-known-tags"))
         .and(warp::query::<Api::get_known_tags::request>())
@@ -311,6 +346,8 @@ pub fn api_routes(
         .or(single_event)
         .unify()
         .or(update_rule_groups)
+        .unify()
+        .or(timestamp_search)
         .unify()
         .or(progress_events);
 

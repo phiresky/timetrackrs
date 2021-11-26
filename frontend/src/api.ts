@@ -19,7 +19,7 @@ async function handleError(resp: Response): Promise<never> {
 	const text = await resp.text()
 	let data: { message: string } | null = null
 	try {
-		data = JSON.parse(text)
+		data = JSON.parse(text) as { message: string }
 	} catch (e) {
 		//
 	}
@@ -39,71 +39,51 @@ async function handleError(resp: Response): Promise<never> {
 		}: ${text}`,
 	)
 }
+export async function timestampSearch(
+	info: ApiTypes["timestamp_search"]["request"],
+): Promise<ApiTypes["timestamp_search"]["response"]> {
+	return doApiRequest("timestamp_search", info)
+}
+
+async function doApiRequest<N extends keyof ApiTypes>(
+	path: N,
+	info: ApiTypes[N]["request"],
+): Promise<ApiTypes[N]["response"]> {
+	const params = new URLSearchParams(
+		JSON.parse(JSON.stringify(info)),
+	).toString()
+	const url = new URL(`${backend}/${path.replace("_", "-")}?${params}`)
+	const resp = await fetch(url.toString())
+	if (!resp.ok) {
+		return await handleError(resp)
+	}
+	const { data } = (await resp.json()) as ApiResponse<ApiTypes[N]["response"]>
+	return data
+}
 export async function getTimeRange(info: {
 	before: Date
 	after: Date
 	tag?: string
 }): Promise<ApiTypes["time_range"]["response"]> {
-	const url = new URL(
-		backend +
-			"/time-range?" +
-			new URLSearchParams(JSON.parse(JSON.stringify(info))).toString(),
-	)
-	const resp = await fetch(url.toString())
-	if (!resp.ok) {
-		return await handleError(resp)
-	}
-	const { data } = (await resp.json()) as ApiResponse<
-		ApiTypes["time_range"]["response"]
-	>
-	return data
+	return doApiRequest("time_range", info)
 }
 
 export async function getKnownTags(): Promise<
 	ApiTypes["get_known_tags"]["response"]
 > {
-	const url = new URL(
-		backend +
-			"/get-known-tags?" +
-			new URLSearchParams(JSON.parse(JSON.stringify({}))).toString(),
-	)
-	const resp = await fetch(url.toString())
-	if (!resp.ok) {
-		return await handleError(resp)
-	}
-	const { data } = (await resp.json()) as ApiResponse<
-		ApiTypes["get_known_tags"]["response"]
-	>
-	return data
+	return doApiRequest("get_known_tags", [])
 }
 
 export async function getSingleEvent(info: {
 	id: string
 }): Promise<ApiTypes["single_event"]["response"]> {
-	const url = new URL(backend + "/single-event")
-	url.searchParams.set("id", info.id)
-	const resp = await fetch(url.toString())
-	if (!resp.ok) {
-		return await handleError(resp)
-	}
-	const { data } = (await resp.json()) as ApiResponse<
-		ApiTypes["single_event"]["response"]
-	>
-	return data
+	return doApiRequest("single_event", info)
 }
 
 export async function getTagRules(): Promise<
 	ApiTypes["rule_groups"]["response"]
 > {
-	const url = new URL(backend + "/rule-groups")
-	const resp = await fetch(url.toString())
-	if (!resp.ok) {
-		return await handleError(resp)
-	}
-	const { data } = (await resp.json()) as ApiResponse<
-		ApiTypes["rule_groups"]["response"]
-	>
-	return data
+	return doApiRequest("rule_groups", [])
 }
 
 export async function saveTagRules(groups: TagRuleGroup[]): Promise<void> {

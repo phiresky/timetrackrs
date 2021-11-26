@@ -70,6 +70,15 @@ pub struct SingleEventRequest {
     pub id: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
+///
+/// search for the timestamp of the next existing raw event, starting at `from` and searching backwards / forwards
+///
+pub struct TimestampSearchRequest {
+    pub backwards: bool,
+    pub from: Option<Timestamptz>,
+}
+
 make_thingois! {
     pub enum ApiTypesTS {
         time_range {
@@ -95,6 +104,10 @@ make_thingois! {
         get_known_tags {
             request: (),
             response: Vec<String>
+        },
+        timestamp_search {
+            request: TimestampSearchRequest,
+            response: Option<Timestamptz>
         }
     }
 }
