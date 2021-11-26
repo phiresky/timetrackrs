@@ -7,89 +7,89 @@ license = "AGPL-3.0-or-later"
 
 
 [dependencies]
-anyhow = "1.0.40"
+anyhow = "1.0.48"
 byteorder = "1.4.3"
-serde = { version = "1.0.125", features = ["derive"] }
-serde_json = { version = "1.0.64", features = ["preserve_order"] }
+serde = { version = "1.0.130", features = ["derive"] }
+serde_json = { version = "1.0.72", features = ["preserve_order"] }
 hex = "0.4.3"
-sysinfo = "0.17.0"
+sysinfo = "0.21.1"
 chrono = { version = "0.4.19", features = ["serde"] }
 dotenv = "0.15.0"
-rand = "0.8.3"
+rand = "0.8.4"
 typescript-definitions = { git = "https://github.com/onelson/typescript-definitions", branch = "no-debug-attrs"}
 
 lazy_static = "1.4.0"
 
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
-regex = "1.4.5"
+regex = "1.5.4"
 battery = "0.7.8"
-os_info = "3.0.2"
-url = "2.2.1"
-structopt = "0.3.21"
+os_info = "3.0.8"
+url = "2.2.2"
+structopt = "0.3.25"
 base64 = "0.13.0"
-hmac = "0.10.1"
+hmac = "0.11.0"
 crypto-hashes = "0.9.0"
-sha-1 = "0.9.4"
+sha-1 = "0.9.8"
 rust-crypto = "0.2.36"
-rsa = "0.4.0"
-openssl = "0.10.33"
-tar = "0.4.33"
-bzip2 = "0.4.2"
+rsa = "0.5.0"
+openssl = "0.10.38"
+tar = "0.4.37"
+bzip2 = "0.4.3"
 enum-utils = "0.1.2"
-num_enum = "0.5.1"
-enum_dispatch = "0.3.5"
-zstd = "0.7.0"
+num_enum = "0.5.4"
+enum_dispatch = "0.3.7"
+zstd = "0.9.0"
 tempfile = "3.2.0"
 concat-reader = "0.1.0"
-yup-oauth2 = "5.1.0"
-hyper = "0.14.5"
-hyper-rustls = "0.22.1"
+yup-oauth2 = "6.0.0"
+hyper = "0.14.15"
+hyper-rustls = "0.23.0"
 hyper-tls = "0.5.0"
-futures = "0.3.14"
+futures = "0.3.18"
 csv = "1.1.6"
-chrono-tz = "0.5.3"
+chrono-tz = "0.6.0"
 log = "0.4.14"
-zip = "0.5.11"
-youtube_dl = "0.6.1"
-derive_more = "0.99.13"
+zip = "0.5.13"
+youtube_dl = "0.6.3"
+derive_more = "0.99.16"
 directories-next = "2.0.0"
 serde_regex = "1.1.0"
 mediawiki = "0.2.7"
-itertools = "0.10.0"
-datachannel = { version = "0.5.0", features = ["static"], optional=true }
-tokio = { version = "1.5.0", features = ["full"] }
-tungstenite = "0.13.0"
-futures-util = "0.3.14"
-futures-channel = "0.3.14"
-tokio-tungstenite = "0.14.0"
+itertools = "0.10.1"
+datachannel = { version = "0.7.2", features = ["static"], optional = true }
+tokio = { version = "1.14.0", features = ["full"] }
+tungstenite = "0.16.0"
+futures-util = "0.3.18"
+futures-channel = "0.3.18"
+tokio-tungstenite = "0.16.0"
 async-channel = "1.6.1"
-whoami = "1.1.2"
+whoami = "1.2.1"
 multimap = "0.8.3"
-paste = "1.0.5"
-lru = { version = "0.6.5", features = ["nightly"] } # https://github.com/jeromefroe/lru-rs/pull/40
+paste = "1.0.6"
+lru = { version = "0.7.0", features = ["nightly"] } # https://github.com/jeromefroe/lru-rs/pull/40
 owning_ref = "0.4.1"
-rust-embed = { version = "5.9.0", features = ["compression"] }
+rust-embed = { version = "6.2.0", features = ["compression"] }
 sqlx = { version = "0.5.1", features = ["sqlite", "any", "runtime-tokio-native-tls", "json"], git="https://github.com/phiresky/sqlx" }
-warp = { version = "0.3.1", features = ["compression"] }
+warp = { version = "0.3.2", features = ["compression"] }
 mime_guess = "2.0.3"
-async-trait = "0.1.49"
-ansi-escapes = "0.1.0"
-tokio-stream = { version = "0.1.5", features = ["sync"] }
+async-trait = "0.1.51"
+ansi-escapes = "0.1.1"
+tokio-stream = { version = "0.1.8", features = ["sync"] }
 tokio-timer = "0.2.13"
-addr = "0.14.0"
-crc32fast = "1.2.1"
+addr = "0.15.1"
+crc32fast = "1.2.2"
 gethostname = "0.2.1"
 md5 = "0.7.0"
-wmi = "0.8.1"
-user-idle = "0.4.0"
+wmi = "0.9.2"
+user-idle = "0.5.0"
 env_logger = "0.9.0"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["winuser", "processthreadsapi","handleapi", "psapi"] }
 
 [target.'cfg(target_os="linux")'.dependencies]
-x11rb = { version = "0.8.1", features = ["screensaver"] }
-xcb = "0.9.0"
+x11rb = { version = "0.9.0", features = ["screensaver"] }
+xcb = "0.10.1"
 nl80211 = {git="https://github.com/Eonm/nl80211", branch="master"}
 
 [features]
