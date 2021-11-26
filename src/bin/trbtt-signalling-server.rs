@@ -108,6 +108,6 @@ async fn handle_new_peer(peers: PeerMap, stream: TcpStream) {
 #[tokio::main]
 async fn main() {
     std::env::set_var("RUST_LOG", "info");
-    let _ = pretty_env_logger::try_init();
+    let _ = env_logger::try_init();
     run_server().await
 }

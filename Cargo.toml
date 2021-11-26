@@ -49,7 +49,6 @@ futures = "0.3.14"
 csv = "1.1.6"
 chrono-tz = "0.5.3"
 log = "0.4.14"
-pretty_env_logger = "0.4.0"
 zip = "0.5.11"
 youtube_dl = "0.6.1"
 derive_more = "0.99.13"
@@ -83,6 +82,7 @@ gethostname = "0.2.1"
 md5 = "0.7.0"
 wmi = "0.8.1"
 user-idle = "0.4.0"
+env_logger = "0.9.0"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["winuser", "processthreadsapi","handleapi", "psapi"] }

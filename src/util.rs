@@ -100,6 +100,6 @@ pub fn init_logging() {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "timetrackrs=info");
     }
-    pretty_env_logger::init();
+    env_logger::init();
     log::debug!("env logger inited")
 }
