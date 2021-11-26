@@ -46,7 +46,7 @@ const groupers: Grouper[] = [
 					<li>
 						Category: {getTag(p.entries[0].tags, "category")}
 						<TagTree
-							events={p.entries}
+							timeChunks={p.entries}
 							tagName={p.filter.tagName}
 						/>
 					</li>
@@ -70,7 +70,7 @@ const groupers: Grouper[] = [
 						Total tracked time:{" "}
 						{durationToString(totalDurationSeconds(p.entries))}:
 						<TagTree
-							events={p.entries}
+							timeChunks={p.entries}
 							tagName={p.filter.tagName}
 						/>
 					</li>
@@ -304,8 +304,8 @@ export class Timeline extends React.Component {
 										<RenderGroup
 											entries={entries}
 											filter={{
-												tagName: this.detailBy.value
-													.key,
+												tagName:
+													this.detailBy.value.key,
 											}}
 											grouper={this.aggBy.value}
 										/>

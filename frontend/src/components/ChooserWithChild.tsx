@@ -18,7 +18,11 @@ export type CWCRouteMatch = {
 	replace(route: undefined, args: undefined, queryArgs: QA): void
 }
 export const ChooserWithChild: React.FC<{
-	child: React.ComponentType<{ events: SingleExtractedChunk[]; tag: string }>
+	child: React.ComponentType<{
+		timeChunks: SingleExtractedChunk[]
+		tag?: string
+	}>
+	chooseTag?: boolean
 
 	containerClass?: string
 	routeMatch: CWCRouteMatch
@@ -35,7 +39,7 @@ export const ChooserWithChild: React.FC<{
 			const params = {
 				after: this.timeRange.from,
 				before: this.timeRange.to,
-				tag: this.tag.value,
+				tag: p.chooseTag ? this.tag.value : undefined,
 				limit: 100000,
 			}
 			return fromPromise(
@@ -81,33 +85,41 @@ export const ChooserWithChild: React.FC<{
 
 	return (
 		<div className={`container ${p.containerClass || ""}`}>
-			Time Range: <TimeRangeSelector target={store.timeRange} /> Tag:{" "}
-			<span style={{ display: "inline-block", width: 200 }}>
-				{store.tags.case({
-					fulfilled: (v) => (
-						<Select
-							options={v}
-							value={store.tag}
-							onChange={(e) => {
-								console.log("ch", e)
-								store.tag = e || {
-									value: "category",
-									label: "category",
-								}
-							}}
-						/>
-					),
-					pending: () => <>...</>,
-					rejected: () => <>Could not connect to server</>,
-				})}
-			</span>
+			Time Range: <TimeRangeSelector target={store.timeRange} />
+			{p.chooseTag && (
+				<>
+					{" "}
+					Tag:{" "}
+					<span style={{ display: "inline-block", width: 200 }}>
+						{store.tags.case({
+							fulfilled: (v) => (
+								<Select
+									options={v}
+									value={store.tag}
+									onChange={(e) => {
+										console.log("ch", e)
+										store.tag = e || {
+											value: "category",
+											label: "category",
+										}
+									}}
+								/>
+							),
+							pending: () => <>...</>,
+							rejected: () => <>Could not connect to server</>,
+						})}
+					</span>
+				</>
+			)}
 			<div>
 				{store.data.case({
 					fulfilled: (v) => (
 						<>
 							{React.createElement(p.child, {
-								events: v,
-								tag: store.tag.value,
+								timeChunks: v,
+								...(p.chooseTag
+									? { tag: store.tag.value }
+									: {}),
 							})}
 							<small>
 								found {v.length.toString()} events between{" "}

@@ -102,6 +102,7 @@ impl ExtractedChunks {
         }
     }
     fn into_data(self) -> HashMap<TimeChunk, HashMap<(i64, i64), i64>> {
+        log::debug!("into_data! {:?}", self.data);
         self.data
     }
 }
@@ -234,17 +235,18 @@ impl DatyBasy {
         to: Timestamptz,
         progress: Progress,
     ) -> anyhow::Result<()> {
-        let days = self.get_affected_timechunks_range(from, to);
+        let chunks = self.get_affected_timechunks_range(from, to);
         {
-            let days_str = serde_json::to_string(&days)?;
+            let days_str = serde_json::to_string(&chunks)?;
             let doesnt_need_update: Vec<TimeChunk> = sqlx::query_scalar!( r#"select timechunk as "timechunk: _" from extracted.extracted_current where timechunk in (select value from json_each(?)) and extracted_timestamp_unix_ms > raw_events_changed_timestamp_unix_ms"#, days_str).fetch_all(&self.db).await.context("fetching currents")?;
             let doesnt_need_update =
                 HashSet::<TimeChunk>::from_iter(doesnt_need_update.into_iter());
-            let mut needs_update: Vec<_> = days
+            let mut needs_update: Vec<_> = chunks
                 .into_iter()
                 .filter(|e| !doesnt_need_update.contains(e))
                 .collect();
             if !needs_update.is_empty() {
+                log::debug!("chunks that need update: {:?}", needs_update);
                 needs_update.sort();
 
                 let mut all_out = vec![];
@@ -263,6 +265,7 @@ impl DatyBasy {
                     current_out.1 = ele;
                 }
                 all_out.push(current_out);
+                log::debug!("Aggregated ranges: {:?}", all_out);
                 let count = all_out.len() as i64;
                 progress.update(0, count, "Ranges need update");
                 let futures = all_out
@@ -531,6 +534,13 @@ impl DatyBasy {
         let mut updated: usize = 0;
         let mut now = Instant::now();
         for (timechunk, events) in extracted_chunks.into_data() {
+            log::debug!("looking at {} (from={})", timechunk.start(), from.0);
+            if timechunk.start() < from.0 || timechunk.end_exclusive() > to.0 {
+                log::debug!("skipping!");
+                // we only requested data for the range `from` to `to`, so the data we received for
+                // this chunk is incomplete / invalid
+                continue;
+            }
             /*event_id bigint NOT NULL REFERENCES event_ids (id),
             timestamp_unix_ms bigint NOT NULL,
             duration_ms bigint NOT NULL,

@@ -2,8 +2,8 @@ import { autorun } from "mobx"
 import React from "react"
 import { SingleExtractedChunk } from "./server"
 
-export function totalDurationSeconds(entries: SingleExtractedChunk[]): number {
-	return entries.reduce((sum, b) => sum + b.to_exclusive - b.from, 0) / 1000
+export function totalDurationSeconds(entries: { duration: number }[]): number {
+	return entries.reduce((sum, b) => sum + b.duration, 0) / 1000
 }
 
 export function durationToString(duration: number): string {

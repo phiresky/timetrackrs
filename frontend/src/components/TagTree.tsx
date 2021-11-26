@@ -4,7 +4,6 @@ import { observer, useLocalObservable } from "mobx-react"
 import * as React from "react"
 import { useState } from "react"
 import { Container } from "reactstrap"
-import { setTextRange } from "typescript"
 import * as api from "../api"
 import { SingleExtractedChunk } from "../server"
 import {
@@ -27,7 +26,15 @@ interface Tree<T> {
 	leaves: T[]
 	children: Map<string, Tree<T>>
 }
-type ATree = Tree<SingleExtractedChunk>
+
+type ATree = Tree<ALeaf>
+
+interface ALeaf {
+	timeChunk: SingleExtractedChunk
+	tagName: string
+	tagValue: string
+	duration: number
+}
 
 function rootTree<T>(): Tree<T> {
 	return { children: new Map<string, Tree<T>>(), leaves: [] }
@@ -89,13 +96,13 @@ a -> b -> foo
 
 */
 
-function collectRecurse(tree: ATree, add: (e: SingleExtractedChunk) => void) {
+function collectRecurse(tree: ATree, add: (e: ALeaf) => void) {
 	tree.leaves.forEach(add)
 	for (const c of tree.children.values()) collectRecurse(c, add)
 }
-function collect(tree: ATree) {
-	const map = new Map<number, SingleExtractedChunk>()
-	collectRecurse(tree, (e) => map.set(e.from, e))
+function collect(tree: ATree): ALeaf[] {
+	const map = new Map<number, ALeaf>()
+	collectRecurse(tree, (e) => map.set(e.timeChunk.from, e))
 	return [...map.values()]
 }
 
@@ -107,108 +114,117 @@ function TotalDuration(props: { tree: ATree }) {
 	)
 }
 
-const TreeLeaves: React.FC<{ leaves: SingleExtractedChunk[] }> = observer(
-	({ leaves }) => {
-		const [children, setChildren] = React.useState(5)
-		const store = useLocalObservable(() => {
-			const totalCount = leaves.length
-			const totalCounts = new Counter<string>()
-			const valueCounter = new DefaultMap<string, Counter<string>>(
-				() => new Counter(),
-			)
-			for (const l of leaves) {
-				for (const [tagKey, value, duration] of l.tags) {
-					totalCounts.add(tagKey)
-					valueCounter.get(tagKey).add(value)
-				}
-			}
-			// somewhat incorrect: the total counts differ on each tags because events can have multiple tags
-			// const correctTotalCount = _.sum([...totalCounts.values()])
-
-			for (const [tagKey, counter] of valueCounter) {
-				counter.set("[none]", totalCount - totalCounts.get(tagKey))
-			}
-			const averageEntropy = new Map(
-				[...valueCounter].map(([tagKey, counter]) => {
-					// sample probability
-					const P = (count: number) => count / totalCount
-					const entropy = -_.sumBy([...counter.values()], (count) =>
-						count > 0 ? P(count) * Math.log2(P(count)) : 0,
-					)
-					console.log(tagKey, entropy)
-					const entropyPerChoice = entropy / counter.size
-					return [tagKey, entropyPerChoice] as const
-				}),
-			)
-			const choicesList = _.sortBy([...averageEntropy], (k) => -k[1])
-				.map((k) => ({
-					value: k[0],
-					name: `${k[0]} (${k[1].toFixed(2)})`,
-				}))
-				.slice(0, 40)
-			return {
-				choices: Choices(
-					[
-						{ value: "singles", name: "singles (no agg)" },
-						...choicesList,
-					],
-					choicesList[0],
-				),
-			}
-		})
-		let inner
-		if (store.choices.value.value === "singles")
-			inner = (
-				<ul>
-					{leaves.slice(0, children).map((l) => (
-						<li key={l.from}>
-							<Entry {...l} />
-						</li>
-					))}
-					{leaves.length > children && (
-						<li key="more" className="clickable">
-							<a
-								className="clickable"
-								onClick={() => setChildren(children * 2)}
-							>
-								...{leaves.length - children} more
-							</a>
-						</li>
-					)}
-				</ul>
-			)
-		else
-			inner = (
-				<TagTree events={leaves} tagName={store.choices.value.value} />
-			)
-		return (
-			<div>
-				{leaves.length} events. grouping by{" "}
-				<Select<{ value: string; name: string }>
-					target={store.choices}
-					getValue={(e) => e.value}
-					getName={(e) => e.name}
-				/>
-				{inner}
-			</div>
+const TreeLeaves: React.FC<{ leaves: ALeaf[] }> = observer(({ leaves }) => {
+	const [children, setChildren] = React.useState(5)
+	const store = useLocalObservable(() => {
+		const totalCount = leaves.length
+		const totalCounts = new Counter<string>()
+		const valueCounter = new DefaultMap<string, Counter<string>>(
+			() => new Counter(),
 		)
-	},
-)
+		for (const l of leaves) {
+			for (const [tagKey, value, duration] of l.timeChunk.tags) {
+				totalCounts.add(tagKey)
+				valueCounter.get(tagKey).add(value)
+			}
+		}
+		// somewhat incorrect: the total counts differ on each tags because events can have multiple tags
+		// const correctTotalCount = _.sum([...totalCounts.values()])
+
+		for (const [tagKey, counter] of valueCounter) {
+			counter.set("[none]", totalCount - totalCounts.get(tagKey))
+		}
+		const averageEntropy = new Map(
+			[...valueCounter].map(([tagKey, counter]) => {
+				// sample probability
+				const P = (count: number) => count / totalCount
+				const entropy = -_.sumBy([...counter.values()], (count) =>
+					count > 0 ? P(count) * Math.log2(P(count)) : 0,
+				)
+				console.log(tagKey, entropy)
+				const entropyPerChoice = entropy / counter.size
+				return [tagKey, entropyPerChoice] as const
+			}),
+		)
+		const choicesList = _.sortBy([...averageEntropy], (k) => -k[1])
+			.map((k) => ({
+				value: k[0],
+				name: `${k[0]} (${k[1].toFixed(2)})`,
+			}))
+			.slice(0, 40)
+		return {
+			choices: Choices(
+				[
+					{ value: "singles", name: "singles (no agg)" },
+					...choicesList,
+				],
+				choicesList[0],
+			),
+		}
+	})
+	let inner
+	if (store.choices.value.value === "singles")
+		inner = (
+			<ul>
+				{leaves.slice(0, children).map((l) => (
+					<li key={l.timeChunk.from}>
+						{new Date(l.timeChunk.from).toLocaleTimeString()}:
+						<ul>
+							{l.timeChunk.tags.map(([k, v, t]) => (
+								<li key={k + v}>
+									{k}: {v} ({(t / 1000).toFixed(1)} s)
+								</li>
+							))}
+						</ul>
+						{/*<Entry {...l} />*/}
+					</li>
+				))}
+				{leaves.length > children && (
+					<li key="more" className="clickable">
+						<a
+							className="clickable"
+							onClick={() => setChildren(children * 2)}
+						>
+							...{leaves.length - children} more
+						</a>
+					</li>
+				)}
+			</ul>
+		)
+	else
+		inner = (
+			<TagTree
+				timeChunks={leaves.map((l) => l.timeChunk)}
+				tagName={store.choices.value.value}
+			/>
+		)
+	return (
+		<div>
+			{leaves.length} events. grouping by{" "}
+			<Select<{ value: string; name: string }>
+				target={store.choices}
+				getValue={(e) => e.value}
+				getName={(e) => e.name}
+			/>
+			{inner}
+		</div>
+	)
+})
 function ShowTree({
-	tag,
+	tagValue,
 	tree,
 	noSlash = false,
 }: {
-	tag: string
+	tagValue: string
 	tree: ATree
 	noSlash?: boolean
 }) {
 	const [open, setOpen] = React.useState(false)
 
-	const title = (noSlash ? "" : "/") + tag || "[empty]"
+	const title = (noSlash ? "" : "/") + tagValue || "[empty]"
 
 	return (
-		<li key={tag}>
+		<li key={tagValue}>
 			<span className="clickable" onClick={() => setOpen(!open)}>
 				{title} (<TotalDuration tree={tree} />)
 			</span>
@@ -235,7 +251,7 @@ function ShowTreeChildren({
 				.map(([tag, tree]) => (
 					<ShowTree
 						key={tag}
-						tag={tag}
+						tagValue={tag}
 						tree={tree}
 						noSlash={noSlash}
 					/>
@@ -254,55 +270,43 @@ function ShowTreeChildren({
 export function TagTreePage(p: {
 	routeMatch: CWCRouteMatch
 }): React.ReactElement {
-	const [tag, setTag] = useState("")
 	return (
 		<Page title="Category Trees">
 			<Container fluid className="bg-gradient-info pt-md-6">
 				<Container>
-					Filter Tag:{" "}
-					<input
-						type="text"
-						value={tag}
-						onChange={(e) => setTag(e.currentTarget.value)}
-					/>
 					<ChooserWithChild
 						routeMatch={p.routeMatch}
-						child={(e) => (
-							<TagTree tagName={tag || undefined} {...e} />
-						)}
+						chooseTag={false}
+						child={(e) => <TagTree {...e} />}
 					/>
 				</Container>
 			</Container>
 		</Page>
 	)
 }
+
 @observer
 export class TagTree extends React.Component<{
-	events: SingleExtractedChunk[]
-	tagName?: string
+	timeChunks: SingleExtractedChunk[]
 	chart?: boolean
+	tagName?: string
 }> {
 	constructor(props: TagTree["props"]) {
 		super(props)
 		makeObservable(this)
 	}
 	@computed get tagTree(): ATree {
-		const tree = rootTree<SingleExtractedChunk>()
-		for (const event of this.props.events) {
-			let added = false
-			let toIter: [string, string, number][]
-			if (this.props.tagName) {
-				toIter = event.tags.filter((t) => t[0] === this.props.tagName)
-			} else {
-				toIter = event.tags
-			}
-			for (const [tagName, tagValue, duration] of toIter) {
-				addToTree(tree, [tagName, ...tagValue.split("/")], event)
-
-				added = true
-			}
-			if (this.props.tagName && !added) {
-				addToTree(tree, [this.props.tagName, "[untagged]"], event)
+		const tree = rootTree<ALeaf>()
+		for (const timeChunk of this.props.timeChunks) {
+			for (const [tagName, tagValue, duration] of timeChunk.tags) {
+				if (this.props.tagName && this.props.tagName !== tagName)
+					continue
+				addToTree(tree, [tagName, ...tagValue.split("/")], {
+					timeChunk,
+					tagName,
+					tagValue,
+					duration,
+				})
 			}
 		}
 		for (const c of tree.children) shortenTree(c[1])

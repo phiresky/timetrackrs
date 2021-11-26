@@ -5,16 +5,14 @@ pub mod models;
 use anyhow::Context;
 use sqlx::{sqlite::SqliteConnectOptions, Executor};
 use sqlx::{sqlite::SqlitePoolOptions, SqliteConnection, SqlitePool};
-use std::{
-    env,
-    path::{PathBuf},
-};
+use std::{env, path::PathBuf};
 
 fn dbs_list() -> &'static [&'static str] {
     &["raw_events", "extracted", "config"]
 }
 
 pub async fn clear_wal_files(db: &SqlitePool) -> anyhow::Result<()> {
+    log::debug!("running wal_checkpoint(truncate)");
     for attachdb in dbs_list() {
         sqlx::query(&format!("pragma {}.wal_checkpoint(truncate);", attachdb))
             .execute(db)

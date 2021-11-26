@@ -216,10 +216,7 @@ div.header {
 details > summary > h2 {
 	display: inline-block;
 }
-.clickable,
-details > summary {
-	cursor: pointer;
-}
+
 details > div {
 	margin-left: 1em;
 }
@@ -258,6 +255,8 @@ details.rule-group {
 	}
 }
 
+
+*/
 .time-range-selector {
 	display: inline-block;
 	font-size: 19px;
@@ -269,7 +268,12 @@ details.rule-group {
 		vertical-align: middle;
 	}
 }
-*/
+
+.clickable,
+details > summary {
+	cursor: pointer;
+}
+
 .caretbutton {
 	padding-left: 0.4rem;
 	padding-right: 0.4rem;
