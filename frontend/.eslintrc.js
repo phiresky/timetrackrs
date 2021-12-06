@@ -1,3 +1,4 @@
+const isEditor = process.env.ELECTRON_RUN_AS_NODE && process.env.VSCODE_CWD
 module.exports = {
 	extends: [
 		"eslint:recommended",
@@ -13,7 +14,7 @@ module.exports = {
 	env: { es6: true, browser: true, node: true },
 	parser: "@typescript-eslint/parser",
 	rules: {
-		"prettier/prettier": ["warn"],
+		"prettier/prettier": isEditor ? "off" : ["warn"],
 		"no-console": "off",
 		"react/jsx-filename-extension": "off",
 		"react/jsx-indent": "off",

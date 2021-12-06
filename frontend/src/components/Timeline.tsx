@@ -13,8 +13,8 @@ import { Page } from "./Page"
 import { TagTree } from "./TagTree"
 import { Choices, Select } from "./Select"
 import { SingleExtractedChunk } from "../server"
-import { endOfDay, subDays } from "date-fns"
 import { Card, CardBody, CardHeader, Container, Row } from "reactstrap"
+import { Temporal } from "@js-temporal/polyfill"
 
 /**
  * TODO: support multi-value tags
@@ -223,7 +223,7 @@ export class Timeline extends React.Component {
 
 	@observable errored = false
 	@observable loadState = "unloaded"
-	@observable lastRequested = endOfDay(new Date())
+	@observable lastRequested = Temporal.Now.plainDateISO().add({ days: 1 })
 	@observable gotOldestEver = false
 	@observable readonly detailBy = Choices(detailBy)
 	@observable readonly aggBy = Choices(
@@ -231,7 +231,7 @@ export class Timeline extends React.Component {
 		groupers.find((g) => g.name === "Daily"),
 	)
 	@observable scrollDiv = React.createRef<HTMLDivElement>()
-	oldestTimestamp: Date | null = null
+	oldestTimestamp: Temporal.Instant | null = null
 
 	constructor(p: Record<string, unknown>) {
 		super(p)
@@ -245,21 +245,29 @@ export class Timeline extends React.Component {
 		try {
 			this.loading = true
 			if (!this.oldestTimestamp) {
-				this.oldestTimestamp = new Date(
-					(await api.timestampSearch({
-						backwards: false,
-						from: 0,
-					})) as number,
-				)
+				const ret = await api.timestampSearch({
+					backwards: false,
+					from: 0,
+				})
+				if (!ret) throw Error("DB is empty?")
+				this.oldestTimestamp =
+					Temporal.Instant.fromEpochMilliseconds(ret)
 			}
-			this.loadState = `loading ${this.lastRequested.toLocaleDateString()}`
-			const newLastRequested = subDays(this.lastRequested, 1)
+			this.loadState = `loading ${this.lastRequested.toLocaleString()}`
+			const newLastRequested = this.lastRequested.subtract({ days: 1 })
 			const data = await api.getTimeRange({
-				before: this.lastRequested,
-				after: newLastRequested,
+				before: this.lastRequested.toZonedDateTime(
+					Temporal.Now.timeZone(),
+				),
+				after: newLastRequested.toZonedDateTime(
+					Temporal.Now.timeZone(),
+				),
 			})
 			this.lastRequested = newLastRequested
-			if (newLastRequested < this.oldestTimestamp) {
+			if (
+				newLastRequested.toZonedDateTime(Temporal.Now.timeZone())
+					.epochMilliseconds < this.oldestTimestamp.epochMilliseconds
+			) {
 				this.gotOldestEver = true
 				console.log(`got oldest!!`, data)
 			}

@@ -2,12 +2,12 @@ import * as React from "react"
 import { useEffect, useState } from "react"
 import { getTimeRange } from "../api"
 import { useTimeRange } from "./TimeRangeSelector"
-import * as dfn from "date-fns"
 import { SingleExtractedChunk } from "../server"
 import { ProgressPlugin } from "webpack"
 import { observer } from "mobx-react"
-import { useMobxEffect } from "../util"
+import { expectNeverThrow, useMobxEffect } from "../util"
 import { observable } from "mobx"
+import { Temporal } from "@js-temporal/polyfill"
 
 type TagFilter = string | { tag: string; value?: string; valuePrefix?: string }
 type Expression =
@@ -17,7 +17,7 @@ type Expression =
 	| { div: [Expression, Expression] }
 type Unit = "duration" | "percentage"
 type Props = {
-	time: { from: Date; to: Date }
+	time: { from: Temporal.ZonedDateTime; to: Temporal.ZonedDateTime }
 	calculation: Expression
 	fetchFilter?: string
 	unit: Unit
@@ -99,5 +99,5 @@ function numberWithUnitToString(value: number, unit: Unit): string {
 	} else if (unit === "percentage") {
 		return (value * 100).toFixed(0) + " %"
 	}
-	throw Error(`unknown unit ${unit}`)
+	expectNeverThrow(unit, "unknown unit")
 }

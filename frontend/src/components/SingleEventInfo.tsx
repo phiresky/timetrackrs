@@ -1,4 +1,4 @@
-import { formatDuration, formatRelative } from "date-fns"
+import { Temporal } from "@js-temporal/polyfill"
 import { computed, makeObservable, observable } from "mobx"
 import { observer } from "mobx-react"
 import { fromPromise } from "mobx-utils"
@@ -10,6 +10,24 @@ import { Entry } from "./Entry"
 
 function expectNever<T>(n: never): T {
 	return n
+}
+
+function formatRelative(duration: Temporal.Duration) {
+	const rtf = new Intl.RelativeTimeFormat("en")
+	let ostr = ""
+	for (const key of [
+		"years",
+		"months",
+		"weeks",
+		"days",
+		"hours",
+		"minutes",
+		"seconds",
+	] as const) {
+		const val = duration[key]
+		if (val !== 0) ostr += " " + rtf.format(val, key)
+	}
+	return ostr.trim()
 }
 function reasonstr(rule: TagRule) {
 	if (rule.type === "HasTag") return "has"
@@ -80,7 +98,6 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 		const e = this.data.value
 		if (!e) return <div>Event not found</div>
 		console.log("raw data", e)
-		const duration = e.duration_ms / 1000
 		return (
 			<div>
 				<h1>
@@ -91,18 +108,22 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 				</p>
 				<p>
 					Date:{" "}
-					{formatRelative(new Date(e.timestamp_unix_ms), new Date())}{" "}
+					{formatRelative(
+						Temporal.Instant.fromEpochMilliseconds(
+							e.timestamp_unix_ms,
+						).until(Temporal.Now.instant()),
+					)}
 					<small>
 						({new Date(e.timestamp_unix_ms).toLocaleString()})
 					</small>
 				</p>
 				<p>
 					Duration:{" "}
-					{formatDuration({
-						seconds: duration % 60,
-						minutes: ((duration / 60) | 0) % 60,
-						hours: (duration / 60 / 60) | 0,
-					})}
+					{formatRelative(
+						Temporal.Duration.from({
+							milliseconds: e.duration_ms,
+						}),
+					)}
 				</p>
 				<div>
 					Tags:

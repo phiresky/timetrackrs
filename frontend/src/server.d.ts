@@ -1,7 +1,9 @@
+import { Temporal } from "@js-temporal/polyfill"
+
 type DateTime<T> = string
 type Local = unknown
 type Json<T> = T
-type Timestamptz = number
+type Timestamptz = string | Temporal.Instant
 type Utc = void
 type Regex = string
 type ExternalFetcher = string

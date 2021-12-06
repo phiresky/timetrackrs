@@ -36,8 +36,8 @@ export function useMobxEffect(effect: () => unknown): void {
 export function expectNever<T = any>(n: never): T {
 	return n as T
 }
-export function expectNeverThrow(n: never): void {
-	throw Error(`expected never: ${n as string}`)
+export function expectNeverThrow(n: never, msg?: string): never {
+	throw Error(`expected never: ${n as string} ${msg || ""}`)
 }
 
 export class NeatMap<K, V> extends Map<K, V> {
@@ -122,4 +122,32 @@ export function generateId(len = 16): string {
 
 export function intersperse<T>(arr: T[], separator: (n: number) => T): T[] {
 	return arr.flatMap((a, i) => (i > 0 ? [separator(i - 1), a] : [a]))
+}
+
+// http://developingthoughts.co.uk/typescript-recursive-conditional-types/
+type AnyFunction = (...args: any[]) => any
+
+type TopLevelProperty =
+	| number
+	| string
+	| boolean
+	| symbol
+	| undefined
+	| null
+	| void
+	| AnyFunction
+	| Date
+
+export type Cast<T, TComplex, TCastTo extends TComplex> = T extends object
+	? CastObject<T, TComplex, TCastTo>
+	: T
+
+type CastObject<T, TComplex, TCastTo extends TComplex> = {
+	[K in keyof T]: T[K] extends TopLevelProperty
+		? T[K]
+		: T[K] extends Array<infer U>
+		? Array<Cast<U, TComplex, TCastTo>>
+		: T[K] extends TComplex
+		? TCastTo
+		: Cast<T[K], TComplex, TCastTo>
 }

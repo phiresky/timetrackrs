@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::str::FromStr;
 
 pub fn unix_epoch_millis_to_date(timestamp: i64) -> DateTime<Utc> {
     let timestamp_s = timestamp / 1000;
@@ -12,6 +13,18 @@ pub fn unix_epoch_millis_to_date(timestamp: i64) -> DateTime<Utc> {
 }*/
 
 pub fn iso_string_to_datetime(s: &str) -> anyhow::Result<DateTime<Utc>> {
+    // https://tc39.es/proposal-temporal/docs/iso-string-ext.html
+    // allow time zone suffix, e.g. 2007-12-03T10:15:30+01:00[Europe/Paris]
+    if s.ends_with("]") {
+        let splitchar = s.rfind("[").context("Invalid date, broken TZ")?;
+        let (s, tz) = (&s[0..splitchar], &s[splitchar..]);
+        //let tz = chrono_tz::Tz::from_str(tz)
+        //    .map_err(|e| anyhow::anyhow!("could not parse tz: {e}"))?;
+
+        return Ok(
+            DateTime::<chrono::FixedOffset>::parse_from_rfc3339(s)?.with_timezone(&chrono::Utc)
+        );
+    }
     Ok(DateTime::<chrono::FixedOffset>::parse_from_rfc3339(s)
         .context("iso_string_to_datetime")?
         .with_timezone(&chrono::Utc))

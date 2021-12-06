@@ -1,4 +1,4 @@
-import { formatRelative } from "date-fns"
+import { Temporal } from "@js-temporal/polyfill"
 import React from "react"
 import { routes } from "../routes"
 import { SingleExtractedEventWithRaw } from "../server"
@@ -11,7 +11,9 @@ export class Entry extends React.Component<SingleExtractedEventWithRaw> {
 			<span>
 				<ModalLink route={routes.singleEvent} args={{ id }} query={{}}>
 					Event at{" "}
-					{formatRelative(new Date(timestamp_unix_ms), new Date())}
+					{Temporal.Instant.fromEpochMilliseconds(timestamp_unix_ms)
+						.toZonedDateTimeISO(Temporal.Now.timeZone())
+						.toLocaleString()}
 				</ModalLink>
 			</span>
 		)

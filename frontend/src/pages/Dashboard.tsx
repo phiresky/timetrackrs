@@ -17,11 +17,11 @@
 */
 
 import "@fortawesome/fontawesome-free/css/all.min.css"
+import { Temporal } from "@js-temporal/polyfill"
 // javascipt plugin for creating charts
 import { Chart } from "chart.js"
 // node.js library that concatenates classes (strings)
 import classnames from "classnames"
-import * as dfn from "date-fns"
 import { observer, useLocalObservable } from "mobx-react"
 import React from "react"
 // react plugin used to create charts
@@ -68,8 +68,8 @@ function NotEnoughDataPlot(p: { dark?: boolean }) {
 export const Dashboard: React.FC = observer((_) => {
 	const store = useLocalObservable(() => ({
 		timeRange: {
-			from: dfn.startOfDay(new Date()),
-			to: dfn.endOfDay(new Date()),
+			from: Temporal.Now.zonedDateTimeISO().startOfDay(),
+			to: Temporal.Now.zonedDateTimeISO().add({ days: 1 }).startOfDay(),
 			mode: "day",
 		} as TimeRangeTarget,
 		deep: false,

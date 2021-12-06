@@ -1,6 +1,21 @@
-import { TagRuleGroup, ApiTypesTS, ApiResponse, ProgressReport } from "./server"
+import { Temporal } from "@js-temporal/polyfill"
+import { TagRuleGroup, ApiTypesTS, ProgressReport, Timestamptz } from "./server"
+import { Cast } from "./util"
 
 type ApiTypes = { [T in ApiTypesTS["type"]]: ApiTypesTS & { type: T } }
+
+type ApiRequest<T extends keyof ApiTypes> = Cast<
+	ApiTypes[T]["request"],
+	Timestamptz,
+	Temporal.Instant
+>
+type ApiResponse<T extends keyof ApiTypes> = Cast<
+	ApiTypes[T]["response"],
+	Timestamptz,
+	string
+>
+
+type ApiResponseO<T> = { data: T }
 
 const backend =
 	new URLSearchParams(location.search).get("server") ||
@@ -40,15 +55,15 @@ async function handleError(resp: Response): Promise<never> {
 	)
 }
 export async function timestampSearch(
-	info: ApiTypes["timestamp_search"]["request"],
-): Promise<ApiTypes["timestamp_search"]["response"]> {
+	info: ApiRequest<"timestamp_search">,
+): Promise<ApiResponse<"timestamp_search">> {
 	return doApiRequest("timestamp_search", info)
 }
 
 async function doApiRequest<N extends keyof ApiTypes>(
 	path: N,
-	info: ApiTypes[N]["request"],
-): Promise<ApiTypes[N]["response"]> {
+	info: ApiRequest<N>,
+): Promise<ApiResponse<N>> {
 	const params = new URLSearchParams(
 		JSON.parse(JSON.stringify(info)),
 	).toString()
@@ -57,14 +72,12 @@ async function doApiRequest<N extends keyof ApiTypes>(
 	if (!resp.ok) {
 		return await handleError(resp)
 	}
-	const { data } = (await resp.json()) as ApiResponse<ApiTypes[N]["response"]>
+	const { data } = (await resp.json()) as ApiResponseO<ApiResponse<N>>
 	return data
 }
-export async function getTimeRange(info: {
-	before: Date
-	after: Date
-	tag?: string
-}): Promise<ApiTypes["time_range"]["response"]> {
+export async function getTimeRange(
+	info: ApiRequest<"time_range">,
+): Promise<ApiResponse<"time_range">> {
 	return doApiRequest("time_range", info)
 }
 
@@ -76,7 +89,7 @@ export async function getKnownTags(): Promise<
 
 export async function getSingleEvent(info: {
 	id: string
-}): Promise<ApiTypes["single_event"]["response"]> {
+}): Promise<ApiResponse<"single_event">> {
 	return doApiRequest("single_event", info)
 }
 

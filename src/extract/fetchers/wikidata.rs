@@ -1,8 +1,8 @@
 use super::ExternalFetcher;
 use crate::prelude::*;
+use addr::parser::DomainName;
 use itertools::Itertools;
 use regex::Regex;
-use addr::parser::DomainName;
 
 // ugh. https://phabricator.wikimedia.org/T196450
 
@@ -65,10 +65,10 @@ impl ExternalFetcher for WikidataIdFetcher {
         // wikidata is inconsistent, so try a few combinations of domains
         // (note that matching using filter(contains(str(?website_url), ...))) would cause high load for wikidata so we dont do that)
         let exact_domain_urls: Vec<String> = vec![
-            format!("http://{}", cache_key),
-            format!("https://{}", cache_key),
-            format!("http://{}/", cache_key),
-            format!("https://{}/", cache_key),
+            format!("http://{cache_key}"),
+            format!("https://{cache_key}"),
+            format!("http://{cache_key}/"),
+            format!("https://{cache_key}/"),
         ];
         let main_domain_urls: Vec<String> = addr::psl::List
             .parse_domain_name(cache_key)

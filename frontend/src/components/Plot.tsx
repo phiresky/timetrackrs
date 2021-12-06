@@ -1,6 +1,3 @@
-import { differenceInDays } from "date-fns"
-import * as d from "date-fns/esm"
-import { startOfDay } from "date-fns/esm"
 import { computed, makeObservable, observable } from "mobx"
 import { observer } from "mobx-react"
 import { Template } from "plotly.js"
@@ -407,7 +404,11 @@ export function PlotPage(p: { routeMatch: CWCRouteMatch }): React.ReactElement {
 	)
 }
 
-type Aggregator = { mapper: (d: Date) => Date; name: string; visible: boolean }
+type Aggregator = {
+	mapper: (d: Temporal.ZonedDateTime) => Temporal.ZonedDateTime
+	name: string
+	visible: boolean
+}
 
 function getValue(deep: boolean, value: string) {
 	if (deep) return value
@@ -420,7 +421,7 @@ function aggregateData({
 	tag,
 	deep,
 }: {
-	aggregator: (d: Date) => Date
+	aggregator: Aggregator["mapper"]
 	binSize: number
 	events: SingleExtractedChunk[]
 	tag: string
@@ -440,15 +441,12 @@ function aggregateData({
 
 	for (const timechunk of events) {
 		const bucketD = aggregator(
-			new Date(timechunk.from - (timechunk.from % binSize)),
+			Temporal.Instant.fromEpochMilliseconds(
+				timechunk.from - (timechunk.from % binSize),
+			).toZonedDateTimeISO(Temporal.Now.timeZone()),
 		)
 		// to local time text
-		const bucket = toTemporalInstant
-			.call(bucketD)
-
-			.toZonedDateTimeISO(Temporal.Now.timeZone())
-			.toPlainDateTime()
-			.toString()
+		const bucket = bucketD.toPlainDateTime().toString()
 		for (const [mtag, _value, duration] of timechunk.tags) {
 			if (tag !== mtag) continue
 			const value = getValue(deep, _value)
@@ -631,8 +629,9 @@ export class Plot extends React.Component<{
 		else if (this.aggregators.value.name === "Weekly")
 			totalDur = 1000 * 60 * 60 * 24 * 7
 		else {
-			totalDur =
-				this.dayInfo.last.getTime() - this.dayInfo.first.getTime()
+			totalDur = this.dayInfo.first
+				.until(this.dayInfo.last)
+				.total({ unit: "milliseconds" })
 		}
 		console.log("total dur: ", totalDur / 1000 / 60 / 60 / 24)
 		const allChoices = [
@@ -650,27 +649,28 @@ export class Plot extends React.Component<{
 	}
 	@computed get aggregators() {
 		const allChoices = [
-			{ mapper: (date: Date) => date, name: "None", visible: true },
 			{
-				mapper: (date: Date) => {
-					const duration = d.intervalToDuration({
-						start: d.startOfDay(date),
-						end: date,
-					})
-					const today = d.startOfDay(new Date("2021-01-01"))
-					return d.add(today, duration)
+				mapper: (date: Temporal.ZonedDateTime) => date,
+				name: "None",
+				visible: true,
+			},
+			{
+				mapper: (date: Temporal.ZonedDateTime) => {
+					return date.withPlainDate("2021-01-01")
 				},
 				name: "Daily",
 				visible: this.dayInfo.days > 2,
 			},
 			{
-				mapper: (date: Date) => {
-					const duration = d.intervalToDuration({
-						start: d.startOfWeek(date),
-						end: date,
-					})
-					const today = d.startOfWeek(new Date())
-					return d.add(today, duration)
+				mapper: (date: Temporal.ZonedDateTime) => {
+					const today = Temporal.Now.plainDateISO()
+					const weekStart = today.subtract({ days: today.dayOfWeek })
+					return weekStart
+						.add({ days: date.dayOfWeek })
+						.toZonedDateTime({
+							timeZone: date.timeZone,
+							plainTime: date.toPlainTime(),
+						})
 				},
 				name: "Weekly",
 				visible: this.dayInfo.days > 14,
@@ -700,20 +700,24 @@ export class Plot extends React.Component<{
 	getDayInfo(e: { from: Timestamptz; to_exclusive: Timestamptz }[]) {
 		if (e.length === 0) {
 			return {
-				firstDay: new Date(),
-				lastDay: new Date(),
+				firstDay: Temporal.Now.plainDateISO(),
+				lastDay: Temporal.Now.plainDateISO(),
 				days: 0,
-				first: new Date(),
-				last: new Date(),
+				first: Temporal.Now.zonedDateTimeISO(),
+				last: Temporal.Now.zonedDateTimeISO(),
 				durMs: 0,
 			}
 		}
-		const first = new Date(e[0].from)
-		const last = new Date(+e[e.length - 1].to_exclusive - 1)
-		const firstDay = startOfDay(first)
-		const lastDay = startOfDay(last)
-		const days = differenceInDays(lastDay, firstDay) + 1
-		const durMs = last.getTime() - first.getTime()
+		const first = Temporal.Instant.fromEpochMilliseconds(
+			e[0].from,
+		).toZonedDateTimeISO(Temporal.Now.timeZone())
+		const last = Temporal.Instant.fromEpochMilliseconds(
+			+e[e.length - 1].to_exclusive - 1,
+		).toZonedDateTimeISO(Temporal.Now.timeZone())
+		const firstDay = first.toPlainDate()
+		const lastDay = last.toPlainDate()
+		const days = first.until(last).total({ unit: "days" }) + 1
+		const durMs = first.until(last).total({ unit: "milliseconds" })
 		console.log(first, last)
 		return { firstDay, lastDay, days, first, last, durMs }
 	}

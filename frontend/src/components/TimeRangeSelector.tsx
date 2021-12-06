@@ -1,6 +1,5 @@
 import { observer, useLocalObservable } from "mobx-react"
 import React from "react"
-import * as dfn from "date-fns"
 import "react-dates/initialize"
 import "react-dates/lib/css/_datepicker.css"
 import {
@@ -26,15 +25,18 @@ const Modes = ["day", "week", "month", "exact"] as const
 export type TimeRangeMode = typeof Modes[number]
 
 export type TimeRangeTarget = {
-	from: Date
-	to: Date
+	from: Temporal.ZonedDateTime
+	to: Temporal.ZonedDateTime
 	mode: TimeRangeMode
 }
 type TimeRangeStore = {
 	focusedW: "startDate" | "endDate" | null
 	focused: boolean
 	setMode(mode: TimeRangeMode): void
-	setDate(d: Date | undefined): void
+	setDate(
+		d: Temporal.ZonedDateTime | undefined,
+		end?: Temporal.ZonedDateTime,
+	): void
 	back(): void
 	forward(): void
 }
@@ -46,61 +48,59 @@ export function useTimeRange(target: TimeRangeTarget): TimeRangeStore {
 		setMode(mode: TimeRangeMode) {
 			target.mode = mode
 			if (mode === "day") {
-				target.from = dfn.startOfDay(target.from)
-				target.to = dfn.endOfDay(target.from)
+				target.from = target.from.startOfDay()
+				target.to = target.from.startOfDay().add({ days: 1 })
 			} else if (mode === "week") {
-				const s = dfn.subDays(new Date(), 7)
-				const d = dfn.min([target.from, s])
-				target.from = dfn.startOfDay(d)
-				target.to = dfn.endOfDay(dfn.addDays(d, 6))
+				const s = Temporal.Now.zonedDateTimeISO().subtract({ days: 7 })
+				// earlier
+				const d =
+					Temporal.ZonedDateTime.compare(target.from, s) < 0
+						? target.from
+						: s
+				target.from = d.startOfDay()
+				target.to = target.from.add({ weeks: 1 })
 			} else if (mode === "month") {
-				target.from = dfn.startOfMonth(target.from)
-				target.to = dfn.endOfMonth(target.from)
+				target.from = target.from.startOfDay().with({ day: 1 })
+				target.to = target.from.add({ months: 1 })
 			} else if (mode === "exact") {
 				// keep
 			} else expectNeverThrow(mode)
 		},
-		setDate(d: Date | undefined, end?: Date) {
+		setDate(
+			d: Temporal.ZonedDateTime | undefined,
+			end?: Temporal.ZonedDateTime,
+		) {
 			console.log("set date", d)
-			if (!d) d = new Date()
-			target.from = dfn.startOfDay(d)
-			if (target.mode === "day") target.to = dfn.endOfDay(d)
-			else if (target.mode === "week")
-				target.to = dfn.endOfDay(dfn.addDays(d, 6))
-			else if (target.mode === "month") target.to = dfn.endOfMonth(d)
+			if (!d) d = Temporal.Now.zonedDateTimeISO()
+			target.from = d.startOfDay()
+			if (target.mode === "day") target.to = d.add({ days: 1 })
+			else if (target.mode === "week") target.to = d.add({ days: 7 })
+			else if (target.mode === "month") target.to = d.add({ months: 1 })
 			else if (target.mode === "exact") {
 				if (!end) throw Error("no end date")
 				target.from = d
 				target.to = end
 			} else expectNeverThrow(target.mode)
 		},
-		back() {
+		shift(mul: -1 | 1) {
 			if (target.mode === "day") {
-				this.setDate(dfn.addDays(target.from, -1))
+				this.setDate(target.from.add({ days: mul * 1 }))
 			} else if (target.mode === "week") {
-				this.setDate(dfn.addDays(target.from, -7))
+				this.setDate(target.from.add({ days: mul * 7 }))
 			} else if (target.mode === "month") {
-				this.setDate(dfn.startOfMonth(dfn.addDays(target.from, -1)))
+				this.setDate(target.from.add({ months: mul * 1 }))
 			} else if (target.mode === "exact") {
 				this.setDate(
-					dfn.addDays(target.from, -1),
-					dfn.addDays(target.to, -1),
+					target.from.add({ days: mul * 1 }),
+					target.to.add({ days: mul * 1 }),
 				)
 			} else expectNeverThrow(target.mode)
 		},
+		back() {
+			this.shift(-1)
+		},
 		forward() {
-			if (target.mode === "day") {
-				this.setDate(dfn.addDays(target.from, 1))
-			} else if (target.mode === "week") {
-				this.setDate(dfn.addDays(target.from, 7))
-			} else if (target.mode === "month") {
-				this.setDate(dfn.startOfMonth(dfn.addDays(target.to, 1)))
-			} else if (target.mode === "exact") {
-				this.setDate(
-					dfn.addDays(target.from, 1),
-					dfn.addDays(target.to, 1),
-				)
-			} else expectNeverThrow(target.mode)
+			this.shift(1)
 		},
 	}))
 	return store
@@ -130,6 +130,15 @@ export const DateTimePicker: React.FC<{
 		</>
 	)
 }
+function toZonedDateTime(d: Date): Temporal.ZonedDateTime {
+	return toTemporalInstant.call(d).toZonedDateTimeISO(Temporal.Now.timeZone())
+}
+function legacyMomentToTemporal(m: moment.Moment): Temporal.ZonedDateTime {
+	return toZonedDateTime(m.toDate())
+}
+function temporalToLegacyMoment(t: Temporal.ZonedDateTime): moment.Moment {
+	return moment(t.epochMilliseconds)
+}
 export const TimeRangeSelector: React.FC<{
 	target: TimeRangeTarget
 }> = observer(({ target }) => {
@@ -145,11 +154,13 @@ export const TimeRangeSelector: React.FC<{
 			<SingleDatePicker
 				{...commonProps}
 				id="time-range-seli"
-				onDateChange={(e) => state.setDate(e?.toDate())}
+				onDateChange={(e) =>
+					e && state.setDate(legacyMomentToTemporal(e))
+				}
 				focused={state.focused}
 				onFocusChange={(focused) => (state.focused = focused.focused)}
 				numberOfMonths={1}
-				date={moment(target.from)}
+				date={temporalToLegacyMoment(target.from)}
 				isOutsideRange={(d) => d.isAfter(new Date())}
 			/>
 		)
@@ -161,12 +172,15 @@ export const TimeRangeSelector: React.FC<{
 				endDateOffset={(d) => d.add(6, "days")}
 				startDateId="time-range-seli1"
 				endDateId="timee-range-seli2"
-				onDatesChange={(e) => state.setDate(e.startDate?.toDate())}
+				onDatesChange={(e) =>
+					e.startDate &&
+					state.setDate(legacyMomentToTemporal(e.startDate))
+				}
 				focusedInput={state.focusedW}
 				onFocusChange={(focused) => (state.focusedW = focused)}
 				numberOfMonths={1}
-				startDate={moment(target.from)}
-				endDate={moment(target.to)}
+				startDate={temporalToLegacyMoment(target.from)}
+				endDate={temporalToLegacyMoment(target.to)}
 				isOutsideRange={(d) => d.isAfter(new Date())}
 			/>
 		)
@@ -179,42 +193,35 @@ export const TimeRangeSelector: React.FC<{
 				endDateOffset={(d) => d.endOf("month")}
 				startDateId="time-range-seliq1"
 				endDateId="timee-range-seliq2"
-				onDatesChange={(e) => state.setDate(e.startDate?.toDate())}
+				onDatesChange={(e) =>
+					e.startDate &&
+					state.setDate(legacyMomentToTemporal(e.startDate))
+				}
 				focusedInput={state.focusedW}
 				onFocusChange={(focused) => (state.focusedW = focused)}
 				numberOfMonths={1}
-				startDate={moment(target.from)}
-				endDate={moment(target.to)}
+				startDate={temporalToLegacyMoment(target.from)}
+				endDate={temporalToLegacyMoment(target.to)}
 				isOutsideRange={(d) => false}
 			/>
 		)
 	else if (target.mode === "exact") {
 		const timeZone = Temporal.Now.timeZone()
-		const from = toTemporalInstant
-			.call(target.from)
-			.toZonedDateTimeISO(timeZone)
-			.toPlainDateTime()
-		const to = toTemporalInstant
-			.call(target.to)
-			.toZonedDateTimeISO(timeZone)
-			.toPlainDateTime()
+		const from = target.from.toPlainDateTime()
+		const to = target.to.toPlainDateTime()
 
 		picker = (
 			<>
 				<DateTimePicker
 					value={from}
 					onChange={(from) =>
-						(target.from = new Date(
-							from.toZonedDateTime(timeZone).epochMilliseconds,
-						))
+						(target.from = from.toZonedDateTime(timeZone))
 					}
 				/>
 				<DateTimePicker
 					value={to}
 					onChange={(to) =>
-						(target.to = new Date(
-							to.toZonedDateTime(timeZone).epochMilliseconds,
-						))
+						(target.to = to.toZonedDateTime(timeZone))
 					}
 				/>
 			</>
@@ -244,7 +251,10 @@ export const TimeRangeSelector: React.FC<{
 					))}
 				</select>
 				{picker}
-				{target.to < new Date() && (
+				{Temporal.Instant.compare(
+					target.to.toInstant(),
+					Temporal.Now.instant(),
+				) < 0 && (
 					<Button
 						className="caretbutton"
 						title="day after"
@@ -264,19 +274,23 @@ export const TimeRangeSelectorSimple: React.FC<{
 	const state = useTimeRange(target)
 	let picker: string
 	if (target.mode === "day") {
-		const date = dfn.isToday(target.from)
+		const today = Temporal.Now.zonedDateTimeISO()
+		const date = target.from.toPlainDate().equals(today.toPlainDate())
 			? "today"
-			: dfn.isYesterday(target.from)
+			: target.from.toPlainDate().equals(today.add({ days: -1 }))
 			? "yesterday"
-			: dfn.format(target.from, "yyyy-MM-dd")
+			: target.from.toPlainDate().toString()
 		picker = date
 	} else if (target.mode === "week") {
 		picker =
-			dfn.format(target.from, "yyyy-MM-dd") +
+			target.from.toPlainDate().toString() +
 			" to " +
-			dfn.format(target.to, "yyyy-MM-dd")
+			target.to.toPlainDate().toString()
 	} else if (target.mode === "month") {
-		picker = dfn.format(target.from, "MMM. yyyy")
+		picker = target.from.toLocaleString(undefined, {
+			month: "short",
+			year: "numeric",
+		})
 	} else {
 		throw Error(`unknown mode ${target.mode}`)
 	}
@@ -303,7 +317,10 @@ export const TimeRangeSelectorSimple: React.FC<{
 					))}
 				</DropdownMenu>
 			</UncontrolledDropdown>
-			{target.to < new Date() && (
+			{Temporal.Instant.compare(
+				target.to.toInstant(),
+				Temporal.Now.instant(),
+			) < 0 && (
 				<Button
 					className="caretbutton"
 					title="day after"

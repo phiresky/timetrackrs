@@ -1,4 +1,4 @@
-import * as dfn from "date-fns"
+import { Temporal } from "@js-temporal/polyfill"
 import { observer, useLocalObservable } from "mobx-react"
 import { fromPromise, IPromiseBasedObservable } from "mobx-utils"
 import React from "react"
@@ -39,10 +39,16 @@ export const ChooserWithChild: React.FC<
 > = observer((p) => {
 	const store = useLocalObservable(() => ({
 		timeRange: {
-			from: dfn.startOfDay(
-				new Date(p.routeMatch.queryArgs.from || new Date()),
+			from: Temporal.ZonedDateTime.from(
+				p.routeMatch.queryArgs.from ||
+					Temporal.Now.zonedDateTimeISO().startOfDay(),
 			),
-			to: dfn.endOfDay(new Date(p.routeMatch.queryArgs.to || new Date())),
+			to: Temporal.ZonedDateTime.from(
+				p.routeMatch.queryArgs.to ||
+					Temporal.Now.zonedDateTimeISO()
+						.add({ days: 1 })
+						.startOfDay(),
+			),
 			mode: (p.routeMatch.queryArgs.range || "day") as TimeRangeMode,
 		},
 		get data(): IPromiseBasedObservable<SingleExtractedChunk[]> {
@@ -78,8 +84,8 @@ export const ChooserWithChild: React.FC<
 		const oldArgs = p.routeMatch.queryArgs
 		const newArgs = {
 			tag: store.tag.value,
-			from: dfn.format(store.timeRange.from, "yyyy-MM-dd"),
-			to: dfn.format(store.timeRange.to, "yyyy-MM-dd"),
+			from: store.timeRange.from.toString(),
+			to: store.timeRange.to.toString(),
 			range: store.timeRange.mode,
 		}
 		if (
