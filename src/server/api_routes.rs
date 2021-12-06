@@ -3,6 +3,7 @@ use std::{future::ready, time::Duration};
 use crate::api_types::*;
 use crate::db::models::{DbEvent, Timestamptz};
 use crate::prelude::*;
+use crate::server::warp_util::{balanced_or_tree, debug_boxed};
 use crate::util::iso_string_to_datetime;
 use futures::StreamExt;
 use warp::{reply::json, Filter, Rejection};
@@ -265,7 +266,8 @@ pub fn api_routes(
                 .await
                 .map(|e| json(&e))
                 .map_err(map_error)
-        });
+        })
+        .boxed();
 
     let timestamp_search = with_db(db.clone())
         .and(warp::path("timestamp-search"))
@@ -275,7 +277,8 @@ pub fn api_routes(
                 .await
                 .map(|e| json(&e))
                 .map_err(map_error)
-        });
+        })
+        .boxed();
 
     let get_known_tags = with_db(db.clone())
         .and(warp::path("get-known-tags"))
@@ -285,7 +288,8 @@ pub fn api_routes(
                 .await
                 .map(|e| json(&e))
                 .map_err(map_error)
-        });
+        })
+        .boxed();
     let single_event = with_db(db.clone())
         .and(warp::path("single-event"))
         .and(warp::query::<Api::single_event::request>())
@@ -294,7 +298,8 @@ pub fn api_routes(
                 .await
                 .map(|e| json(&e))
                 .map_err(map_error)
-        });
+        })
+        .boxed();
 
     let update_rule_groups = with_db(db)
         .and(warp::path("update-rule-groups"))
@@ -304,52 +309,74 @@ pub fn api_routes(
                 .await
                 .map(|e| json(&e))
                 .map_err(map_error)
-        });
-
-    let progress_events = warp::path("progress-events").and(warp::get()).map(|| {
-        let (lossy_progress_events, end_events) = progress_events::get_receiver();
-        let end_events = tokio_stream::wrappers::BroadcastStream::new(end_events);
-        let events = tokio_stream::wrappers::BroadcastStream::new(lossy_progress_events);
-
-        // filter out and ignore the Lagged() err caused by polling behind a throttle
-        let events = StreamExt::filter_map(events, |e| {
-            ready(match e {
-                Ok(e) => Some(e),
-                Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(_)) => None,
-            })
         })
-        .map(|e| vec![e]);
-        // separate stream for end progress events that's not throttled
-        let end_events = end_events
-            .filter_map(|e| {
+        .boxed();
+
+    let progress_events = warp::path("progress-events")
+        .and(warp::get())
+        .map(|| {
+            let (lossy_progress_events, end_events) = progress_events::get_receiver();
+            let end_events = tokio_stream::wrappers::BroadcastStream::new(end_events);
+            let events = tokio_stream::wrappers::BroadcastStream::new(lossy_progress_events);
+
+            // filter out and ignore the Lagged() err caused by polling behind a throttle
+            let events = StreamExt::filter_map(events, |e| {
                 ready(match e {
                     Ok(e) => Some(e),
-                    Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(l)) => {
-                        log::warn!("end progress event missed! {}", l);
+                    Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(_)) => {
                         None
                     }
                 })
             })
-            .ready_chunks(10);
-        let events = tokio_stream::StreamExt::throttle(events, Duration::from_millis(250));
-        let merged = futures::stream::select(events, end_events)
-            .map(|e| warp::sse::Event::default().json_data(e));
-        warp::sse::reply(merged)
-    });
+            .map(|e| vec![e]);
+            // separate stream for end progress events that's not throttled
+            let end_events = end_events
+                .filter_map(|e| {
+                    ready(match e {
+                        Ok(e) => Some(e),
+                        Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(
+                            l,
+                        )) => {
+                            log::warn!("end progress event missed! {}", l);
+                            None
+                        }
+                    })
+                })
+                .ready_chunks(10);
+            let events = tokio_stream::StreamExt::throttle(events, Duration::from_millis(250));
+            let merged = futures::stream::select(events, end_events)
+                .map(|e| warp::sse::Event::default().json_data(e));
+            warp::sse::reply(merged)
+        })
+        .boxed();
 
-    let filter = warp::get()
-        .and(rule_groups)
+    let filter = warp::get().and(balanced_or_tree!(
+        time_range,
+        get_known_tags,
+        single_event,
+        update_rule_groups,
+        timestamp_search,
+        progress_events
+    )); /*rule_groups)
+        .boxed()
         .or(time_range)
+        .boxed()
         .unify()
         .or(get_known_tags)
+        .boxed()
         .unify()
         .or(single_event)
+        .boxed()
         .unify()
         .or(update_rule_groups)
+        .boxed()
         .unify()
         .or(timestamp_search)
+        .boxed()
         .unify()
-        .or(progress_events);
+        .or(progress_events)
+        .boxed()
+        .unify();*/
 
     filter
 }

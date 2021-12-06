@@ -98,8 +98,8 @@ sync = ["datachannel"]
 [profile.dev.package."*"]
 opt-level = 3
 
-#[profile.release]
 #lto="fat"
+[profile.release]
 debug = true # keep debug info in release build
 
 
