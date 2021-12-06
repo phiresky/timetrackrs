@@ -46,7 +46,10 @@ fn main() -> anyhow::Result<()> {
     writeln!(ofile, "type DateTime<T> = string;")?;
     writeln!(ofile, "type Local = unknown;")?;
     writeln!(ofile, "type Json<T> = T;")?;
-    writeln!(ofile, "type Timestamptz = string | number;")?;
+    writeln!(
+        ofile,
+        "type Timestamptz = string | import('@js-temporal/polyfill').Temporal.Instant;"
+    )?;
     writeln!(ofile, "type Utc = void;")?;
     writeln!(ofile, "type Regex = string;")?;
     writeln!(ofile, "type ExternalFetcher = string;")?;

@@ -1,6 +1,7 @@
+import { Temporal } from "@js-temporal/polyfill"
 import { autorun } from "mobx"
 import React from "react"
-import { SingleExtractedChunk } from "./server"
+import { SingleExtractedChunk, Timestamptz } from "./server"
 
 export function totalDurationSeconds(entries: { duration: number }[]): number {
 	return entries.reduce((sum, b) => sum + b.duration, 0) / 1000
@@ -122,6 +123,11 @@ export function generateId(len = 16): string {
 
 export function intersperse<T>(arr: T[], separator: (n: number) => T): T[] {
 	return arr.flatMap((a, i) => (i > 0 ? [separator(i - 1), a] : [a]))
+}
+
+export function deserializeTimestamptz(i: Timestamptz): Temporal.Instant {
+	if (typeof i === "number") return Temporal.Instant.fromEpochMilliseconds(i)
+	return i
 }
 
 // http://developingthoughts.co.uk/typescript-recursive-conditional-types/

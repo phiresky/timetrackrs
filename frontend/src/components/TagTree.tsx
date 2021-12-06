@@ -5,10 +5,12 @@ import * as React from "react"
 import { useState } from "react"
 import { Container } from "reactstrap"
 import * as api from "../api"
+import { CgDetailsMore } from "react-icons/cg"
 import { SingleExtractedChunk, Timestamptz } from "../server"
 import {
 	Counter,
 	DefaultMap,
+	deserializeTimestamptz,
 	durationToString,
 	totalDurationSeconds,
 } from "../util"
@@ -21,6 +23,7 @@ import { Entry } from "./Entry"
 import { ModalLink } from "./ModalLink"
 import { Page } from "./Page"
 import { Choices, Select } from "./Select"
+import { Temporal } from "@js-temporal/polyfill"
 
 interface Tree<T> {
 	leaves: T[]
@@ -167,8 +170,11 @@ const TreeLeaves: React.FC<{ leaves: ALeaf[] }> = observer(({ leaves }) => {
 		inner = (
 			<ul>
 				{leaves.slice(0, children).map((l) => (
-					<li key={l.timeChunk.from}>
-						{new Date(l.timeChunk.from).toLocaleTimeString()}:
+					<li key={l.timeChunk.from.toString()}>
+						{deserializeTimestamptz(l.timeChunk.from)
+							.toZonedDateTimeISO(Temporal.Now.timeZone())
+							.toLocaleString(undefined, { timeStyle: "medium" })}
+						:
 						<ul>
 							{l.timeChunk.tags.map(([k, v, t]) => (
 								<li key={k + v}>
@@ -200,7 +206,7 @@ const TreeLeaves: React.FC<{ leaves: ALeaf[] }> = observer(({ leaves }) => {
 		)
 	return (
 		<div>
-			{leaves.length} events. grouping by{" "}
+			grouping by{" "}
 			<Select<{ value: string; name: string }>
 				target={store.choices}
 				getValue={(e) => e.value}
@@ -226,7 +232,10 @@ function ShowTree({
 	return (
 		<li key={tagValue}>
 			<span className="clickable" onClick={() => setOpen(!open)}>
-				{title} (<TotalDuration tree={tree} />)
+				{title} (<TotalDuration tree={tree} />){" "}
+				<a href="detaaa">
+					<CgDetailsMore />
+				</a>
 			</span>
 
 			{open && <ShowTreeChildren tree={tree} />}
