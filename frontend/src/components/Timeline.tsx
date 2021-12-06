@@ -247,7 +247,7 @@ export class Timeline extends React.Component {
 			if (!this.oldestTimestamp) {
 				const ret = await api.timestampSearch({
 					backwards: false,
-					from: 0,
+					from: Temporal.Instant.fromEpochMilliseconds(0),
 				})
 				if (!ret) throw Error("DB is empty?")
 				this.oldestTimestamp =

@@ -116,19 +116,11 @@ async fn timestamp_search(
 }
 
 async fn time_range(db: DatyBasy, req: Api::time_range::request) -> Api::time_range::response {
-    let before = iso_string_to_datetime(&req.before).context("could not parse before date")?;
-    let after = iso_string_to_datetime(&req.after).context("could not parse after date")?;
-
     let progress = progress_events::new_progress("Extracting time range");
 
     let now = Instant::now();
     let data = db
-        .get_extracted_for_time_range(
-            Timestamptz(after),
-            Timestamptz(before),
-            req.tag.as_deref(),
-            progress,
-        )
+        .get_extracted_for_time_range(req.after, req.before, req.tag.as_deref(), progress)
         .await
         .context("Could not get extracted events")?;
 
@@ -136,14 +128,17 @@ async fn time_range(db: DatyBasy, req: Api::time_range::request) -> Api::time_ra
     Ok(ApiResponse { data })
 }
 
+/*async fn raw_events_time_range(
+    db: DatyBasy,
+    req: Api::raw_events_time_range::request,
+) -> Api::raw_events_time_range::response {
+}*/
+
 async fn invalidate_extractions(
     db: DatyBasy,
     req: Api::invalidate_extractions::request,
 ) -> Api::invalidate_extractions::response {
-    let from = iso_string_to_datetime(&req.from).context("could not parse before date")?;
-    let to = iso_string_to_datetime(&req.to).context("could not parse after date")?;
-    db.invalidate_timechunks_range(Timestamptz(from), Timestamptz(to))
-        .await?;
+    db.invalidate_timechunks_range(req.from, req.to).await?;
     Ok(ApiResponse { data: () })
 }
 
@@ -250,7 +245,6 @@ pub fn with_db(
 ) -> impl warp::Filter<Extract = (DatyBasy,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || db.clone())
 }
-
 pub fn api_routes(
     db: DatyBasy,
 ) -> impl warp::Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone + Send {

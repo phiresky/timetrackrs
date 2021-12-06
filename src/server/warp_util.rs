@@ -1,3 +1,4 @@
+// fix warp compile times https://github.com/seanmonstar/warp/issues/619
 #[cfg(debug_assertions)]
 macro_rules! debug_boxed {
     ($x:expr) => {

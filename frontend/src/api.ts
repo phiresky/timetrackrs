@@ -12,7 +12,7 @@ type ApiRequest<T extends keyof ApiTypes> = Cast<
 type ApiResponse<T extends keyof ApiTypes> = Cast<
 	ApiTypes[T]["response"],
 	Timestamptz,
-	string
+	number
 >
 
 type ApiResponseO<T> = { data: T }

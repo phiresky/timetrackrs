@@ -25,15 +25,15 @@ pub struct SingleExtractedEventWithRaw {
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct TimeRangeRequest {
-    pub before: String,
-    pub after: String,
+    pub before: Timestamptz,
+    pub after: Timestamptz,
     pub tag: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct InvalidateRangeRequest {
-    pub from: String,
-    pub to: String,
+    pub from: Timestamptz,
+    pub to: Timestamptz,
 }
 
 macro_rules! make_thingois {

@@ -101,13 +101,21 @@ impl<'de> Visitor<'de> for TimestamptzVisitor {
     {
         self.visit_i64(value as i64)
     }
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Timestamptz(
+            util::iso_string_to_datetime(value).map_err(serde::de::Error::custom)?,
+        ))
+    }
 }
 impl<'de> Deserialize<'de> for Timestamptz {
     fn deserialize<D>(deserializer: D) -> Result<Timestamptz, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_i64(TimestamptzVisitor)
+        deserializer.deserialize_str(TimestamptzVisitor)
     }
 }
 
