@@ -19,8 +19,10 @@ import {
 	Row as div,
 	UncontrolledDropdown,
 } from "reactstrap"
+import { expectNever, expectNeverThrow } from "../util"
+import { Temporal, toTemporalInstant } from "@js-temporal/polyfill"
 
-const Modes = ["day", "week", "month"] as const
+const Modes = ["day", "week", "month", "exact"] as const
 export type TimeRangeMode = typeof Modes[number]
 
 export type TimeRangeTarget = {
@@ -54,9 +56,11 @@ export function useTimeRange(target: TimeRangeTarget): TimeRangeStore {
 			} else if (mode === "month") {
 				target.from = dfn.startOfMonth(target.from)
 				target.to = dfn.endOfMonth(target.from)
-			}
+			} else if (mode === "exact") {
+				// keep
+			} else expectNeverThrow(mode)
 		},
-		setDate(d: Date | undefined) {
+		setDate(d: Date | undefined, end?: Date) {
 			console.log("set date", d)
 			if (!d) d = new Date()
 			target.from = dfn.startOfDay(d)
@@ -64,6 +68,11 @@ export function useTimeRange(target: TimeRangeTarget): TimeRangeStore {
 			else if (target.mode === "week")
 				target.to = dfn.endOfDay(dfn.addDays(d, 6))
 			else if (target.mode === "month") target.to = dfn.endOfMonth(d)
+			else if (target.mode === "exact") {
+				if (!end) throw Error("no end date")
+				target.from = d
+				target.to = end
+			} else expectNeverThrow(target.mode)
 		},
 		back() {
 			if (target.mode === "day") {
@@ -72,7 +81,12 @@ export function useTimeRange(target: TimeRangeTarget): TimeRangeStore {
 				this.setDate(dfn.addDays(target.from, -7))
 			} else if (target.mode === "month") {
 				this.setDate(dfn.startOfMonth(dfn.addDays(target.from, -1)))
-			}
+			} else if (target.mode === "exact") {
+				this.setDate(
+					dfn.addDays(target.from, -1),
+					dfn.addDays(target.to, -1),
+				)
+			} else expectNeverThrow(target.mode)
 		},
 		forward() {
 			if (target.mode === "day") {
@@ -81,10 +95,40 @@ export function useTimeRange(target: TimeRangeTarget): TimeRangeStore {
 				this.setDate(dfn.addDays(target.from, 7))
 			} else if (target.mode === "month") {
 				this.setDate(dfn.startOfMonth(dfn.addDays(target.to, 1)))
-			}
+			} else if (target.mode === "exact") {
+				this.setDate(
+					dfn.addDays(target.from, 1),
+					dfn.addDays(target.to, 1),
+				)
+			} else expectNeverThrow(target.mode)
 		},
 	}))
 	return store
+}
+export const DateTimePicker: React.FC<{
+	value: Temporal.PlainDateTime
+	onChange: (v: Temporal.PlainDateTime) => void
+}> = ({ value, onChange }) => {
+	const date = value.toPlainDate().toString()
+	const time = value.toPlainTime().toString()
+	return (
+		<>
+			<input
+				type="date"
+				value={date}
+				onChange={(e) =>
+					onChange(value.withPlainDate(e.currentTarget.value))
+				}
+			/>
+			<input
+				type="time"
+				value={time}
+				onChange={(e) =>
+					onChange(value.withPlainTime(e.currentTarget.value))
+				}
+			/>
+		</>
+	)
 }
 export const TimeRangeSelector: React.FC<{
 	target: TimeRangeTarget
@@ -109,7 +153,7 @@ export const TimeRangeSelector: React.FC<{
 				isOutsideRange={(d) => d.isAfter(new Date())}
 			/>
 		)
-	if (target.mode === "week")
+	else if (target.mode === "week")
 		picker = (
 			<DateRangePicker
 				{...commonProps}
@@ -126,7 +170,7 @@ export const TimeRangeSelector: React.FC<{
 				isOutsideRange={(d) => d.isAfter(new Date())}
 			/>
 		)
-	if (target.mode === "month")
+	else if (target.mode === "month")
 		picker = (
 			<DateRangePicker
 				{...commonProps}
@@ -144,6 +188,38 @@ export const TimeRangeSelector: React.FC<{
 				isOutsideRange={(d) => false}
 			/>
 		)
+	else if (target.mode === "exact") {
+		const timeZone = Temporal.Now.timeZone()
+		const from = toTemporalInstant
+			.call(target.from)
+			.toZonedDateTimeISO(timeZone)
+			.toPlainDateTime()
+		const to = toTemporalInstant
+			.call(target.to)
+			.toZonedDateTimeISO(timeZone)
+			.toPlainDateTime()
+
+		picker = (
+			<>
+				<DateTimePicker
+					value={from}
+					onChange={(from) =>
+						(target.from = new Date(
+							from.toZonedDateTime(timeZone).epochMilliseconds,
+						))
+					}
+				/>
+				<DateTimePicker
+					value={to}
+					onChange={(to) =>
+						(target.to = new Date(
+							to.toZonedDateTime(timeZone).epochMilliseconds,
+						))
+					}
+				/>
+			</>
+		)
+	} else expectNeverThrow(target.mode)
 	return (
 		<Card className="time-range-selector mt-3 mb-4">
 			<div>

@@ -1,6 +1,6 @@
 {
 	"scripts": {
-		"dev": "webpack serve",
+		"dev": "webpack --watch",
 		"build": "cross-env NODE_ENV=production webpack",
 		"setup-pages": "git worktree add -b gh-pages dist",
 		"pages": "rm -r dist/* && yarn build && cd dist && git add -A . && git commit -m'update binaries'"
@@ -51,7 +51,6 @@
 		"plotly.js": "^1.54.7",
 		"plotly.js-dist": "^1.54.7",
 		"prettier": "^2.0.5",
-		"proposal-temporal": "^0.7.0",
 		"react": "^17.0.1",
 		"react-chartjs-2": "^2.11.1",
 		"react-dates": "^21.8.0",

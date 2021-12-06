@@ -32,8 +32,12 @@ export function useMobxEffect(effect: () => unknown): void {
 	return React.useEffect(() => autorun(effect), [])
 }
 
+/** call this function so TS shows a type error if an enum is expanded */
 export function expectNever<T = any>(n: never): T {
 	return n as T
+}
+export function expectNeverThrow(n: never): void {
+	throw Error(`expected never: ${n as string}`)
 }
 
 export class NeatMap<K, V> extends Map<K, V> {
