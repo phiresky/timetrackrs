@@ -20,8 +20,8 @@ pub struct SingleExtractedEventWithRaw {
     pub timestamp_unix_ms: Timestamptz,
     pub duration_ms: i64,
     pub tags: Tags,
-    pub raw: EventData,
-    pub tags_reasons: HashMap<String, TagAddReason>,
+    pub raw: Option<EventData>,
+    pub tags_reasons: Option<HashMap<String, TagAddReason>>,
 }
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct TimeRangeRequest {
@@ -68,6 +68,8 @@ type DebugRes<T> = Result<T, anyhow::Error>;
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct SingleEventRequest {
     pub id: String,
+    pub include_raw: bool,
+    pub include_reasons: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]

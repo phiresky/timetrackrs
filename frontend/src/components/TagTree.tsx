@@ -4,6 +4,7 @@ import { observer, useLocalObservable } from "mobx-react"
 import * as React from "react"
 import { useState } from "react"
 import { Container } from "reactstrap"
+import Modal from "react-modal"
 import * as api from "../api"
 import { CgDetailsMore } from "react-icons/cg"
 import { SingleExtractedChunk, Timestamptz } from "../server"
@@ -12,6 +13,7 @@ import {
 	DefaultMap,
 	deserializeTimestamptz,
 	durationToString,
+	getTagValues,
 	totalDurationSeconds,
 } from "../util"
 import {
@@ -216,15 +218,12 @@ const TreeLeaves: React.FC<{ leaves: ALeaf[] }> = observer(({ leaves }) => {
 		</div>
 	)
 })
-function ShowTree({
-	tagValue,
-	tree,
-	noSlash = false,
-}: {
+const ShowTree: React.FC<{
+	tag: string
 	tagValue: string
 	tree: ATree
 	noSlash?: boolean
-}) {
+}> = ({ tag, tagValue, tree, noSlash = false }) => {
 	const [open, setOpen] = React.useState(false)
 
 	const title = (noSlash ? "" : "/") + tagValue || "[empty]"
@@ -234,33 +233,59 @@ function ShowTree({
 			<span className="clickable" onClick={() => setOpen(!open)}>
 				{title} (<TotalDuration tree={tree} />){" "}
 				<a href="detaaa">
-					<CgDetailsMore />
+					<DetailsButtonModal
+						chunks={tree.leaves.map((m) => m.timeChunk)}
+						tag={tag}
+						tagValue={tagValue}
+					/>
 				</a>
 			</span>
 
-			{open && <ShowTreeChildren tree={tree} />}
+			{open && <ShowTreeChildren tag={tag} tree={tree} />}
 			{open && tree.leaves.length > 0 && (
 				<TreeLeaves leaves={tree.leaves} />
 			)}
 		</li>
 	)
 }
-function ShowTreeChildren({
-	tree,
-	noSlash,
-}: {
+const DetailsButtonModal: React.FC<{
+	chunks: SingleExtractedChunk[]
+	tag: string
+	tagValue: string
+}> = ({ chunks }) => {
+	const [open, setOpen] = useState(false)
+	if (!open) {
+		return (
+			<a
+				onClick={(e) => {
+					e.preventDefault()
+					setOpen(true)
+				}}
+			>
+				<CgDetailsMore></CgDetailsMore>
+			</a>
+		)
+	}
+	const eventIds = chunks.flatMap((chunk) =>
+		getTagValues(chunk.tags, "timetrackrs-raw-id").map(([v, _dur]) => v),
+	)
+	return <Modal isOpen={true} onRequestClose={(e) => setOpen(false)}></Modal>
+}
+const ShowTreeChildren: React.FC<{
 	tree: ATree
 	noSlash?: boolean
-}) {
+	tag: string
+}> = ({ tree, noSlash, tag }) => {
 	const [children, setChildren] = React.useState(5)
 	return (
 		<ul>
 			{[...tree.children.entries()]
 				.slice(0, children)
-				.map(([tag, tree]) => (
+				.map(([tagValue, tree]) => (
 					<ShowTree
-						key={tag}
-						tagValue={tag}
+						tag={tag}
+						key={tagValue}
+						tagValue={tagValue}
 						tree={tree}
 						noSlash={noSlash}
 					/>
@@ -327,17 +352,17 @@ export class TagTree extends React.Component<{
 		const { chart = false } = this.props
 		return (
 			<div>
-				{[...this.tagTree.children].map(([kind, tree]) => (
-					<div key={kind}>
+				{[...this.tagTree.children].map(([tag, tree]) => (
+					<div key={tag}>
 						<h3>
-							{kind}{" "}
+							{tag}{" "}
 							{!chart && (
 								<CategoryChartModalLink
 									timeChunks={collect(tree).map(
 										(t) => t.timeChunk,
 									)}
 									deep={false}
-									tag={kind}
+									tag={tag}
 								/>
 							)}
 						</h3>
@@ -347,10 +372,10 @@ export class TagTree extends React.Component<{
 									(t) => t.timeChunk,
 								)}
 								deep={false}
-								tag={kind + ":"}
+								tag={tag + ":"}
 							/>
 						)}
-						<ShowTreeChildren tree={tree} noSlash />
+						<ShowTreeChildren tag={tag} tree={tree} noSlash />
 					</div>
 				))}
 			</div>

@@ -22,5 +22,14 @@ module.exports = {
 		"@typescript-eslint/camelcase": "off",
 		"react/prop-types": "off",
 		"react/display-name": "off",
+		"@typescript-eslint/no-unused-vars": [
+			"warn",
+			{
+				vars: "all",
+				args: "after-used",
+				varsIgnorePattern: "^_.",
+				argsIgnorePattern: "^_",
+			},
+		],
 	},
 }

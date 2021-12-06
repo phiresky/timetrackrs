@@ -3,6 +3,30 @@ import { autorun } from "mobx"
 import React from "react"
 import { SingleExtractedChunk, Timestamptz } from "./server"
 
+/**
+ * TODO: support multi-value tags
+ */
+export function getTagValue(
+	tags: [string, string, number][],
+	tag: string,
+	deep = true,
+): string | undefined {
+	const value = tags.find((t) => t[0] === tag)?.[1]
+	if (!deep) {
+		return value?.split("/")[0]
+	}
+	return value
+}
+export function getTagValues(
+	tags: [string, string, number][],
+	tag: string,
+	deep = true,
+): [string, number][] {
+	return tags
+		.filter((t) => t[0] === tag)
+		.map(([_, v, dur]) => [deep ? v : v.split("/")[0], dur])
+}
+
 export function totalDurationSeconds(entries: { duration: number }[]): number {
 	return entries.reduce((sum, b) => sum + b.duration, 0) / 1000
 }

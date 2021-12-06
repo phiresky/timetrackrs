@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
     writeln!(ofile, "type Json<T> = T;")?;
     writeln!(
         ofile,
-        "type Timestamptz = string | import('@js-temporal/polyfill').Temporal.Instant;"
+        "type Timestamptz = /* ser */ number | /* deser */ import('@js-temporal/polyfill').Temporal.Instant;"
     )?;
     writeln!(ofile, "type Utc = void;")?;
     writeln!(ofile, "type Regex = string;")?;

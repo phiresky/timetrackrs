@@ -3,7 +3,9 @@ import { observer } from "mobx-react"
 import React, { ReactElement } from "react"
 import * as api from "../api"
 import {
+	deserializeTimestamptz,
 	durationToString,
+	getTagValues,
 	totalDurationSeconds,
 	totalDurationSecondsTag,
 } from "../util"
@@ -16,30 +18,6 @@ import { SingleExtractedChunk } from "../server"
 import { Card, CardBody, CardHeader, Container, Row } from "reactstrap"
 import { Temporal } from "@js-temporal/polyfill"
 
-/**
- * TODO: support multi-value tags
- */
-export function getTag(
-	tags: [string, string, number][],
-	tag: string,
-	deep = true,
-): string | undefined {
-	const value = tags.find((t) => t[0] === tag)?.[1]
-	if (!deep) {
-		return value?.split("/")[0]
-	}
-	return value
-}
-export function getTags(
-	tags: [string, string, number][],
-	tag: string,
-	deep = true,
-): [string, number][] {
-	return tags
-		.filter((t) => t[0] === tag)
-		.map(([_, v, dur]) => [deep ? v : v.split("/")[0], dur])
-}
-
 type Filter = { tagName: string }
 
 interface Grouper {
@@ -51,10 +29,10 @@ interface Grouper {
 	}>
 }
 const groupers: Grouper[] = [
-	{
+	/*{
 		name: "Category",
 		shouldGroup({ tags: a }, { tags: b }) {
-			return getTag(a, "category") === getTag(b, "category")
+			return getTagValues(a, "category") === getTag(b, "category")
 		},
 		component(p) {
 			return (
@@ -69,15 +47,17 @@ const groupers: Grouper[] = [
 				</ul>
 			)
 		},
-	},
+	},*/
 	{
 		name: "Daily",
 		shouldGroup(a, b) {
-			const d1 = new Date(a.from)
-			const d2 = new Date(b.from)
-			return (
-				d1.toISOString().slice(0, 10) === d2.toISOString().slice(0, 10)
-			)
+			const d1 = deserializeTimestamptz(a.from)
+				.toZonedDateTimeISO(Temporal.Now.timeZone())
+				.toPlainDate()
+			const d2 = deserializeTimestamptz(b.from)
+				.toZonedDateTimeISO(Temporal.Now.timeZone())
+				.toPlainDate()
+			return d1.equals(d2)
 		},
 		component(p) {
 			return (
@@ -175,7 +155,7 @@ function RenderGroup(props: {
 	return (
 		<>
 			{groups.map((entries) => (
-				<section key={entries[0].from}>
+				<section key={entries[0].from.toString()}>
 					<h4>
 						<EntriesTime entries={entries} /> [{grouper.name}]
 					</h4>

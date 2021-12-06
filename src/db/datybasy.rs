@@ -239,12 +239,17 @@ impl DatyBasy {
         let chunks = self.get_affected_timechunks_range(from, to);
         {
             let days_str = serde_json::to_string(&chunks)?;
-            let doesnt_need_update: Vec<TimeChunk> = sqlx::query_scalar!( r#"
+            let doesnt_need_update: Vec<TimeChunk> = sqlx::query_scalar!(
+                r#"
                 select timechunk as "timechunk: _"
                 from extracted.extracted_current
                 where timechunk in (select value from json_each(?))
                 and extracted_timestamp_unix_ms > raw_events_changed_timestamp_unix_ms"#,
-                days_str).fetch_all(&self.db).await.context("fetching currents")?;
+                days_str
+            )
+            .fetch_all(&self.db)
+            .await
+            .context("fetching currents")?;
             let doesnt_need_update =
                 HashSet::<TimeChunk>::from_iter(doesnt_need_update.into_iter());
             let mut needs_update: Vec<_> = chunks
@@ -509,6 +514,7 @@ impl DatyBasy {
                         let mut tags = r.extract_info()?;
                         tags.add("timetrackrs-tracked", "true");
                         tags.add("timetrackrs-data-source", &a.data_type);
+                        tags.add("timetrackrs-raw-id", &a.id);
                         tags
                     }
                     Err(e) => {

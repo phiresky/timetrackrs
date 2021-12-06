@@ -1,7 +1,9 @@
 type DateTime<T> = string
 type Local = unknown
 type Json<T> = T
-type Timestamptz = number | import("@js-temporal/polyfill").Temporal.Instant
+type Timestamptz /* ser */ =
+	| number
+	| /* deser */ import("@js-temporal/polyfill").Temporal.Instant
 type Utc = void
 type Regex = string
 type ExternalFetcher = string
@@ -141,8 +143,8 @@ export type TimestampSearchRequest = {
 	from: Timestamptz | null
 }
 export type TimeRangeRequest = {
-	before: string
-	after: string
+	before: Timestamptz
+	after: Timestamptz
 	tag: string | null
 }
 export type ProgressReport = {

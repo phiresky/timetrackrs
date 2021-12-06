@@ -128,12 +128,6 @@ async fn time_range(db: DatyBasy, req: Api::time_range::request) -> Api::time_ra
     Ok(ApiResponse { data })
 }
 
-/*async fn raw_events_time_range(
-    db: DatyBasy,
-    req: Api::raw_events_time_range::request,
-) -> Api::raw_events_time_range::response {
-}*/
-
 async fn invalidate_extractions(
     db: DatyBasy,
     req: Api::invalidate_extractions::request,
@@ -162,8 +156,15 @@ async fn single_event(
     let v = match r {
         Ok(raw) => {
             if let Some(data) = raw.extract_info() {
-                let (tags, tags_reasons, _iterations) =
-                    get_tags_with_reasons(&db, data, progress).await;
+                let (tags, tags_reasons) = {
+                    if req.include_reasons {
+                        let (tags, r, _) = get_tags_with_reasons(&db, data, progress).await;
+                        (tags, Some(r))
+                    } else {
+                        let (tags, _) = get_tags(&db, data, progress).await;
+                        (tags, None)
+                    }
+                };
                 //let (tags, iterations) = get_tags(&db, data);
                 Some(SingleExtractedEventWithRaw {
                     id: a.id,
@@ -171,7 +172,7 @@ async fn single_event(
                     duration_ms: a.duration_ms,
                     tags_reasons,
                     tags,
-                    raw,
+                    raw: req.include_raw.then(|| raw),
                 })
             } else {
                 None
@@ -348,6 +349,7 @@ pub fn api_routes(
         time_range,
         get_known_tags,
         single_event,
+        rule_groups,
         update_rule_groups,
         timestamp_search,
         progress_events
