@@ -23,9 +23,7 @@ export class Routing<TData, TArgs> {
 		return this.router.route(this.locationService.currentLocation, this)
 	}
 
-	private castRouteInformation(
-		routeInformation: RouteInformation<any, any>,
-	):
+	private castRouteInformation(routeInformation: RouteInformation<any, any>):
 		| {
 				route: Route<any, any>
 				args: Record<string, any>
@@ -35,7 +33,7 @@ export class Routing<TData, TArgs> {
 		if (!(routeInformation.matcher instanceof Route)) {
 			return undefined
 		}
-		const args = (routeInformation.args as unknown) as MatcherArgs<any, any>
+		const args = routeInformation.args as unknown as MatcherArgs<any, any>
 		return {
 			route: routeInformation.matcher,
 			args: args.args,
@@ -57,7 +55,7 @@ export class Routing<TData, TArgs> {
 
 	private getLocationInfo<
 		TArgs extends RouteArgs,
-		TQueryArgs extends QueryArgs
+		TQueryArgs extends QueryArgs,
 	>(
 		route: Route<TArgs, TQueryArgs>,
 		args: RouteArgsToType<TArgs>,
@@ -77,7 +75,7 @@ export class Routing<TData, TArgs> {
 
 	public routeToOnClick<
 		TArgs extends RouteArgs,
-		TQueryArgs extends QueryArgs
+		TQueryArgs extends QueryArgs,
 	>(
 		route: Route<TArgs, TQueryArgs>,
 		args: RouteArgsToType<TArgs>,

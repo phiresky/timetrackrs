@@ -30,7 +30,7 @@ export function asQueryArgs<T extends QueryArgs>(queryArgs: T): T {
 
 export interface MatcherArgs<
 	TArgs extends RouteArgs,
-	TQueryArgs extends QueryArgs
+	TQueryArgs extends QueryArgs,
 > {
 	args: RouteArgsToType<TArgs>
 	queryArgs: QueryArgsToType<TQueryArgs>
@@ -42,7 +42,8 @@ export interface MatcherArgs<
 }
 
 export class Route<TArgs extends RouteArgs, TQueryArgs extends QueryArgs>
-	implements Matcher<MatcherArgs<TArgs, TQueryArgs>> {
+	implements Matcher<MatcherArgs<TArgs, TQueryArgs>>
+{
 	public static create(path: string): Route<{}, {}>
 	public static create<TArgs extends RouteArgs>(
 		path: string,

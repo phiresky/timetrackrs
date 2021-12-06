@@ -18,12 +18,6 @@ const copyStyles = (styles: CSSStyleDeclaration, node: HTMLElement) => {
 	node.style.letterSpacing = styles.letterSpacing
 	node.style.textTransform = styles.textTransform
 }
-
-const isIE =
-	typeof window !== "undefined" && window.navigator
-		? /MSIE |Trident\/|Edge\//.test(window.navigator.userAgent)
-		: false
-
 declare const ResizeObserver: typeof MutationObserver
 class AutosizeInput extends Component<Props, { inputWidth: string | number }> {
 	input = React.createRef<HTMLInputElement>()
@@ -112,19 +106,19 @@ class AutosizeInput extends Component<Props, { inputWidth: string | number }> {
 			})
 		}
 	}
-	getInput() {
+	getInput(): HTMLInputElement | null {
 		return this.input.current
 	}
-	focus() {
+	focus(): void {
 		this.input.current?.focus()
 	}
-	blur() {
+	blur(): void {
 		this.input.current?.blur()
 	}
-	select() {
+	select(): void {
 		this.input.current?.select()
 	}
-	render() {
+	render(): JSX.Element {
 		const sizerValue = [
 			this.props.defaultValue,
 			this.props.value,
@@ -140,13 +134,13 @@ class AutosizeInput extends Component<Props, { inputWidth: string | number }> {
 		if (!wrapperStyle.display) wrapperStyle.display = "inline-block"
 
 		const {
-			extraWidth,
-			inputClassName,
+			extraWidth: _1,
+			inputClassName: _2,
 
 			inputStyle,
-			minWidth,
-			onAutosize,
-			placeholderIsMinWidth,
+			minWidth: _3,
+			onAutosize: _4,
+			placeholderIsMinWidth: _5,
 			..._inputProps
 		} = this.props
 

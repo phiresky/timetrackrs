@@ -1,11 +1,12 @@
 import { Temporal } from "@js-temporal/polyfill"
 import { computed, makeObservable, observable } from "mobx"
 import { observer } from "mobx-react"
-import { fromPromise } from "mobx-utils"
+import { fromPromise, IPromiseBasedObservable } from "mobx-utils"
 import * as React from "react"
 import { AiOutlineQuestionCircle } from "react-icons/ai"
 import * as api from "../api"
-import { TagRule } from "../server"
+import { SingleExtractedEventWithRaw, TagRule } from "../server"
+import { deserializeTimestamptz } from "../util"
 import { Entry } from "./Entry"
 
 function expectNever<T>(n: never): T {
@@ -55,12 +56,13 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 		super(p)
 		makeObservable(this)
 	}
-	@computed get data() {
+	@computed
+	get data(): IPromiseBasedObservable<SingleExtractedEventWithRaw | null> {
 		return fromPromise(api.getSingleEvent({ id: this.props.id }))
 	}
 	@observable showReasons = new Set<string>()
 
-	reason(tag: string) {
+	reason(tag: string): JSX.Element {
 		if (this.data.state !== "fulfilled") return <>wat</>
 
 		const e = this.data.value
@@ -109,12 +111,16 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 				<p>
 					Date:{" "}
 					{formatRelative(
-						Temporal.Instant.fromEpochMilliseconds(
-							e.timestamp_unix_ms,
-						).until(Temporal.Now.instant()),
+						deserializeTimestamptz(e.timestamp_unix_ms).until(
+							Temporal.Now.instant(),
+						),
 					)}
 					<small>
-						({new Date(e.timestamp_unix_ms).toLocaleString()})
+						(
+						{deserializeTimestamptz(
+							e.timestamp_unix_ms,
+						).toLocaleString()}
+						)
 					</small>
 				</p>
 				<p>
@@ -128,7 +134,7 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 				<div>
 					Tags:
 					<ul>
-						{Object.entries(e.tags.map).map(([key, values]) =>
+						{Object.entries(e.tags).map(([key, values]) =>
 							values?.map((value) => {
 								const kv = `${key}:${value}`
 								return (

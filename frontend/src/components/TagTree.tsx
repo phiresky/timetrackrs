@@ -5,7 +5,6 @@ import * as React from "react"
 import { useState } from "react"
 import { Container } from "reactstrap"
 import Modal from "react-modal"
-import * as api from "../api"
 import { CgDetailsMore } from "react-icons/cg"
 import { SingleExtractedChunk, Timestamptz } from "../server"
 import {
@@ -21,8 +20,6 @@ import {
 	CategoryChartModal as CategoryChartModalLink,
 } from "./CategoryChart"
 import { ChooserWithChild, CWCRouteMatch } from "./ChooserWithChild"
-import { Entry } from "./Entry"
-import { ModalLink } from "./ModalLink"
 import { Page } from "./Page"
 import { Choices, Select } from "./Select"
 import { Temporal } from "@js-temporal/polyfill"
@@ -128,7 +125,7 @@ const TreeLeaves: React.FC<{ leaves: ALeaf[] }> = observer(({ leaves }) => {
 			() => new Counter(),
 		)
 		for (const l of leaves) {
-			for (const [tagKey, value, duration] of l.timeChunk.tags) {
+			for (const [tagKey, value, _duration] of l.timeChunk.tags) {
 				totalCounts.add(tagKey)
 				valueCounter.get(tagKey).add(value)
 			}
@@ -269,7 +266,11 @@ const DetailsButtonModal: React.FC<{
 	const eventIds = chunks.flatMap((chunk) =>
 		getTagValues(chunk.tags, "timetrackrs-raw-id").map(([v, _dur]) => v),
 	)
-	return <Modal isOpen={true} onRequestClose={(e) => setOpen(false)}></Modal>
+	return (
+		<Modal isOpen={true} onRequestClose={(_) => setOpen(false)}>
+			Event ids: {eventIds.join("\n")}
+		</Modal>
+	)
 }
 const ShowTreeChildren: React.FC<{
 	tree: ATree

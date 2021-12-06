@@ -1,12 +1,11 @@
 import { computed } from "mobx"
 import React from "react"
 import Plot from "react-plotly.js"
-import { DefaultMap, KeyedSet, totalDurationSeconds } from "../util"
+import { DefaultMap, getTagValues } from "../util"
 import { ModalLink } from "./ModalLink"
 import { AiOutlineBarChart } from "react-icons/ai"
 import { routes } from "../routes"
-import { SingleExtractedChunk, Timestamptz } from "../server"
-import { getTag, getTags } from "./Timeline"
+import { SingleExtractedChunk } from "../server"
 
 type CategoryChartProps = {
 	timeChunks: SingleExtractedChunk[]
@@ -26,11 +25,11 @@ export function CategoryChartModal(p: CategoryChartProps): React.ReactElement {
 	)
 }
 export class CategoryChart extends React.Component<CategoryChartProps> {
-	@computed get data() {
+	@computed get data(): { x: string[]; y: number[] } {
 		const tag = this.props.tag
 		const groups = new DefaultMap<string, number>(() => 0)
 		for (const timeChunk of this.props.timeChunks) {
-			for (const [val, dur] of getTags(timeChunk.tags, tag)) {
+			for (const [val, dur] of getTagValues(timeChunk.tags, tag)) {
 				groups.addDelta(val, dur)
 			}
 		}

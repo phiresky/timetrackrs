@@ -2,11 +2,7 @@ import { observer, useLocalObservable } from "mobx-react"
 import React from "react"
 import "react-dates/initialize"
 import "react-dates/lib/css/_datepicker.css"
-import {
-	DateRangePicker,
-	DayPickerRangeController,
-	SingleDatePicker,
-} from "react-dates"
+import { DateRangePicker, SingleDatePicker } from "react-dates"
 import moment from "moment"
 import {
 	Button,
@@ -15,10 +11,9 @@ import {
 	DropdownItem,
 	DropdownMenu,
 	DropdownToggle,
-	Row as div,
 	UncontrolledDropdown,
 } from "reactstrap"
-import { expectNever, expectNeverThrow } from "../util"
+import { expectNeverThrow } from "../util"
 import { Temporal, toTemporalInstant } from "@js-temporal/polyfill"
 
 const Modes = ["day", "week", "month", "exact"] as const
