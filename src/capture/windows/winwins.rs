@@ -64,7 +64,9 @@ fn get_wifi_ssid() -> anyhow::Result<Option<String>> {
     lazy_static! {
         static ref SSID_MATCH: Regex = Regex::new(r"(?m)^\s*SSID\s*:\s*(.*?)\r?$").unwrap();
     }
+    use std::os::windows::process::CommandExt;
     let output = std::process::Command::new("netsh")
+        .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW)
         .args(&["wlan", "show", "interfaces"])
         .output()
         .context("could not run netsh")?;
