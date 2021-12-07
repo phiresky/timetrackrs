@@ -1,3 +1,6 @@
+// don't show an ugly console on windows
+#![windows_subsystem = "windows"]
+
 use std::path::PathBuf;
 
 use futures::{never::Never, stream::FuturesUnordered};
@@ -5,10 +8,7 @@ use futures::{StreamExt, TryStreamExt};
 
 use timetrackrs::{config::TimetrackrsConfig, prelude::*};
 use timetrackrs::{db::clear_wal_files, util::init_logging};
-use tokio::{
-    task::{JoinHandle},
-    time::sleep,
-};
+use tokio::{task::JoinHandle, time::sleep};
 
 #[derive(StructOpt, Debug, Serialize, Deserialize)]
 struct Args {
@@ -50,6 +50,14 @@ async fn ensure_past_month_valid(db: DatyBasy) -> anyhow::Result<Never> {
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
     init_logging();
+    #[cfg(target_os = "windows")]
+    {
+        // attach to windows console when started from cmd or powershell
+        use winapi::um::wincon::{AttachConsole, ATTACH_PARENT_PROCESS};
+        unsafe {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+        }
+    }
     let args = Args::from_args();
     let db = init_db_pool().await?;
     {
