@@ -109,10 +109,23 @@ pub fn get_os_info() -> OsInfo {
     }
 }
 
-pub fn init_logging() {
+use tracing_subscriber::{fmt, layer::SubscriberExt};
+
+pub fn init_logging() -> anyhow::Result<tracing_appender::non_blocking::WorkerGuard> {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "timetrackrs=info");
     }
-    env_logger::init();
-    log::debug!("env logger inited")
+    let path = crate::db::get_database_dir_location().join("logs");
+    std::fs::create_dir_all(&path).unwrap();
+    let file_appender = tracing_appender::rolling::daily(path, "timetrackrs.log");
+    let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
+
+    // env_logger::init();
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::fmt()
+            .finish()
+            .with(tracing_subscriber::fmt::Layer::default().with_writer(file_writer)),
+    )?;
+    log::debug!("env logger inited");
+    Ok(guard)
 }

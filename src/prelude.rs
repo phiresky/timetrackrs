@@ -19,6 +19,7 @@ pub use crate::import::app_usage_sqlite::*;
 pub use crate::import::journald::*;
 pub use crate::import::sleep_as_android::*;
 pub use crate::import::*;
+pub use tracing as log;
 
 pub use crate::progress::*;
 pub use crate::util;

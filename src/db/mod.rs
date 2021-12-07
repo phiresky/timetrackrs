@@ -2,6 +2,7 @@ pub mod caching_int_map;
 pub mod datybasy;
 pub mod db_iterator;
 pub mod models;
+pub use crate::prelude::*;
 use anyhow::Context;
 use sqlx::{sqlite::SqliteConnectOptions, Executor};
 use sqlx::{sqlite::SqlitePoolOptions, SqliteConnection, SqlitePool};

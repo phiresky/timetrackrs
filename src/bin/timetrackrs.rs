@@ -1,5 +1,5 @@
 // don't show an ugly console on windows
-#![windows_subsystem = "windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::path::PathBuf;
 
@@ -49,15 +49,7 @@ async fn ensure_past_month_valid(db: DatyBasy) -> anyhow::Result<Never> {
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
-    init_logging();
-    #[cfg(target_os = "windows")]
-    {
-        // attach to windows console when started from cmd or powershell
-        use winapi::um::wincon::{AttachConsole, ATTACH_PARENT_PROCESS};
-        unsafe {
-            AttachConsole(ATTACH_PARENT_PROCESS);
-        }
-    }
+    let _guard = init_logging()?;
     let args = Args::from_args();
     let db = init_db_pool().await?;
     {
