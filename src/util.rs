@@ -115,6 +115,7 @@ pub fn init_logging() -> anyhow::Result<tracing_appender::non_blocking::WorkerGu
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "timetrackrs=info");
     }
+    env_logger::init();
     let path = crate::db::get_database_dir_location().join("logs");
     std::fs::create_dir_all(&path).unwrap();
     let file_appender = tracing_appender::rolling::daily(path, "timetrackrs.log");
@@ -123,6 +124,7 @@ pub fn init_logging() -> anyhow::Result<tracing_appender::non_blocking::WorkerGu
     // env_logger::init();
     tracing::subscriber::set_global_default(
         tracing_subscriber::fmt()
+            .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
             .finish()
             .with(tracing_subscriber::fmt::Layer::default().with_writer(file_writer)),
     )?;

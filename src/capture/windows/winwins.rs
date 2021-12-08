@@ -121,6 +121,7 @@ pub fn is_alt_tab_window(hwnd: HWND) -> bool {
             GA_ROOTOWNER, GWL_EXSTYLE, STATE_SYSTEM_INVISIBLE, TITLEBARINFO, WS_EX_TOOLWINDOW,
         };
         if IsWindowVisible(hwnd) == 0 {
+            log::debug!("{hwnd:?}: window invisible, return false");
             return false;
         }
         let mut hwnd_walk: HWND = std::ptr::null_mut();
@@ -135,6 +136,7 @@ pub fn is_alt_tab_window(hwnd: HWND) -> bool {
             }
         }
         if hwnd_walk != hwnd {
+            log::debug!("{hwnd:?}: window not root, return false");
             return false;
         }
         let mut tit = TITLEBARINFO {
@@ -149,13 +151,15 @@ pub fn is_alt_tab_window(hwnd: HWND) -> bool {
         };
         // the following removes some task tray programs and "Program Manager"
         //ti.cbSize = sizeof(ti);
-        GetTitleBarInfo(hwnd, &mut tit);
+        /*GetTitleBarInfo(hwnd, &mut tit);
         if (tit.rgstate[0] & STATE_SYSTEM_INVISIBLE) != 0 {
+            log::debug!("{hwnd:?}: rgstate STATE_SYSTEM_INVISIBLE, return false");
             return false;
-        }
+        }*/
         // Tool windows should not be displayed either, these do not appear in the
         // task bar.
         if (GetWindowLongW(hwnd, GWL_EXSTYLE) as u32 & WS_EX_TOOLWINDOW) != 0 {
+            log::debug!("{hwnd:?}: GWL_EXSTYLE=WS_EX_TOOLWINDOW, return false");
             return false;
         }
         return true;
@@ -215,10 +219,16 @@ pub fn get_window_class_name(hwnd: HWND) -> String {
 
 #[allow(dead_code)]
 pub fn get_all_windows(filter_alt_tab: bool) -> Vec<WindowsWindow> {
+    log::debug!("getting windows!");
     let mut vec = Vec::new();
     let a = |hwnd| -> EnumResult {
-        if is_alt_tab_window(hwnd) && filter_alt_tab {
+        if !filter_alt_tab || is_alt_tab_window(hwnd) {
             vec.push(map_hwnd(hwnd))
+        } else {
+            log::debug!(
+                "Skipping window (not-alt-tabbable): {hwnd:?}: {}",
+                get_window_title(hwnd)
+            );
         }
         EnumResult::ContinueEnum
     };

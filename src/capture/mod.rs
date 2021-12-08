@@ -59,6 +59,7 @@ pub async fn capture_loop(db: DatyBasy, config: CaptureConfig) -> anyhow::Result
     let idgen = crate::libxid::new_generator();
 
     let mut interval = tokio::time::interval(config.interval);
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         log::info!("sleeping {}s", config.interval.as_secs());
         interval.tick().await;
