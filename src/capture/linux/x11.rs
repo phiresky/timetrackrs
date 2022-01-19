@@ -9,6 +9,7 @@ use crate::prelude::*;
 
 use serde_json::{json, Value as J};
 use std::collections::{BTreeMap, HashMap};
+use sysinfo::PidExt;
 use sysinfo::ProcessExt;
 use sysinfo::SystemExt;
 use x11rb::connection::Connection;
@@ -197,16 +198,16 @@ impl<C: Connection + Send> Capturer for X11Capturer<C> {
             }
 
             let process = if let Some(pid) = pid {
-                system.refresh_process(pid as i32);
-                if let Some(procinfo) = system.process(pid as i32) {
+                system.refresh_process(sysinfo::Pid::from_u32(pid));
+                if let Some(procinfo) = system.process(sysinfo::Pid::from_u32(pid as u32)) {
                     Some(ProcessData {
-                        pid: procinfo.pid(),
+                        pid: procinfo.pid().as_u32() as i32,
                         name: procinfo.name().to_string(),
                         cmd: procinfo.cmd().to_vec(),
                         exe: procinfo.exe().to_string_lossy().to_string(), // tbh i don't care if your executables have filenames that are not unicode
                         cwd: procinfo.cwd().to_string_lossy().to_string(),
                         memory_kB: procinfo.memory() as i64,
-                        parent: procinfo.parent(),
+                        parent: procinfo.parent().map(|p| p.as_u32() as i32),
                         status: procinfo.status().to_string().to_string(),
                         start_time: util::unix_epoch_millis_to_date(
                             (procinfo.start_time() as i64) * 1000,
