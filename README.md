@@ -57,14 +57,14 @@ If you use systemd, you can use the included [timetrackrs.service] service file 
 To start a timetrackrs server (backend + frontend) without any capturing, you can run
 
 ```bash
-cargo run --bin timetrackrs -- --config data/debug_config.json
+RUST_LOG=debug,sqlx=warn,hyper=warn cargo run --bin timetrackrs -- --config data/debug_config.json
 ```
 
 To continuously rebuild the frontend, do
 
 ```bash
 cd frontend
-yarn webpack --watch
+yarn dev
 ```
 
 ## Data Sources
