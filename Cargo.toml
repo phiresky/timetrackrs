@@ -32,7 +32,7 @@ crypto-hashes = "0.9.0"
 sha-1 = "0.9.8"
 rust-crypto = "0.2.36"
 rsa = "0.5.0"
-openssl = "0.10.38"
+openssl = {version = "0.10.38", features = ["vendored"]}
 tar = "0.4.37"
 bzip2 = "0.4.3"
 enum-utils = "0.1.2"
@@ -93,6 +93,9 @@ winapi = { version = "0.3.9", features = ["winuser", "processthreadsapi","handle
 x11rb = { version = "0.9.0", features = ["screensaver"] }
 xcb = "0.10.1"
 nl80211 = {git="https://github.com/Eonm/nl80211", branch="master"}
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "0.2.7"
 
 [features]
 sync = ["datachannel"]
