@@ -52,6 +52,13 @@ You should start `timetrackrs` on user login. It will start the UI at <http://lo
 
 If you use systemd, you can use the included [timetrackrs.service] service file to auto-start timetrackrs.
 
+Note for building in **Windows**: If you're experiencing an error related to `openssl-sys` either install the **OpenSSL Library** properly via `vcpk` or add the `--features openssl-vendored` argument to the installation command, such as:
+
+```bash
+#build and install `timetrackrs` binary to ~/.cargo/bin
+cargo install --features openssl-vendored --path .
+```
+
 **Development**
 
 To start a timetrackrs server (backend + frontend) without any capturing, you can run
