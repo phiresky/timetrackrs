@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# the normal sqlx migration CLI sadly doesn't work for us since it only allows a single sqlite db
 dir="$(dirname $0)"
 
 rm -rf "$dir/.dev-db/"

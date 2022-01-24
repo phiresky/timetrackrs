@@ -54,10 +54,15 @@ If you use systemd, you can use the included [timetrackrs.service] service file 
 
 **Development**
 
-To start a timetrackrs server (backend + frontend) without any capturing, you can run
+First, generate the dev-db needed for sqlx compilation:
 
 ```bash
 ./update-schema.sh
+```
+
+To start a timetrackrs server (backend + frontend) without any capturing, you can run
+
+```bash
 RUST_LOG=debug,sqlx=warn,hyper=warn cargo run --bin timetrackrs -- --config data/debug_config.json
 ```
 
