@@ -1,6 +1,7 @@
 pub mod linux;
 pub mod pc_common;
 pub mod windows;
+pub mod macos;
 use std::time::Duration;
 
 use futures::never::Never;
@@ -13,6 +14,7 @@ pub enum CaptureArgs {
     /// Capture open window information from a (linux) X11 server
     X11(X11CaptureArgs),
     Windows(WindowsCaptureArgs),
+    MacOS(MacOSCaptureArgs),
     /// Capture window information using the default for the current system
     NativeDefault(NativeDefaultArgs),
 }
@@ -27,6 +29,9 @@ fn default_capture_args() -> CaptureArgs {
     });
     #[cfg(target_os = "windows")]
     return CaptureArgs::Windows(WindowsCaptureArgs {});
+    
+    #[cfg(target_os = "macos")]
+    return CaptureArgs::MacOS(MacOSCaptureArgs{});
 }
 
 impl CapturerCreator for NativeDefaultArgs {

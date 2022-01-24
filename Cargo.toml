@@ -93,6 +93,7 @@ nl80211 = {git="https://github.com/Eonm/nl80211", branch="master"}
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2.7"
+libc = "0.2.113"
 
 [features]
 sync = ["datachannel"]

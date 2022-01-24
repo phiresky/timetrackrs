@@ -2,6 +2,7 @@
 pub use crate::api_types;
 pub use crate::capture::linux::types::*;
 pub use crate::capture::windows::types::*;
+pub use crate::capture::macos::types::*;
 pub use crate::capture::*;
 pub use crate::db::datybasy::*;
 pub use async_trait::async_trait;

@@ -3852,6 +3852,7 @@ dependencies = [
  "hyper-tls",
  "itertools",
  "lazy_static",
+ "libc",
  "lru",
  "md5",
  "mediawiki",
