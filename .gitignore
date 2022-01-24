@@ -1,3 +1,4 @@
+/.dev-db
 /target
 /*.sqlite3*
 /notes
