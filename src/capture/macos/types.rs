@@ -2,7 +2,10 @@
 use super::super::pc_common;
 use crate::prelude::*;
 
-use std::time::Duration;
+use std::{
+    sync::Arc,
+    time::Duration
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MacOSCaptureArgs {}
@@ -27,27 +30,38 @@ pub struct MacOSEventData {
     pub os_info: util::OsInfo,
     pub duration_since_user_input: Duration,
     pub focused_window: Option<i32>,
-    pub windows: Vec<MacOSApp>,
+    pub windows: Vec<MacOSWindow>,
 }
 
 impl ExtractInfo for MacOSEventData {
     fn extract_info(&self) -> Option<Tags> {
         let mut tags = Tags::new();
+        
         if pc_common::is_idle(self.duration_since_user_input) {
             return None;
         }
+        
         self.os_info.to_partial_general_software(&mut tags);
 
         if let Some(focused_window) = self.focused_window {
-            if let Some(window) = self.windows.iter().find(|w| w.pid == focused_window) {
-                let cls = Some((window.bundle.as_ref().map(|s| s.clone()).unwrap_or_default(), "".to_owned()));
+            if let Some(window) = self.windows.iter().find(|w| w.window_id == focused_window) {
+                if let Some(process) = &window.process {
+                
+                let cls = Some((process.name.clone(), "".to_owned()));
+                
+                let window_title = match window.title {
+                    Some(ref string) => string.as_str(),
+                    None => "Unknown"
+                };
+                
                 tags.extend(pc_common::match_software(
-                    &window.name,
+                    window_title,
                     &cls,
-                    Some(&window.exe),
+                    Some(&process.exe),
                     None,
-                    Some(&window.cmd)
+                    Some(&process.cmd)
                 ));
+                }
             }
         }
 
@@ -55,8 +69,15 @@ impl ExtractInfo for MacOSEventData {
     }
 }
 
+#[derive(Debug, Default, Serialize, Deserialize, TypeScriptify, Clone)]
+pub struct MacOSWindow {
+    pub window_id: i32,
+    pub title: Option<String>,
+    pub process: Option<Arc<MacOSProcessData>>,
+}
+
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
-pub struct MacOSApp {
+pub struct MacOSProcessData {
     pub pid: i32,
     pub name: String,
     pub bundle: Option<String>,
