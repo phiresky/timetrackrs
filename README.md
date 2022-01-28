@@ -61,6 +61,12 @@ cargo install --features openssl-vendored --path .
 
 **Development**
 
+First, generate the dev-db needed for sqlx compilation:
+
+```bash
+./update-schema.sh
+```
+
 To start a timetrackrs server (backend + frontend) without any capturing, you can run
 
 ```bash
