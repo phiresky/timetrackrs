@@ -31,6 +31,7 @@ const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
     api_types::SingleExtractedChunk::type_script_ify,
     api_types::TimestampSearchRequest::type_script_ify,
     api_types::TimeRangeRequest::type_script_ify,
+    api_types::InvalidateRangeRequest::type_script_ify,
     ProgressReport::type_script_ify,
     ProgressState::type_script_ify,
 ];
@@ -40,7 +41,7 @@ const FS: &'static [fn() -> std::borrow::Cow<'static, str>] = &[];
 
 // const all_types: Vec<
 fn main() -> anyhow::Result<()> {
-    util::init_logging();
+    util::init_logging()?;
 
     let mut ofile = std::fs::File::create("frontend/src/server.d.ts")?;
     writeln!(ofile, "type DateTime<T> = string;")?;

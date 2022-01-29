@@ -20,6 +20,7 @@ import {
 	Container,
 	Row,
 } from "reactstrap"
+import { Temporal } from "@js-temporal/polyfill"
 
 export function TagRuleEditorPage(): React.ReactElement {
 	return (
@@ -77,6 +78,28 @@ const TagRuleEditor: React.FC = observer(() => {
 									}
 								>
 									Create New Group
+								</Button>
+								<Button
+									onClick={async (_) => {
+										try {
+											await api.invalidateExtractions({
+												from: Temporal.Instant.from(
+													"1900-01-01Z",
+												),
+												to: Temporal.Instant.from(
+													"2100-01-01Z",
+												),
+											})
+											window.alert(
+												`Cleared all extracted data. It will be recreated on demand.`,
+											)
+										} catch (e) {
+											console.error(e)
+											window.alert(`Error: ${e}`)
+										}
+									}}
+								>
+									Invalidate Extracted Tags
 								</Button>
 							</Row>
 							{v.map((g) => (

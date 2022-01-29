@@ -1,4 +1,5 @@
 use std::{
+    cmp::{max, min},
     collections::{HashMap, HashSet},
     sync::{
         atomic::{AtomicBool, AtomicUsize},
@@ -185,7 +186,7 @@ impl DatyBasy {
 
     pub async fn reload_tag_rules<'a>(&'a self) -> anyhow::Result<()> {
         let mut writer = self.enabled_tag_rules.write().await;
-        let mut writer = Arc::make_mut(&mut writer);
+        let writer = Arc::make_mut(&mut writer);
         *writer = fetch_tag_rules(&self.db)
             .await
             .context("fetching tag rules")?;
@@ -379,7 +380,30 @@ impl DatyBasy {
         from: Timestamptz,
         to: Timestamptz,
     ) -> anyhow::Result<()> {
+        let existing_range = sqlx::query!(
+            r#"
+            select min(timechunk) as "first: TimeChunk", max(timechunk) as "last: TimeChunk"
+            from extracted.extracted_current"#,
+        )
+        .fetch_one(&self.db)
+        .await
+        .context("fetching currents")?;
+        if existing_range.first == None {
+            return Ok(());
+        }
+        let from = max(
+            from,
+            existing_range
+                .first
+                .map(|r| Timestamptz(r.start()))
+                .unwrap(),
+        );
+        let to = min(
+            to,
+            existing_range.last.map(|r| Timestamptz(r.start())).unwrap(),
+        );
         let chunks = self.get_affected_timechunks_range(from, to);
+        log::debug!("Invalidating {from:?} to {to:?}");
         self.invalidate_timechunks(&chunks).await
     }
     // TODO: accept HashSet<TimeChunk> and Vec<TimeChunk> only

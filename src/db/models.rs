@@ -24,7 +24,7 @@ impl DbEvent {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Debug, Clone, Eq, Hash, Copy)]
+#[derive(PartialEq, PartialOrd, Debug, Clone, Eq, Ord, Hash, Copy)]
 pub struct Timestamptz(pub DateTime<Utc>);
 
 impl sqlx::Type<Sqlite> for Timestamptz {

@@ -293,12 +293,23 @@ pub fn api_routes(
         .boxed();
 
     let update_rule_groups = warp::post()
-        .and(with_db(db))
-        .and(warp::post())
+        .and(with_db(db.clone()))
         .and(warp::path("rule-groups"))
         .and(warp::body::json())
         .and_then(|db, req| async move {
             update_rule_groups(db, req)
+                .await
+                .map(|e| json(&e))
+                .map_err(map_error)
+        })
+        .boxed();
+    let invalidate_extractions = warp::post()
+        .and(with_db(db.clone()))
+        .and(warp::path("invalidate-extractions"))
+        .and(warp::query::<Api::invalidate_extractions::request>())
+        .and_then(|db, query| async move {
+            log::info!("OOOO");
+            invalidate_extractions(db, query)
                 .await
                 .map(|e| json(&e))
                 .map_err(map_error)
@@ -351,7 +362,7 @@ pub fn api_routes(
         timestamp_search,
         progress_events
     ));
-    let post_reqs = balanced_or_tree!(update_rule_groups);
+    let post_reqs = balanced_or_tree!(update_rule_groups, invalidate_extractions);
 
     get_reqs.or(post_reqs)
 }

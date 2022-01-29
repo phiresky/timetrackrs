@@ -63,12 +63,13 @@ export async function timestampSearch(
 async function doApiRequest<N extends keyof ApiTypes>(
 	path: N,
 	info: ApiRequest<N>,
+	options: { method: "GET" | "POST" } = { method: "GET" },
 ): Promise<ApiResponse<N>> {
 	const params = new URLSearchParams(
 		JSON.parse(JSON.stringify(info)),
 	).toString()
 	const url = new URL(`${backend}/${path.replace(/_/g, "-")}?${params}`)
-	const resp = await fetch(url.toString())
+	const resp = await fetch(url.toString(), options)
 	if (!resp.ok) {
 		return await handleError(resp)
 	}
@@ -79,6 +80,12 @@ export async function getTimeRange(
 	info: ApiRequest<"time_range">,
 ): Promise<ApiResponse<"time_range">> {
 	return doApiRequest("time_range", info)
+}
+
+export async function invalidateExtractions(
+	info: ApiRequest<"invalidate_extractions">,
+): Promise<ApiResponse<"invalidate_extractions">> {
+	return doApiRequest("invalidate_extractions", info, { method: "POST" })
 }
 
 export async function getKnownTags(): Promise<
