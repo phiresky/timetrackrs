@@ -46,25 +46,25 @@ pub struct DatyBasy {
     enabled_tag_rules: Arc<RwLock<Vec<TagRule>>>,
 }
 
-pub async fn fetch_tag_rules(db: &SqlitePool) -> anyhow::Result<Vec<TagRule>> {
-    let groups: Vec<TagRuleGroup> = sqlx::query_as!(
+pub async fn get_rule_groups(
+    db: &SqlitePool,
+) -> anyhow::Result<impl Iterator<Item = TagRuleGroup>> {
+    let groups = sqlx::query_as!(
         TagRuleGroup,
         r#"select global_id, data as "data: _" from config.tag_rule_groups"#
     )
     .fetch_all(db)
-    .await?;
-    /*if groups.len() == 0 {
-        // insert defaults
-        let groups =
-        diesel::insert_into(tag_rule_groups)
-            .values(groups)
-            .execute(self.conn)?;
-        return self.fetch_all_tag_rules_if_thoink();
-    }*/
+    .await
+    .context("fetching from db")?
+    .into_iter()
+    .chain(get_default_tag_rule_groups())
+    .unique_by(|g| g.global_id.clone()); // TODO: don't allow overriding anything in default rule groups apart from enabled / disabled
+    Ok(groups)
+}
 
-    Ok(groups
-        .into_iter()
-        .chain(get_default_tag_rule_groups().into_iter())
+pub async fn fetch_tag_rules(db: &SqlitePool) -> anyhow::Result<Vec<TagRule>> {
+    Ok(get_rule_groups(db)
+        .await?
         .flat_map(|g| g.data.0.into_iter_active_rules())
         .collect())
 }

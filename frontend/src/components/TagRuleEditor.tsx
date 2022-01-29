@@ -121,7 +121,8 @@ const TagRuleGroupEditor: React.FC<{
 							{!g.editable && <>(Not editable)</>}
 							{dirty && (
 								<button
-									onClick={async () => {
+									onClick={async (e) => {
+										e.stopPropagation()
 										await save()
 										setDirty(false)
 									}}

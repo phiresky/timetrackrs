@@ -189,18 +189,9 @@ async fn single_event(
 }
 
 async fn rule_groups(db: DatyBasy) -> Api::rule_groups::response {
-    let groups = sqlx::query_as!(
-        TagRuleGroup,
-        r#"select global_id, data as "data: _" from config.tag_rule_groups"#
-    )
-    .fetch_all(&db.db)
-    .await
-    .context("fetching from db")?
-    .into_iter()
-    .chain(get_default_tag_rule_groups())
-    .collect::<Vec<_>>();
-
-    Ok(ApiResponse { data: groups })
+    Ok(ApiResponse {
+        data: get_rule_groups(&db.db).await?.collect::<Vec<_>>(),
+    })
 }
 
 async fn update_rule_groups(
@@ -219,6 +210,8 @@ async fn update_rule_groups(
         )
         .execute(&db.db)
         .await?;
+        let id = &g.global_id;
+        log::debug!("updated rule group with id {id}")
     }
 
     Ok(ApiResponse { data: () })
@@ -296,8 +289,10 @@ pub fn api_routes(
         })
         .boxed();
 
-    let update_rule_groups = with_db(db)
-        .and(warp::path("update-rule-groups"))
+    let update_rule_groups = warp::post()
+        .and(with_db(db))
+        .and(warp::post())
+        .and(warp::path("rule-groups"))
         .and(warp::body::json())
         .and_then(|db, req| async move {
             update_rule_groups(db, req)
@@ -345,34 +340,15 @@ pub fn api_routes(
         })
         .boxed();
 
-    let filter = warp::get().and(balanced_or_tree!(
+    let get_reqs = warp::get().and(balanced_or_tree!(
         time_range,
         get_known_tags,
         single_event,
         rule_groups,
-        update_rule_groups,
         timestamp_search,
         progress_events
-    )); /*rule_groups)
-        .boxed()
-        .or(time_range)
-        .boxed()
-        .unify()
-        .or(get_known_tags)
-        .boxed()
-        .unify()
-        .or(single_event)
-        .boxed()
-        .unify()
-        .or(update_rule_groups)
-        .boxed()
-        .unify()
-        .or(timestamp_search)
-        .boxed()
-        .unify()
-        .or(progress_events)
-        .boxed()
-        .unify();*/
+    ));
+    let post_reqs = balanced_or_tree!(update_rule_groups);
 
-    filter
+    get_reqs.or(post_reqs)
 }
