@@ -213,6 +213,9 @@ async fn update_rule_groups(
         let id = &g.global_id;
         log::debug!("updated rule group with id {id}")
     }
+    db.reload_tag_rules()
+        .await
+        .context("Could not reload rule groups")?;
 
     Ok(ApiResponse { data: () })
 }
