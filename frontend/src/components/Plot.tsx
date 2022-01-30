@@ -416,13 +416,13 @@ function getValue(deep: boolean, value: string) {
 }
 function aggregateData({
 	aggregator,
-	binSize,
+	binSizeMS,
 	events,
 	tag,
 	deep,
 }: {
 	aggregator: Aggregator["mapper"]
-	binSize: number
+	binSizeMS: number
 	events: SingleExtractedChunk[]
 	tag: string
 	deep: boolean
@@ -442,7 +442,8 @@ function aggregateData({
 	for (const timechunk of events) {
 		const bucketD = aggregator(
 			Temporal.Instant.fromEpochMilliseconds(
-				timechunk.from - (timechunk.from % binSize),
+				timechunk.from.epochMilliseconds -
+					(timechunk.from.epochMilliseconds % binSizeMS),
 			).toZonedDateTimeISO(Temporal.Now.timeZone()),
 		)
 		// to local time text
@@ -501,14 +502,14 @@ export class InnerPlot extends React.Component<{
 	deep: boolean
 	scaleTo100: boolean
 	aggregator: Aggregator
-	binSize: number
+	binSizeMS: number
 	dark: boolean
 }> {
 	@computed get data(): Plotly.Data[] {
-		const binSize = this.props.binSize
+		const binSizeMS = this.props.binSizeMS
 		const { outData, totalDuration } = aggregateData({
 			aggregator: this.props.aggregator.mapper,
-			binSize,
+			binSizeMS,
 			events: this.props.events,
 			tag: this.props.tag,
 			deep: this.props.deep,
@@ -540,7 +541,7 @@ export class InnerPlot extends React.Component<{
 				const scaleFactor = (bucket: string) =>
 					this.props.scaleTo100
 						? 1 / (totalDuration.get(bucket) || 1)
-						: aggFactor / binSize
+						: aggFactor / binSizeMS
 
 				return {
 					/*xaxis: {
@@ -708,11 +709,9 @@ export class Plot extends React.Component<{
 				durMs: 0,
 			}
 		}
-		const first = Temporal.Instant.fromEpochMilliseconds(
-			e[0].from,
-		).toZonedDateTimeISO(Temporal.Now.timeZone())
+		const first = e[0].from.toZonedDateTimeISO(Temporal.Now.timeZone())
 		const last = Temporal.Instant.fromEpochMilliseconds(
-			+e[e.length - 1].to_exclusive - 1,
+			e[e.length - 1].to_exclusive.epochMilliseconds - 1,
 		).toZonedDateTimeISO(Temporal.Now.timeZone())
 		const firstDay = first.toPlainDate()
 		const lastDay = last.toPlainDate()
@@ -765,7 +764,7 @@ export class Plot extends React.Component<{
 					tag={this.props.tag}
 					deep={this.deep}
 					aggregator={this.aggregators.value}
-					binSize={this.binSizes.value.value}
+					binSizeMS={this.binSizes.value.value}
 					scaleTo100={this.scaleTo100}
 				/>
 			</div>

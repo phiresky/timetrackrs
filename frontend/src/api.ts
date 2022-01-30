@@ -1,19 +1,10 @@
 import { Temporal } from "@js-temporal/polyfill"
-import { TagRuleGroup, ApiTypesTS, ProgressReport, Timestamptz } from "./server"
-import { Cast } from "./util"
+import { TagRuleGroup, ApiTypesTS, ProgressReport } from "./server"
 
 type ApiTypes = { [T in ApiTypesTS["type"]]: ApiTypesTS & { type: T } }
 
-type ApiRequest<T extends keyof ApiTypes> = Cast<
-	ApiTypes[T]["request"],
-	Timestamptz,
-	Temporal.Instant
->
-type ApiResponse<T extends keyof ApiTypes> = Cast<
-	ApiTypes[T]["response"],
-	Timestamptz,
-	number
->
+type ApiRequest<T extends keyof ApiTypes> = ApiTypes[T]["request"]
+type ApiResponse<T extends keyof ApiTypes> = ApiTypes[T]["response"]
 
 type ApiResponseO<T> = { data: T }
 
@@ -26,7 +17,7 @@ export function progressEvents(
 ): EventSource {
 	const eventSource = new EventSource(backend + "/progress-events")
 	eventSource.addEventListener("message", (event) => {
-		subscriber(JSON.parse(event.data))
+		subscriber(JSON.parse(event.data as string) as ProgressReport[])
 	})
 	return eventSource
 }
@@ -60,20 +51,48 @@ export async function timestampSearch(
 	return doApiRequest("timestamp_search", info)
 }
 
+type KnownTypes =
+	| { $type: "Instant"; unix_timestamp_ms: number }
+	| { $type: undefined }
+function deserialize(this: unknown, _key: string, value: unknown) {
+	if (typeof value === "object" && value !== null) {
+		const valueObj = value as KnownTypes
+		if (
+			"$type" in valueObj &&
+			valueObj.$type &&
+			typeof valueObj.$type === "string"
+		) {
+			if (valueObj.$type === "Instant") {
+				return Temporal.Instant.fromEpochMilliseconds(
+					valueObj.unix_timestamp_ms,
+				)
+			}
+		}
+	}
+	return value
+}
+
+function removeNulls(key: string, value: unknown) {
+	if (value === null) return undefined
+	return value
+}
 async function doApiRequest<N extends keyof ApiTypes>(
 	path: N,
 	info: ApiRequest<N>,
 	options: { method: "GET" | "POST" } = { method: "GET" },
 ): Promise<ApiResponse<N>> {
 	const params = new URLSearchParams(
-		JSON.parse(JSON.stringify(info)),
+		JSON.parse(JSON.stringify(info, removeNulls)) as ApiRequest<N>,
 	).toString()
 	const url = new URL(`${backend}/${path.replace(/_/g, "-")}?${params}`)
 	const resp = await fetch(url.toString(), options)
 	if (!resp.ok) {
 		return await handleError(resp)
 	}
-	const { data } = (await resp.json()) as ApiResponseO<ApiResponse<N>>
+	const responseText = await resp.text()
+	const { data } = JSON.parse(responseText, deserialize) as ApiResponseO<
+		ApiResponse<N>
+	>
 	return data
 }
 export async function getTimeRange(

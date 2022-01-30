@@ -25,6 +25,7 @@ const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
     TagValue::type_script_ify,
     TagValueRegex::type_script_ify,
     TagAddReason::type_script_ify,
+    Tags::type_script_ify,
     api_types::ApiTypesTS::type_script_ify,
     api_types::SingleExtractedEventWithRaw::type_script_ify,
     api_types::ApiResponse::<String>::type_script_ify,
@@ -49,7 +50,7 @@ fn main() -> anyhow::Result<()> {
     writeln!(ofile, "type Json<T> = T;")?;
     writeln!(
         ofile,
-        "type Timestamptz = /* ser */ number | /* deser */ import('@js-temporal/polyfill').Temporal.Instant;"
+        "type Timestamptz = import('@js-temporal/polyfill').Temporal.Instant;"
     )?;
     writeln!(ofile, "type Utc = void;")?;
     writeln!(ofile, "type Regex = string;")?;

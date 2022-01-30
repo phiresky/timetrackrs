@@ -1,7 +1,7 @@
 type DateTime<T> = string;
 type Local = unknown;
 type Json<T> = T;
-type Timestamptz = /* ser */ number | /* deser */ import('@js-temporal/polyfill').Temporal.Instant;
+type Timestamptz = import('@js-temporal/polyfill').Temporal.Instant;
 type Utc = void;
 type Regex = string;
 type ExternalFetcher = string;
@@ -36,6 +36,7 @@ export type TagValueRegex = { tag: string; regex: Regex };
 export type TagAddReason = 
  | { type: "IntrinsicTag"; raw_data_type: string } 
  | { type: "AddedByRule"; matched_tags: TagValue []; rule: TagRule };
+export type Tags = { map: { [key in string] ?: string [] } };
 export type ApiTypesTS = 
  | {     type: "time_range"; request: (TimeRangeRequest); response:     (SingleExtractedChunk []) } 
  | {     type: "single_event"; request: (SingleEventRequest); response:     (SingleExtractedEventWithRaw | null) } 

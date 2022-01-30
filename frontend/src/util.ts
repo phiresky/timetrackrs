@@ -3,20 +3,6 @@ import { autorun } from "mobx"
 import React from "react"
 import { SingleExtractedChunk, Timestamptz } from "./server"
 
-/**
- * TODO: support multi-value tags
- */
-export function getTagValue(
-	tags: [string, string, number][],
-	tag: string,
-	deep = true,
-): string | undefined {
-	const value = tags.find((t) => t[0] === tag)?.[1]
-	if (!deep) {
-		return value?.split("/")[0]
-	}
-	return value
-}
 export function getTagValues(
 	tags: [string, string, number][],
 	tag: string,
@@ -58,7 +44,7 @@ export function useMobxEffect(effect: () => unknown): void {
 }
 
 /** call this function so TS shows a type error if an enum is expanded */
-export function expectNever<T = any>(n: never): T {
+export function expectNever<T = unknown>(n: never): T {
 	return n as T
 }
 export function expectNeverThrow(n: never, msg?: string): never {

@@ -53,14 +53,16 @@ export const ChooserWithChild: React.FC<
 		},
 		get data(): IPromiseBasedObservable<SingleExtractedChunk[]> {
 			const params = {
-				after: this.timeRange.from,
-				before: this.timeRange.to,
-				tag: p.chooseTag ? this.tag.value : undefined,
+				after: this.timeRange.from.toInstant(),
+				before: this.timeRange.to.toInstant(),
+				tag: p.chooseTag ? this.tag.value : null,
 				limit: 100000,
 			}
 			return fromPromise(
 				api.getTimeRange(params).then((data) => {
-					data.sort((a, b) => a.from - b.from)
+					data.sort((a, b) =>
+						Temporal.Instant.compare(a.from, b.from),
+					)
 					console.log(data)
 					return data
 				}),
@@ -165,14 +167,16 @@ export const LoadEvents: React.FC<{
 	const store = useLocalObservable(() => ({
 		get data(): IPromiseBasedObservable<SingleExtractedChunk[]> {
 			const params = {
-				after: p.timeRange.from,
-				before: p.timeRange.to,
+				after: p.timeRange.from.toInstant(),
+				before: p.timeRange.to.toInstant(),
 				tag: p.tag,
 				limit: 100000,
 			}
 			return fromPromise(
 				api.getTimeRange(params).then((data) => {
-					data.sort((a, b) => a.from - b.from)
+					data.sort((a, b) =>
+						Temporal.Instant.compare(a.from, b.from),
+					)
 					console.log(data)
 					return data
 				}),

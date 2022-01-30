@@ -76,7 +76,11 @@ impl From<&Timestamptz> for Timestamptz {
 
 impl Serialize for Timestamptz {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_i64(self.0.timestamp_millis())
+        use serde::ser::{Serialize, SerializeStruct, Serializer};
+        let mut s = serializer.serialize_struct("Timestamptz", 2)?;
+        s.serialize_field("$type", "Instant")?;
+        s.serialize_field("unix_timestamp_ms", &self.0.timestamp_millis())?;
+        s.end()
     }
 }
 
