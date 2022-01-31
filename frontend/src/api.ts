@@ -82,7 +82,7 @@ async function doApiRequest<N extends keyof ApiTypes>(
 	options: { method: "GET" | "POST" } = { method: "GET" },
 ): Promise<ApiResponse<N>> {
 	const params = new URLSearchParams(
-		JSON.parse(JSON.stringify(info, removeNulls)) as ApiRequest<N>,
+		JSON.parse(JSON.stringify(info, removeNulls)) as Record<string, string>,
 	).toString()
 	const url = new URL(`${backend}/${path.replace(/_/g, "-")}?${params}`)
 	const resp = await fetch(url.toString(), options)
@@ -107,16 +107,14 @@ export async function invalidateExtractions(
 	return doApiRequest("invalidate_extractions", info, { method: "POST" })
 }
 
-export async function getKnownTags(): Promise<
-	ApiTypes["get_known_tags"]["response"]
-> {
+export async function getKnownTags(): Promise<ApiResponse<"get_known_tags">> {
 	return doApiRequest("get_known_tags", [])
 }
 
-export async function getSingleEvent(info: {
-	id: string
-}): Promise<ApiResponse<"single_event">> {
-	return doApiRequest("single_event", info)
+export async function getSingleEvents(
+	info: ApiRequest<"single_events">,
+): Promise<ApiResponse<"single_events">> {
+	return doApiRequest("single_events", info)
 }
 
 export async function getTagRules(): Promise<

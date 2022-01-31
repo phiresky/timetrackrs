@@ -39,7 +39,7 @@ export type TagAddReason =
 export type Tags = { map: { [key in string] ?: string [] } };
 export type ApiTypesTS = 
  | {     type: "time_range"; request: (TimeRangeRequest); response:     (SingleExtractedChunk []) } 
- | {     type: "single_event"; request: (SingleEventRequest); response:     (SingleExtractedEventWithRaw | null) } 
+ | {     type: "single_events"; request: (SingleEventsRequest); response:     (SingleExtractedEventWithRaw []) } 
  | { type: "rule_groups"; request: ([]); response: (TagRuleGroup []) } 
  | {     type: "invalidate_extractions"; request: (InvalidateRangeRequest);     response: ([]) } 
  | {     type: "update_rule_groups"; request: (TagRuleGroup []); response:     ([]) } 
@@ -52,5 +52,6 @@ export type SingleExtractedChunk = {     from: Timestamptz; to_exclusive: Timest
 export type TimestampSearchRequest = { backwards: boolean; from: Timestamptz | null };
 export type TimeRangeRequest = { before: Timestamptz; after: Timestamptz; tag: string | null };
 export type InvalidateRangeRequest = { from: Timestamptz; to: Timestamptz };
+export type SingleEventsRequest = { ids: string []; include_raw: boolean; include_reasons: boolean };
 export type ProgressReport = {     call_id: string; call_desc: string; state: ProgressState []; done:     boolean };
 export type ProgressState = { desc: string; current: number; total: number | null };

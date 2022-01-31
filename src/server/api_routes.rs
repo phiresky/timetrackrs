@@ -136,54 +136,62 @@ async fn invalidate_extractions(
     Ok(ApiResponse { data: () })
 }
 
-async fn single_event(
+async fn single_events(
     db: DatyBasy,
-    req: Api::single_event::request,
-) -> Api::single_event::response {
+    req: Api::single_events::request,
+) -> Api::single_events::response {
     // println!("handling...");
     // println!("querying...");
-    let a = sqlx::query_as!(
+    let ids_json = serde_json::to_string(&req.ids)?;
+    let events: Vec<DbEvent> = sqlx::query_as!(
         DbEvent,
         r#"select insertion_sequence, id, timestamp_unix_ms as "timestamp_unix_ms: _",
-    data_type, duration_ms, data from raw_events.events where id = ?"#,
-        req.id
+    data_type, duration_ms, data from raw_events.events where id in (select value from json_each(?))"#,
+        ids_json
     )
-    .fetch_one(&db.db)
+    .fetch_all(&db.db)
     .await?;
 
-    let r = a.deserialize_data();
-    let progress = progress_events::new_progress("Single Event");
-    let v = match r {
-        Ok(raw) => {
-            if let Some(data) = raw.extract_info() {
-                let (tags, tags_reasons) = {
-                    if req.include_reasons {
-                        let (tags, r, _) = get_tags_with_reasons(&db, data, progress).await;
-                        (tags, Some(r))
-                    } else {
-                        let (tags, _) = get_tags(&db, data, progress).await;
-                        (tags, None)
-                    }
-                };
-                //let (tags, iterations) = get_tags(&db, data);
-                Some(SingleExtractedEventWithRaw {
-                    id: a.id,
-                    timestamp_unix_ms: a.timestamp_unix_ms,
-                    duration_ms: a.duration_ms,
-                    tags_reasons,
-                    tags,
-                    raw: req.include_raw.then(|| raw),
-                })
-            } else {
+    let mut v: Vec<SingleExtractedEventWithRaw> = vec![];
+
+    for event in events {
+        let r = event.deserialize_data();
+        let progress = progress_events::new_progress("Single Event");
+        let ele = match r {
+            Ok(raw) => {
+                if let Some(data) = raw.extract_info() {
+                    let (tags, tags_reasons) = {
+                        if req.include_reasons {
+                            let (tags, r, _) = get_tags_with_reasons(&db, data, progress).await;
+                            (tags, Some(r))
+                        } else {
+                            let (tags, _) = get_tags(&db, data, progress).await;
+                            (tags, None)
+                        }
+                    };
+                    //let (tags, iterations) = get_tags(&db, data);
+                    Some(SingleExtractedEventWithRaw {
+                        id: event.id,
+                        timestamp_unix_ms: event.timestamp_unix_ms,
+                        duration_ms: event.duration_ms,
+                        tags_reasons,
+                        tags,
+                        raw: req.include_raw.then(|| raw),
+                    })
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                println!("deser of {} error: {:?}", event.id, e);
+                // println!("data=||{}", a.data);
                 None
             }
+        };
+        if let Some(e) = ele {
+            v.push(e);
         }
-        Err(e) => {
-            println!("deser of {} error: {:?}", a.id, e);
-            // println!("data=||{}", a.data);
-            None
-        }
-    };
+    }
 
     Ok(ApiResponse { data: v })
 }
@@ -282,10 +290,10 @@ pub fn api_routes(
         })
         .boxed();
     let single_event = with_db(db.clone())
-        .and(warp::path("single-event"))
-        .and(warp::query::<Api::single_event::request>())
+        .and(warp::path("single-events"))
+        .and(warp::query::<Api::single_events::request>())
         .and_then(|db, query| async move {
-            single_event(db, query)
+            single_events(db, query)
                 .await
                 .map(|e| json(&e))
                 .map_err(map_error)

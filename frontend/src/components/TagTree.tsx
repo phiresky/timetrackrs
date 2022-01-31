@@ -10,7 +10,6 @@ import { SingleExtractedChunk, Timestamptz } from "../server"
 import {
 	Counter,
 	DefaultMap,
-	deserializeTimestamptz,
 	durationToString,
 	getTagValues,
 	totalDurationSeconds,
@@ -170,7 +169,7 @@ const TreeLeaves: React.FC<{ leaves: ALeaf[] }> = observer(({ leaves }) => {
 			<ul>
 				{leaves.slice(0, children).map((l) => (
 					<li key={l.timeChunk.from.toString()}>
-						{deserializeTimestamptz(l.timeChunk.from)
+						{l.timeChunk.from
 							.toZonedDateTimeISO(Temporal.Now.timeZone())
 							.toLocaleString(undefined, { timeStyle: "medium" })}
 						:

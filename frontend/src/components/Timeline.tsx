@@ -3,7 +3,6 @@ import { observer } from "mobx-react"
 import React, { ReactElement } from "react"
 import * as api from "../api"
 import {
-	deserializeTimestamptz,
 	durationToString,
 	getTagValues,
 	totalDurationSeconds,
@@ -51,10 +50,10 @@ const groupers: Grouper[] = [
 	{
 		name: "Daily",
 		shouldGroup(a, b) {
-			const d1 = deserializeTimestamptz(a.from)
+			const d1 = a.from
 				.toZonedDateTimeISO(Temporal.Now.timeZone())
 				.toPlainDate()
-			const d2 = deserializeTimestamptz(b.from)
+			const d2 = b.from
 				.toZonedDateTimeISO(Temporal.Now.timeZone())
 				.toPlainDate()
 			return d1.equals(d2)

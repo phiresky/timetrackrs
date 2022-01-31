@@ -6,14 +6,20 @@ import * as React from "react"
 import { AiOutlineQuestionCircle } from "react-icons/ai"
 import * as api from "../api"
 import { SingleExtractedEventWithRaw, TagRule } from "../server"
-import { deserializeTimestamptz } from "../util"
+import { intersperse } from "../util"
 import { Entry } from "./Entry"
 
 function expectNever<T>(n: never): T {
 	return n
 }
 
-function formatRelative(duration: Temporal.Duration) {
+function formatRelative(from: Temporal.Instant, to: Temporal.Instant) {
+	const duration = from.until(to).round({
+		smallestUnit: "seconds",
+		largestUnit: "years",
+		relativeTo: from.toZonedDateTimeISO(Temporal.Now.timeZone()),
+	})
+	console.log(duration)
 	const rtf = new Intl.RelativeTimeFormat("en")
 	let ostr = ""
 	for (const key of [
@@ -30,25 +36,57 @@ function formatRelative(duration: Temporal.Duration) {
 	}
 	return ostr.trim()
 }
-function reasonstr(rule: TagRule) {
-	if (rule.type === "HasTag") return "has"
-	if (rule.type === "ExactTagValue") return "has tag with exact value"
+function reasonstr(rule: TagRule): JSX.Element {
+	if (rule.type === "HasTag") return <>has tag</>
+	if (rule.type === "ExactTagValue") return <>has tag with exact value</>
 	if (rule.type === "InternalFetcher")
-		return `InternalFetcher ${rule.fetcher_id} converted`
+		return (
+			<>
+				InternalFetcher <code>{rule.fetcher_id}</code> converted
+			</>
+		)
 	if (rule.type === "ExternalFetcher")
-		return `ExternalFetcher ${rule.fetcher_id} converted`
+		return (
+			<>
+				ExternalFetcher <code>{rule.fetcher_id}</code> converted
+			</>
+		)
 	if (rule.type === "TagValuePrefix")
-		return `tag ${rule.tag} has prefix ${rule.prefix}`
+		return (
+			<>
+				tag <code>{rule.tag}</code> has prefix {rule.prefix}
+			</>
+		)
 	if (rule.type === "TagRegex")
 		return (
-			rule.regexes
-				.map((e) => `tag ${e.tag} matches regex ${e.regex}`)
-				.join(" and ") +
-			` so add ${rule.new_tags
-				.map((t) => `${t.tag}:${t.value}`)
-				.join(" and ")}`
+			<>
+				{intersperse(
+					rule.regexes.map((e) => (
+						<>
+							tag <code>{e.tag}</code> matches regex{" "}
+							<code>{e.regex}</code>
+						</>
+					)),
+					() => (
+						<> and </>
+					),
+				)}
+				{" so add "}
+				{intersperse(
+					rule.new_tags.map((t) => (
+						<>
+							<code>
+								{t.tag}:{t.value}
+							</code>
+						</>
+					)),
+					() => (
+						<> and </>
+					),
+				)}
+			</>
 		)
-	return expectNever<TagRule>(rule).type
+	return <>[{expectNever<TagRule>(rule).type}]</>
 }
 @observer
 export class SingleEventInfo extends React.Component<{ id: string }> {
@@ -58,7 +96,15 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 	}
 	@computed
 	get data(): IPromiseBasedObservable<SingleExtractedEventWithRaw | null> {
-		return fromPromise(api.getSingleEvent({ id: this.props.id }))
+		return fromPromise(
+			api
+				.getSingleEvents({
+					ids: [this.props.id],
+					include_raw: true,
+					include_reasons: true,
+				})
+				.then((e) => e[0]),
+		)
 	}
 	@observable showReasons = new Set<string>()
 
@@ -67,16 +113,16 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 
 		const e = this.data.value
 		if (!e) return <>Event not found: {this.props.id}</>
-		const reason = e.tags_reasons[tag]
+		const reason = e.tags_reasons?.[tag]
 		if (!reason) return <>[unknown]</>
 		return (
 			<>
 				<br />(
 				{reason.type === "IntrinsicTag" ? (
-					<>intrinsic tag)</>
+					<>intrinsic tag of data type {e.raw?.data_type})</>
 				) : (
 					<>
-						added because {reasonstr(reason.rule)} tag{" "}
+						added because event {reasonstr(reason.rule)}:
 						<ul>
 							{reason.matched_tags.map((tag) => (
 								<li key={tag.tag}>
@@ -111,30 +157,26 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 				<p>
 					Date:{" "}
 					{formatRelative(
-						deserializeTimestamptz(e.timestamp_unix_ms).until(
-							Temporal.Now.instant(),
-						),
-					)}
-					<small>
-						(
-						{deserializeTimestamptz(
-							e.timestamp_unix_ms,
-						).toLocaleString()}
-						)
-					</small>
+						Temporal.Now.instant(),
+						e.timestamp_unix_ms,
+					)}{" "}
+					<small>({e.timestamp_unix_ms.toLocaleString()})</small>
 				</p>
 				<p>
 					Duration:{" "}
 					{formatRelative(
-						Temporal.Duration.from({
-							milliseconds: e.duration_ms,
-						}),
+						e.timestamp_unix_ms,
+						e.timestamp_unix_ms.add(
+							Temporal.Duration.from({
+								milliseconds: e.duration_ms,
+							}),
+						),
 					)}
 				</p>
 				<div>
 					Tags:
 					<ul>
-						{Object.entries(e.tags).map(([key, values]) =>
+						{Object.entries(e.tags.map).map(([key, values]) =>
 							values?.map((value) => {
 								const kv = `${key}:${value}`
 								return (

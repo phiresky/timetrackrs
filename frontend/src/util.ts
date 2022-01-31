@@ -135,11 +135,6 @@ export function intersperse<T>(arr: T[], separator: (n: number) => T): T[] {
 	return arr.flatMap((a, i) => (i > 0 ? [separator(i - 1), a] : [a]))
 }
 
-export function deserializeTimestamptz(i: Timestamptz): Temporal.Instant {
-	if (typeof i === "number") return Temporal.Instant.fromEpochMilliseconds(i)
-	return i
-}
-
 // http://developingthoughts.co.uk/typescript-recursive-conditional-types/
 type AnyFunction = (...args: any[]) => any
 

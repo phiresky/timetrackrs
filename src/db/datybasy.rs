@@ -110,7 +110,6 @@ impl ExtractedChunks {
         }
     }
     fn into_data(self) -> HashMap<TimeChunk, HashMap<(i64, i64), i64>> {
-        log::debug!("into_data! {:?}", self.data);
         self.data
     }
 }

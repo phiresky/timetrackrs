@@ -48,6 +48,7 @@ pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Ne
     let index = warp::path::end()
         .or(warp::path("plot"))
         .or(warp::path("timeline"))
+        .or(warp::path("single-event"))
         .or(warp::path("rule-editor"))
         .or(warp::path("tag-tree"))
         .or(warp::path("dashboard"))
