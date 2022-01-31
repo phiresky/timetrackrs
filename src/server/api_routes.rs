@@ -154,9 +154,12 @@ async fn single_events(
 
     let mut v: Vec<SingleExtractedEventWithRaw> = vec![];
 
+    let progress = progress_events::new_progress("Single Events");
+
     for event in events {
         let r = event.deserialize_data();
-        let progress = progress_events::new_progress("Single Event");
+        let progress = progress.clone();
+
         let ele = match r {
             Ok(raw) => {
                 if let Some(data) = raw.extract_info() {

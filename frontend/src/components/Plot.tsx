@@ -9,7 +9,6 @@ import { DefaultMap, expectNever, NeatMap } from "../util"
 import { ChooserWithChild, CWCRouteMatch } from "./ChooserWithChild"
 import { Page } from "./Page"
 import { Choices, Select } from "./Select"
-import { SingleEventInfo } from "./SingleEventInfo"
 import { Temporal, Intl, toTemporalInstant } from "@js-temporal/polyfill"
 
 const dark = {

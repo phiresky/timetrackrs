@@ -6,7 +6,7 @@ import { useState } from "react"
 import { Container } from "reactstrap"
 import Modal from "react-modal"
 import { CgDetailsMore } from "react-icons/cg"
-import { SingleExtractedChunk, Timestamptz } from "../server"
+import { SingleExtractedChunk, Tags, Timestamptz } from "../server"
 import {
 	Counter,
 	DefaultMap,
@@ -22,6 +22,11 @@ import { ChooserWithChild, CWCRouteMatch } from "./ChooserWithChild"
 import { Page } from "./Page"
 import { Choices, Select } from "./Select"
 import { Temporal } from "@js-temporal/polyfill"
+import * as api from "../api"
+import { fromPromise } from "mobx-utils"
+import { SingleEventInfo } from "./SingleEventInfo"
+
+Modal.setAppElement("#root")
 
 interface Tree<T> {
 	leaves: T[]
@@ -60,7 +65,7 @@ function shortenTree<T>(t: Tree<T>) {
 		if (tree.children.size === 1 && tree.leaves.length === 0) {
 			const [innerName, innerChildren] = [...tree.children][0]
 			t.children.delete(name)
-			t.children.set(name + "/" + innerName, innerChildren)
+			t.children.set(name + innerName, innerChildren)
 		}
 		shortenTree(tree)
 	}
@@ -216,28 +221,36 @@ const TreeLeaves: React.FC<{ leaves: ALeaf[] }> = observer(({ leaves }) => {
 })
 const ShowTree: React.FC<{
 	tag: string
-	tagValue: string
+	tagValuePrefix: string
+	tagValueSuffix: string
 	tree: ATree
-	noSlash?: boolean
-}> = ({ tag, tagValue, tree, noSlash = false }) => {
+}> = ({ tag, tagValuePrefix, tagValueSuffix, tree }) => {
 	const [open, setOpen] = React.useState(false)
 
-	const title = (noSlash ? "" : "/") + tagValue || "[empty]"
+	const title = tagValueSuffix || "[empty]"
 
 	return (
-		<li key={tagValue}>
+		<li key={tagValueSuffix}>
 			<span className="clickable" onClick={() => setOpen(!open)}>
 				{title} (<TotalDuration tree={tree} />){" "}
-				<a href="detaaa">
-					<DetailsButtonModal
-						chunks={tree.leaves.map((m) => m.timeChunk)}
-						tag={tag}
-						tagValue={tagValue}
-					/>
-				</a>
+				{tree.leaves.length > 0 && (
+					<a href="detaaa">
+						<DetailsButtonModal
+							chunks={tree.leaves.map((m) => m.timeChunk)}
+							tag={tag}
+							tagValue={tagValuePrefix + tagValueSuffix}
+						/>
+					</a>
+				)}
 			</span>
 
-			{open && <ShowTreeChildren tag={tag} tree={tree} />}
+			{open && (
+				<ShowTreeChildren
+					tag={tag}
+					tree={tree}
+					tagValuePrefix={tagValuePrefix + tagValueSuffix}
+				/>
+			)}
 			{open && tree.leaves.length > 0 && (
 				<TreeLeaves leaves={tree.leaves} />
 			)}
@@ -248,7 +261,7 @@ const DetailsButtonModal: React.FC<{
 	chunks: SingleExtractedChunk[]
 	tag: string
 	tagValue: string
-}> = ({ chunks }) => {
+}> = (props) => {
 	const [open, setOpen] = useState(false)
 	if (!open) {
 		return (
@@ -262,32 +275,88 @@ const DetailsButtonModal: React.FC<{
 			</a>
 		)
 	}
-	const eventIds = chunks.flatMap((chunk) =>
-		getTagValues(chunk.tags, "timetrackrs-raw-id").map(([v, _dur]) => v),
-	)
 	return (
 		<Modal isOpen={true} onRequestClose={(_) => setOpen(false)}>
-			Event ids: {eventIds.join("\n")}
+			<DetailsModal {...props} />
 		</Modal>
 	)
 }
+function tagsToIter(tags: Tags): [string, string][] {
+	return Object.entries(tags.map).flatMap(
+		([tag, values]) =>
+			values?.map((value) => [tag, value] as [string, string]) ?? [],
+	)
+}
+const DetailsModal: React.FC<{
+	chunks: SingleExtractedChunk[]
+	tag: string
+	tagValue: string
+}> = observer(({ chunks, tag, tagValue }) => {
+	const eventIds = chunks.flatMap((chunk) =>
+		getTagValues(chunk.tags, "timetrackrs-raw-id").map(([v, _dur]) => v),
+	)
+
+	const res = useLocalObservable(() =>
+		fromPromise(
+			(async () => {
+				const events = await api.getSingleEvents({
+					ids: eventIds,
+					include_reasons: false,
+					include_raw: false,
+				})
+				return events.filter((event) =>
+					getTagValues(
+						tagsToIter(event.tags).map((x) => [...x, 1]),
+						tag,
+					).find(([value, _]) => value === tagValue),
+				)
+			})(),
+		),
+	)
+
+	return (
+		<div>
+			<h3>
+				Events with {tag}:{tagValue}:
+				{res.case({
+					pending() {
+						return <>Loading...</>
+					},
+					fulfilled(events) {
+						return (
+							<>
+								{events.map((event) => (
+									<SingleEventInfo event={event} />
+								))}
+							</>
+						)
+					},
+					rejected(e) {
+						return <>Error: {String(e)}</>
+					},
+				})}
+			</h3>
+		</div>
+	)
+})
+
 const ShowTreeChildren: React.FC<{
 	tree: ATree
-	noSlash?: boolean
 	tag: string
-}> = ({ tree, noSlash, tag }) => {
+	tagValuePrefix: string
+}> = ({ tree, tag, tagValuePrefix }) => {
 	const [children, setChildren] = React.useState(5)
 	return (
 		<ul>
 			{[...tree.children.entries()]
 				.slice(0, children)
-				.map(([tagValue, tree]) => (
+				.map(([tagValueSuffix, tree]) => (
 					<ShowTree
 						tag={tag}
-						key={tagValue}
-						tagValue={tagValue}
+						key={tagValueSuffix}
+						tagValuePrefix={tagValuePrefix}
+						tagValueSuffix={tagValueSuffix}
 						tree={tree}
-						noSlash={noSlash}
 					/>
 				))}
 			{tree.children.size > children && (
@@ -335,12 +404,21 @@ export class TagTree extends React.Component<{
 			for (const [tagName, tagValue, duration] of timeChunk.tags) {
 				if (this.props.tagName && this.props.tagName !== tagName)
 					continue
-				addToTree(tree, [tagName, ...tagValue.split("/")], {
-					timeChunk,
-					tagName,
-					tagValue,
-					duration,
-				})
+				addToTree(
+					tree,
+					[
+						tagName,
+						...tagValue
+							.split("/")
+							.map((v, i) => (i === 0 ? v : "/" + v)),
+					],
+					{
+						timeChunk,
+						tagName,
+						tagValue,
+						duration,
+					},
+				)
 			}
 		}
 		for (const c of tree.children) shortenTree(c[1])
@@ -375,7 +453,11 @@ export class TagTree extends React.Component<{
 								tag={tag + ":"}
 							/>
 						)}
-						<ShowTreeChildren tag={tag} tree={tree} noSlash />
+						<ShowTreeChildren
+							tag={tag}
+							tree={tree}
+							tagValuePrefix=""
+						/>
 					</div>
 				))}
 			</div>

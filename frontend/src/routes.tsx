@@ -3,7 +3,7 @@ import { CategoryChart } from "./components/CategoryChart"
 import { ChooserWithChild } from "./components/ChooserWithChild"
 import { Page } from "./components/Page"
 import { PlotPage } from "./components/Plot"
-import { SingleEventInfo } from "./components/SingleEventInfo"
+import { SingleEventInfoFetch } from "./components/SingleEventInfo"
 import { TagRuleEditorPage } from "./components/TagRuleEditor"
 // import { Switch, Route, Redirect, RouteComponentProps } from "react-router-dom"
 import { TagTreePage } from "./components/TagTree"
@@ -64,7 +64,9 @@ export const router = Router.create<React.ComponentType>()
 			/>
 		)
 	})
-	.with(routes.singleEvent, (p) => () => <SingleEventInfo id={p.args.id} />)
+	.with(routes.singleEvent, (p) => () => (
+		<SingleEventInfoFetch id={p.args.id} />
+	))
 	.with(routes.dashboard, (p) => () => <Dashboard />)
 
 export type RoutingType = Routing<

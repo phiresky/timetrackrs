@@ -88,8 +88,9 @@ function reasonstr(rule: TagRule): JSX.Element {
 		)
 	return <>[{expectNever<TagRule>(rule).type}]</>
 }
+
 @observer
-export class SingleEventInfo extends React.Component<{ id: string }> {
+export class SingleEventInfoFetch extends React.Component<{ id: string }> {
 	constructor(p: { id: string }) {
 		super(p)
 		makeObservable(this)
@@ -106,13 +107,29 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 				.then((e) => e[0]),
 		)
 	}
+	render() {
+		if (this.data.state === "pending") return "Loading..."
+		if (this.data.state === "rejected") {
+			console.log(this.data.value)
+			return <div>Could not load: {String(this.data.value)}</div>
+		}
+		const e = this.data.value
+		if (!e) return <div>Event not found</div>
+		return <SingleEventInfo event={e} />
+	}
+}
+@observer
+export class SingleEventInfo extends React.Component<{
+	event: SingleExtractedEventWithRaw
+}> {
+	constructor(p: SingleEventInfo["props"]) {
+		super(p)
+		makeObservable(this)
+	}
 	@observable showReasons = new Set<string>()
 
 	reason(tag: string): JSX.Element {
-		if (this.data.state !== "fulfilled") return <>wat</>
-
-		const e = this.data.value
-		if (!e) return <>Event not found: {this.props.id}</>
+		const e = this.props.event
 		const reason = e.tags_reasons?.[tag]
 		if (!reason) return <>[unknown]</>
 		return (
@@ -131,19 +148,14 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 								</li>
 							))}
 						</ul>
-						)
+						{")"}
 					</>
 				)}
 			</>
 		)
 	}
 	render(): React.ReactNode {
-		if (this.data.state === "pending") return "Loading..."
-		if (this.data.state === "rejected") {
-			console.log(this.data.value)
-			return <div>Could not load: {String(this.data.value)}</div>
-		}
-		const e = this.data.value
+		const e = this.props.event
 		if (!e) return <div>Event not found</div>
 		console.log("raw data", e)
 		return (
@@ -184,12 +196,15 @@ export class SingleEventInfo extends React.Component<{ id: string }> {
 										{key}: {value}{" "}
 										{this.showReasons.has(kv) ? (
 											this.reason(kv)
-										) : (
+										) : e.tags_reasons ? (
 											<AiOutlineQuestionCircle
+												className="clickable"
 												onClick={(e) =>
 													this.showReasons.add(kv)
 												}
 											/>
+										) : (
+											""
 										)}
 									</li>
 								)
