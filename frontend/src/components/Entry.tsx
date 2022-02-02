@@ -11,7 +11,7 @@ export class Entry extends React.Component<SingleExtractedEventWithRaw> {
 			<span>
 				<ModalLink route={routes.singleEvent} args={{ id }} query={{}}>
 					Event at{" "}
-					{Temporal.Instant.fromEpochMilliseconds(timestamp_unix_ms)
+					{timestamp_unix_ms
 						.toZonedDateTimeISO(Temporal.Now.timeZone())
 						.toLocaleString()}
 				</ModalLink>

@@ -17,25 +17,7 @@
 */
 import React, { FC } from "react"
 // reactstrap components
-import {
-	DropdownMenu,
-	DropdownItem,
-	UncontrolledDropdown,
-	DropdownToggle,
-	Form,
-	FormGroup,
-	InputGroupAddon,
-	InputGroupText,
-	Input,
-	InputGroup,
-	Navbar,
-	Nav,
-	Container,
-	Media,
-	NavbarBrand,
-	NavItem,
-	NavLink as NL2,
-} from "reactstrap"
+import { Navbar, Nav, Container, NavbarBrand, NavItem } from "reactstrap"
 import { NavLink } from "../router-lib/components/NavLink"
 import { routes } from "../routes"
 

@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::str::FromStr;
+use std::{fmt::Display, iter::FromIterator, str::FromStr};
 
 pub fn unix_epoch_millis_to_date(timestamp: i64) -> DateTime<Utc> {
     let timestamp_s = timestamp / 1000;
@@ -130,4 +130,41 @@ pub fn init_logging() -> anyhow::Result<tracing_appender::non_blocking::WorkerGu
     )?;
     log::debug!("env logger inited");
     Ok(guard)
+}
+
+use serde::de::{self, Deserializer, Visitor};
+// https://github.com/serde-rs/serde/issues/581
+pub fn comma_separated<'de, V, T, D>(deserializer: D) -> Result<V, D::Error>
+where
+    V: std::iter::FromIterator<T>,
+    T: FromStr,
+    T::Err: Display,
+    D: Deserializer<'de>,
+{
+    use std::marker::PhantomData as Phantom;
+    struct CommaSeparated<V, T>(Phantom<V>, Phantom<T>);
+
+    impl<'de, V, T> Visitor<'de> for CommaSeparated<V, T>
+    where
+        V: std::iter::FromIterator<T>,
+        T: FromStr,
+        T::Err: Display,
+    {
+        type Value = V;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("string containing comma-separated elements")
+        }
+
+        fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            let iter = s.split(",").map(FromStr::from_str);
+            Result::from_iter(iter).map_err(de::Error::custom)
+        }
+    }
+
+    let visitor = CommaSeparated(Phantom, Phantom);
+    deserializer.deserialize_str(visitor)
 }

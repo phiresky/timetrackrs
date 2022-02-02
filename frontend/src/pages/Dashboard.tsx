@@ -79,7 +79,7 @@ export const Dashboard: React.FC = observer((_) => {
 	}))
 
 	if (window.Chart) {
-		parseOptions(Chart, chartOptions())
+		parseOptions(Chart.defaults, chartOptions())
 	}
 
 	return (
@@ -363,7 +363,7 @@ export const Dashboard: React.FC = observer((_) => {
 											<InnerPlot
 												events={p.events}
 												tag={p.tag}
-												binSize={20 * 1000 * 60}
+												binSizeMS={20 * 1000 * 60}
 												aggregator={{
 													name: "none",
 													mapper: (d) => d,
@@ -413,7 +413,7 @@ export const Dashboard: React.FC = observer((_) => {
 												events={p.events}
 												chartType="pie"
 												tag={p.tag}
-												binSize={Infinity}
+												binSizeMS={Infinity}
 												aggregator={{
 													name: "none",
 													mapper: (d) => d,

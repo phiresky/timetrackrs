@@ -1,9 +1,14 @@
 use std::{
+    cmp::{max, min},
     collections::{HashMap, HashSet},
-    sync::{atomic::AtomicUsize, Arc},
+    sync::{
+        atomic::{AtomicBool, AtomicUsize},
+        Arc,
+    },
     time::Instant,
 };
 
+use super::caching_int_map::CachingIntMap;
 use crate::{api_types::SingleExtractedChunk, prelude::*};
 use futures::StreamExt;
 use futures::{stream::BoxStream, FutureExt};
@@ -13,16 +18,17 @@ use std::iter::FromIterator;
 use std::sync::atomic::Ordering::Relaxed;
 use tokio::sync::RwLock;
 
-use super::caching_int_map::CachingIntMap;
-
 pub async fn init_db_pool() -> anyhow::Result<DatyBasy> {
+    static CALLED: AtomicBool = AtomicBool::new(false);
+    CALLED.compare_exchange(false, true, Relaxed, Relaxed)
+        .map_err(|_| anyhow::anyhow!("DB was already connected. Create new instances of DatyBasy by using .clone(), otherwise stuff like rules invalidation would not apply to all instances of DatyBasy"))?;
     let db = crate::db::connect(None)
         .await
         .context("Could not connect to db")?;
     Ok(DatyBasy {
-        enabled_tag_rules: Arc::new(RwLock::new(
+        enabled_tag_rules: Arc::new(RwLock::new(Arc::new(
             fetch_tag_rules(&db).await.context("fetching tag rules")?,
-        )),
+        ))),
         db: db.clone(),
         tags_cache: CachingIntMap::new(db.clone(), "tags", "(text) values (?1)", "text").await,
         values_cache: CachingIntMap::new(db.clone(), "tag_values", "(text) values (?1)", "text")
@@ -43,28 +49,30 @@ pub struct DatyBasy {
     events_cache: CachingIntMap,
     tags_cache: CachingIntMap,
     values_cache: CachingIntMap,
-    enabled_tag_rules: Arc<RwLock<Vec<TagRule>>>,
+    /// Arc<RwLock<Arc< should allow invalidating the tag rules for all clones of this datybasy
+    /// by calling make_mut on the inner arc
+    enabled_tag_rules: Arc<RwLock<Arc<Vec<TagRule>>>>,
 }
 
-pub async fn fetch_tag_rules(db: &SqlitePool) -> anyhow::Result<Vec<TagRule>> {
-    let groups: Vec<TagRuleGroup> = sqlx::query_as!(
+pub async fn get_rule_groups(
+    db: &SqlitePool,
+) -> anyhow::Result<impl Iterator<Item = TagRuleGroup>> {
+    let groups = sqlx::query_as!(
         TagRuleGroup,
         r#"select global_id, data as "data: _" from config.tag_rule_groups"#
     )
     .fetch_all(db)
-    .await?;
-    /*if groups.len() == 0 {
-        // insert defaults
-        let groups =
-        diesel::insert_into(tag_rule_groups)
-            .values(groups)
-            .execute(self.conn)?;
-        return self.fetch_all_tag_rules_if_thoink();
-    }*/
+    .await
+    .context("fetching from db")?
+    .into_iter()
+    .chain(get_default_tag_rule_groups())
+    .unique_by(|g| g.global_id.clone()); // TODO: don't allow overriding anything in default rule groups apart from enabled / disabled
+    Ok(groups)
+}
 
-    Ok(groups
-        .into_iter()
-        .chain(get_default_tag_rule_groups().into_iter())
+pub async fn fetch_tag_rules(db: &SqlitePool) -> anyhow::Result<Vec<TagRule>> {
+    Ok(get_rule_groups(db)
+        .await?
         .flat_map(|g| g.data.0.into_iter_active_rules())
         .collect())
 }
@@ -102,7 +110,6 @@ impl ExtractedChunks {
         }
     }
     fn into_data(self) -> HashMap<TimeChunk, HashMap<(i64, i64), i64>> {
-        log::debug!("into_data! {:?}", self.data);
         self.data
     }
 }
@@ -171,7 +178,18 @@ impl DatyBasy {
     pub async fn get_all_tag_rules<'a>(
         &'a self,
     ) -> impl core::ops::Deref<Target = Vec<TagRule>> + 'a {
-        self.enabled_tag_rules.read().await
+        // return a clone of the inner arc, so when make_mut is called on the inner arc the returned thing works undisturbed
+        // and the read lock does not stay for the whole duration of the tag processing
+        self.enabled_tag_rules.read().await.clone()
+    }
+
+    pub async fn reload_tag_rules<'a>(&'a self) -> anyhow::Result<()> {
+        let mut writer = self.enabled_tag_rules.write().await;
+        let writer = Arc::make_mut(&mut writer);
+        *writer = fetch_tag_rules(&self.db)
+            .await
+            .context("fetching tag rules")?;
+        Ok(())
     }
 
     pub async fn get_extracted_for_time_range(
@@ -361,7 +379,30 @@ impl DatyBasy {
         from: Timestamptz,
         to: Timestamptz,
     ) -> anyhow::Result<()> {
+        let existing_range = sqlx::query!(
+            r#"
+            select min(timechunk) as "first: TimeChunk", max(timechunk) as "last: TimeChunk"
+            from extracted.extracted_current"#,
+        )
+        .fetch_one(&self.db)
+        .await
+        .context("fetching currents")?;
+        if existing_range.first == None {
+            return Ok(());
+        }
+        let from = max(
+            from,
+            existing_range
+                .first
+                .map(|r| Timestamptz(r.start()))
+                .unwrap(),
+        );
+        let to = min(
+            to,
+            existing_range.last.map(|r| Timestamptz(r.start())).unwrap(),
+        );
         let chunks = self.get_affected_timechunks_range(from, to);
+        log::debug!("Invalidating {from:?} to {to:?}");
         self.invalidate_timechunks(&chunks).await
     }
     // TODO: accept HashSet<TimeChunk> and Vec<TimeChunk> only

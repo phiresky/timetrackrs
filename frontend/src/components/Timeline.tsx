@@ -3,7 +3,6 @@ import { observer } from "mobx-react"
 import React, { ReactElement } from "react"
 import * as api from "../api"
 import {
-	deserializeTimestamptz,
 	durationToString,
 	getTagValues,
 	totalDurationSeconds,
@@ -51,10 +50,10 @@ const groupers: Grouper[] = [
 	{
 		name: "Daily",
 		shouldGroup(a, b) {
-			const d1 = deserializeTimestamptz(a.from)
+			const d1 = a.from
 				.toZonedDateTimeISO(Temporal.Now.timeZone())
 				.toPlainDate()
-			const d2 = deserializeTimestamptz(b.from)
+			const d2 = b.from
 				.toZonedDateTimeISO(Temporal.Now.timeZone())
 				.toPlainDate()
 			return d1.equals(d2)
@@ -230,18 +229,18 @@ export class Timeline extends React.Component {
 					from: Temporal.Instant.fromEpochMilliseconds(0),
 				})
 				if (!ret) throw Error("DB is empty?")
-				this.oldestTimestamp =
-					Temporal.Instant.fromEpochMilliseconds(ret)
+				this.oldestTimestamp = ret
 			}
 			this.loadState = `loading ${this.lastRequested.toLocaleString()}`
 			const newLastRequested = this.lastRequested.subtract({ days: 1 })
 			const data = await api.getTimeRange({
-				before: this.lastRequested.toZonedDateTime(
-					Temporal.Now.timeZone(),
-				),
-				after: newLastRequested.toZonedDateTime(
-					Temporal.Now.timeZone(),
-				),
+				before: this.lastRequested
+					.toZonedDateTime(Temporal.Now.timeZone())
+					.toInstant(),
+				after: newLastRequested
+					.toZonedDateTime(Temporal.Now.timeZone())
+					.toInstant(),
+				tag: null,
 			})
 			this.lastRequested = newLastRequested
 			if (
@@ -251,13 +250,13 @@ export class Timeline extends React.Component {
 				this.gotOldestEver = true
 				console.log(`got oldest!!`, data)
 			}
-			data.sort((a, b) => -a.from - b.from)
+			data.sort((a, b) => -Temporal.Instant.compare(a.from, b.from))
 			runInAction(() => {
-				let l = null
 				for (const d of data) {
-					const ts = new Date(d.from)
-					const k = ts.toISOString().slice(0, 10)
-					l = ts
+					const k = d.from
+						.toZonedDateTimeISO(Temporal.Now.timeZone())
+						.toPlainDate()
+						.toString()
 					let z = this.data.get(k)
 					if (!z) {
 						z = []

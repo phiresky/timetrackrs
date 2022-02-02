@@ -71,9 +71,9 @@ export const SingleNumberValue: React.FC<Props> = observer((_props) => {
 		// console.log("props", )
 		setData(null)
 		const data = await getTimeRange({
-			after: props.time.from,
-			before: props.time.to,
-			tag: props.fetchFilter,
+			after: props.time.from.toInstant(),
+			before: props.time.to.toInstant(),
+			tag: props.fetchFilter ?? null,
 		})
 		setData(applyExpression(data, calculation))
 	})

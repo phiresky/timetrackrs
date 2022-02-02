@@ -1,4 +1,4 @@
-import { action, makeObservable, observable, runInAction } from "mobx"
+import { action, makeObservable, observable } from "mobx"
 import { LocationInfo } from "./LocationInfo"
 import { History, createBrowserHistory } from "history"
 
@@ -8,7 +8,7 @@ export interface ClickInfo {
 }
 
 export class LocationService {
-	@observable private _currentLocation: LocationInfo
+	@observable private _currentLocation!: LocationInfo
 	public get currentLocation(): LocationInfo {
 		return this._currentLocation
 	}
@@ -63,7 +63,7 @@ export class LocationService {
 	}
 
 	public pop(): boolean {
-		this.history.goBack()
+		this.history.back()
 		return true
 	}
 }

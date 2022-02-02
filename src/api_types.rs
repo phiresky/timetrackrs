@@ -66,8 +66,9 @@ macro_rules! make_thingois {
 type DebugRes<T> = Result<T, anyhow::Error>;
 
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
-pub struct SingleEventRequest {
-    pub id: String,
+pub struct SingleEventsRequest {
+    #[serde(deserialize_with = "crate::util::comma_separated")]
+    pub ids: Vec<String>,
     pub include_raw: bool,
     pub include_reasons: bool,
 }
@@ -87,9 +88,9 @@ make_thingois! {
             request: TimeRangeRequest,
             response: Vec<SingleExtractedChunk>
         },
-        single_event {
-            request: SingleEventRequest,
-            response: Option<SingleExtractedEventWithRaw>
+        single_events {
+            request: SingleEventsRequest,
+            response: Vec<SingleExtractedEventWithRaw>
         },
         rule_groups {
             request: (),
