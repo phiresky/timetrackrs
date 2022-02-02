@@ -1,19 +1,10 @@
 import { Temporal } from "@js-temporal/polyfill"
-import { TagRuleGroup, ApiTypesTS, ProgressReport, Timestamptz } from "./server"
-import { Cast } from "./util"
+import { TagRuleGroup, ApiTypesTS, ProgressReport } from "./server"
 
 type ApiTypes = { [T in ApiTypesTS["type"]]: ApiTypesTS & { type: T } }
 
-type ApiRequest<T extends keyof ApiTypes> = Cast<
-	ApiTypes[T]["request"],
-	Timestamptz,
-	Temporal.Instant
->
-type ApiResponse<T extends keyof ApiTypes> = Cast<
-	ApiTypes[T]["response"],
-	Timestamptz,
-	number
->
+type ApiRequest<T extends keyof ApiTypes> = ApiTypes[T]["request"]
+type ApiResponse<T extends keyof ApiTypes> = ApiTypes[T]["response"]
 
 type ApiResponseO<T> = { data: T }
 
@@ -26,7 +17,7 @@ export function progressEvents(
 ): EventSource {
 	const eventSource = new EventSource(backend + "/progress-events")
 	eventSource.addEventListener("message", (event) => {
-		subscriber(JSON.parse(event.data))
+		subscriber(JSON.parse(event.data as string) as ProgressReport[])
 	})
 	return eventSource
 }
@@ -60,19 +51,48 @@ export async function timestampSearch(
 	return doApiRequest("timestamp_search", info)
 }
 
+type KnownTypes =
+	| { $type: "Instant"; unix_timestamp_ms: number }
+	| { $type: undefined }
+function deserialize(this: unknown, _key: string, value: unknown) {
+	if (typeof value === "object" && value !== null) {
+		const valueObj = value as KnownTypes
+		if (
+			"$type" in valueObj &&
+			valueObj.$type &&
+			typeof valueObj.$type === "string"
+		) {
+			if (valueObj.$type === "Instant") {
+				return Temporal.Instant.fromEpochMilliseconds(
+					valueObj.unix_timestamp_ms,
+				)
+			}
+		}
+	}
+	return value
+}
+
+function removeNulls(key: string, value: unknown) {
+	if (value === null) return undefined
+	return value
+}
 async function doApiRequest<N extends keyof ApiTypes>(
 	path: N,
 	info: ApiRequest<N>,
+	options: { method: "GET" | "POST" } = { method: "GET" },
 ): Promise<ApiResponse<N>> {
 	const params = new URLSearchParams(
-		JSON.parse(JSON.stringify(info)),
+		JSON.parse(JSON.stringify(info, removeNulls)) as Record<string, string>,
 	).toString()
 	const url = new URL(`${backend}/${path.replace(/_/g, "-")}?${params}`)
-	const resp = await fetch(url.toString())
+	const resp = await fetch(url.toString(), options)
 	if (!resp.ok) {
 		return await handleError(resp)
 	}
-	const { data } = (await resp.json()) as ApiResponseO<ApiResponse<N>>
+	const responseText = await resp.text()
+	const { data } = JSON.parse(responseText, deserialize) as ApiResponseO<
+		ApiResponse<N>
+	>
 	return data
 }
 export async function getTimeRange(
@@ -81,16 +101,20 @@ export async function getTimeRange(
 	return doApiRequest("time_range", info)
 }
 
-export async function getKnownTags(): Promise<
-	ApiTypes["get_known_tags"]["response"]
-> {
+export async function invalidateExtractions(
+	info: ApiRequest<"invalidate_extractions">,
+): Promise<ApiResponse<"invalidate_extractions">> {
+	return doApiRequest("invalidate_extractions", info, { method: "POST" })
+}
+
+export async function getKnownTags(): Promise<ApiResponse<"get_known_tags">> {
 	return doApiRequest("get_known_tags", [])
 }
 
-export async function getSingleEvent(info: {
-	id: string
-}): Promise<ApiResponse<"single_event">> {
-	return doApiRequest("single_event", info)
+export async function getSingleEvents(
+	info: ApiRequest<"single_events">,
+): Promise<ApiResponse<"single_events">> {
+	return doApiRequest("single_events", info)
 }
 
 export async function getTagRules(): Promise<

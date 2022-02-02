@@ -3,7 +3,8 @@
 		"dev": "webpack --watch",
 		"build": "cross-env NODE_ENV=production webpack",
 		"setup-pages": "git worktree add -b gh-pages dist",
-		"pages": "rm -r dist/* && yarn build && cd dist && git add -A . && git commit -m'update binaries'"
+		"pages": "rm -r dist/* && yarn build && cd dist && git add -A . && git commit -m'update binaries'",
+		"lint": "eslint . && ts-prune --error"
 	},
 	"dependencies": {
 		"@babel/core": "^7.11.1",
@@ -107,6 +108,7 @@
 		"sass": "^1.26.10",
 		"sass-loader": "^12.4.0",
 		"ts-node": "^10.4.0",
+		"ts-prune": "^0.10.3",
 		"webpack-cli": "^4.2.0",
 		"webpack-dev-server": "^4.7.3"
 	}

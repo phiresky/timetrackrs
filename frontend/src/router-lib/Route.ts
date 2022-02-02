@@ -1,5 +1,5 @@
 import { LocationInfo, SearchData } from "./LocationInfo"
-import { compile, match } from "path-to-regexp"
+import { compile, match, MatchFunction, PathFunction } from "path-to-regexp"
 import { Routing } from "./Routing"
 
 export interface Matcher<T> {
@@ -44,26 +44,29 @@ export interface MatcherArgs<
 export class Route<TArgs extends RouteArgs, TQueryArgs extends QueryArgs>
 	implements Matcher<MatcherArgs<TArgs, TQueryArgs>>
 {
-	public static create(path: string): Route<{}, {}>
+	public static create(path: string): Route<RouteArgs, QueryArgs>
 	public static create<TArgs extends RouteArgs>(
 		path: string,
 		args: TArgs,
-	): Route<TArgs, {}>
-	public static create<TArgs extends RouteArgs = {}>(
+	): Route<TArgs, QueryArgs>
+	public static create<TArgs extends RouteArgs = RouteArgs>(
 		path: string,
 		args?: TArgs,
-	): Route<TArgs, {}> {
+	): Route<TArgs, QueryArgs> {
 		return new Route(path, args!, {})
 	}
 
-	private readonly matchFn = match(this.path)
-	private readonly compileFn = compile(this.path)
+	private readonly matchFn: MatchFunction
+	private readonly compileFn: PathFunction
 
 	private constructor(
 		public readonly path: string,
 		public readonly args: TArgs,
 		public readonly queryArgs: TQueryArgs,
-	) {}
+	) {
+		this.matchFn = match(this.path)
+		this.compileFn = compile(this.path)
+	}
 
 	public withQueryArgs<TNewQueryArgs extends QueryArgs>(
 		newArgs: TNewQueryArgs,

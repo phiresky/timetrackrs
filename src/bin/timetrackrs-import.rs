@@ -3,7 +3,7 @@ use futures::stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    util::init_logging();
+    let _guard = util::init_logging()?;
 
     let opt = ImportArgs::from_args();
     let mut data = opt.import().await?;

@@ -116,9 +116,12 @@ impl X11WindowData {
 // "2\u{0}4\u{0}5\u{0}6\u{0}8\u{0}9\u{0}1\u{0}" to array of strings
 pub fn split_zero(s: &str) -> Vec<String> {
     let mut vec: Vec<String> = s.split('\0').map(String::from).collect();
-    let last = vec.pop().unwrap();
-    if !last.is_empty() {
-        panic!("not zero terminated");
+    if vec.last().map(|e| e.is_empty()).unwrap_or(false) {
+        // there seems to be an inconsistency:
+        // the list in WM_CLASS is zero-terminated, as is the list in _NET_DESKTOP_NAMES on i3
+        // but in bspwm it is not zero-terminated
+        // https://github.com/phiresky/timetrackrs/issues/12
+        vec.pop().unwrap();
     }
     vec
 }

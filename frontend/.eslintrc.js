@@ -7,12 +7,12 @@ module.exports = {
 		"plugin:@typescript-eslint/recommended",
 		"plugin:@typescript-eslint/recommended-requiring-type-checking",
 		"prettier",
-		"prettier/@typescript-eslint",
 	],
 	parserOptions: { tsconfigRootDir: __dirname, project: ["./tsconfig.json"] },
 	plugins: ["prettier", "@typescript-eslint"],
 	env: { es6: true, browser: true, node: true },
 	parser: "@typescript-eslint/parser",
+	ignorePatterns: ["dist"],
 	rules: {
 		"prettier/prettier": isEditor ? "off" : ["warn"],
 		"no-console": "off",

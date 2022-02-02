@@ -1,710 +1,676 @@
 [
-    {
-        "global_id": "xvgbpelfgkqkudbb",
-        "data": {
-            "version": "V1",
-            "data": {
-                "name": "android",
-                "description": "",
-                "editable": false,
-                "enabled": true,
-                "rules": [
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "software-id",
-                            "value": "android:com.laurencedawson.reddit_sync.pro",
-                            "new_tags": [
-                                { "tag": "use-service", "value": "Reddit" }
-                            ]
-                        }
-                    }
-                ]
+  {
+    "global_id": "xvgbpelfgkqkudbb",
+    "data": {
+      "version": "V1",
+      "data": {
+        "name": "android",
+        "description": "",
+        "editable": false,
+        "enabled": true,
+        "rules": [
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "software-id",
+              "value": "android:com.laurencedawson.reddit_sync.pro",
+              "new_tags": [{ "tag": "use-service", "value": "Reddit" }]
             }
-        }
-    },
-    {
-        "global_id": "krupdnguxgnjkpqo",
-        "data": {
-            "version": "V1",
-            "data": {
-                "name": "Default Rules",
-                "description": "These are shipped with the program :)",
-                "editable": false,
-                "enabled": true,
-                "rules": [
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "browse-main-domain",
-                                    "regex": "^telegram\\.org$"
-                                }
-                            ],
-                            "new_tags": [
-                                { "tag": "use-service", "value": "Telegram" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "software-executable-path",
-                                    "regex": "^.*/(?P<basename>.*?)(?: \\(deleted\\)|.exe)?$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "software-executable-basename",
-                                    "value": "$basename"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "software-executable-basename",
-                            "value": "telegram-desktop",
-                            "new_tags": [
-                                { "tag": "use-service", "value": "Telegram" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "software-executable-basename",
-                                    "regex": "^(firefox|google-chrome|chromium)$"
-                                }
-                            ],
-                            "new_tags": [
-                                { "tag": "software-type", "value": "browser" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "software-executable-basename",
-                                    "regex": "^(mpv|vlc)$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "software-type",
-                                    "value": "media-player"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "software-window-title",
-                                    "regex": "^.*(?P<url>https?://(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=!]*)).*$"
-                                }
-                            ],
-                            "new_tags": [
-                                { "tag": "browse-url", "value": "$url" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "HasTag",
-                            "tag": "software-development-project-name",
-                            "new_tags": [
-                                { "tag": "project", "value": "$value" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "browse-full-domain",
-                            "value": "mail.google.com",
-                            "new_tags": [
-                                { "tag": "use-service", "value": "Gmail" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "browse-main-domain",
-                            "value": "youtube.com",
-                            "new_tags": [
-                                { "tag": "use-service", "value": "YouTube" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "device-hostname",
-                                    "regex": "^(?P<hostname>.*)$"
-                                },
-                                {
-                                    "tag": "title-match-sd-proj",
-                                    "regex": "^(?P<path>.*)$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "software-development-project",
-                                    "value": "$hostname$path"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "software-executable-basename",
-                                    "regex": "^electron\\d*$"
-                                },
-                                {
-                                    "tag": "software-window-class",
-                                    "regex": "^(?P<class>.+)$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "software-id",
-                                    "value": "class:${class}"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "InternalFetcher",
-                            "fetcher_id": "url-domain-matcher"
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExternalFetcher",
-                            "fetcher_id": "youtube-meta-json"
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExternalFetcher",
-                            "fetcher_id": "wikidata-domain-to-id-v1"
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExternalFetcher",
-                            "fetcher_id": "wikidata-id-to-class"
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "software-development-project",
-                                    "regex": "^.*/(?P<basename>.*)$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "software-development-project-name",
-                                    "value": "$basename"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "HasTag",
-                            "tag": "title-match-shell-cwd",
-                            "new_tags": [
-                                { "tag": "software-type", "value": "shell" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "HasTag",
-                            "tag": "software-development-project",
-                            "new_tags": [
-                                { "tag": "software-type", "value": "ide" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "software-type",
-                            "value": "ide",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Productivity/Software Development/IDE"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "software-type",
-                            "value": "shell",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Productivity/Shell"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "software-type",
-                            "value": "media-player",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Entertainment/Video"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "software-type",
-                            "value": "shell",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Productivity/Shell"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "wikidata-category",
-                            "value": "instant messaging client",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Communication/Instant Messaging"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "use-service",
-                            "value": "Gmail",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Communication/Email"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "browse-domain",
-                            "value": "reddit.com",
-                            "new_tags": [
-                                { "tag": "use-service", "value": "Reddit" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "software-executable-basename",
-                            "value": "blender",
-                            "new_tags": [
-                                { "tag": "use-software", "value": "Blender" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "use-software",
-                            "value": "Blender",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Productivity/3D Modeling"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "browse-url",
-                                    "regex": "^http://localhost:8081/.*$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "software-development-project-name",
-                                    "value": "track-pc-usage-rs"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "software-development-project-name",
-                                    "regex": "^.*$"
-                                },
-                                {
-                                    "tag": "browse-full-domain",
-                                    "regex": "^localhost$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Productivity/Software Development/Testing"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "youtube-category",
-                                    "regex": "^(Gaming|Entertainment|Comedy)$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Entertainment/Video"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "youtube-category",
-                            "value": "News & Politics",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Entertainment/News"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "browse-main-domain",
-                            "value": "github.com",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Productivity/Software Development/Research"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "use-service",
-                            "value": "Reddit",
-                            "new_tags": [
-                                { "tag": "category", "value": "Social Media" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "browse-main-domain",
-                            "value": "reddit.com",
-                            "new_tags": [
-                                { "tag": "use-service", "value": "Reddit" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "browse-main-domain",
-                            "value": "twitch.tv",
-                            "new_tags": [
-                                { "tag": "use-service", "value": "Twitch" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "use-service",
-                            "value": "Twitch",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Entertainment/Video"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "youtube-category",
-                            "value": "Music",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Entertainment/Music"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "youtube-category",
-                            "value": "Science & Technology",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Education/Video"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "browse-main-domain",
-                                    "regex": "^(docs.rs|crates.io|rust-lang.org|diesel.rs|sqlite.org|serde.rs|stackoverflow.com|rocket.rs)$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Productivity/Software Development/Research"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "browse-main-domain",
-                            "value": "wikipedia.org",
-                            "new_tags": [
-                                { "tag": "use-service", "value": "Wikipedia" }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "browse-full-domain",
-                            "value": "news.ycombinator.com",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Entertainment/News"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "use-service",
-                            "value": "Wikipedia",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Education/Research"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "wikidata-category",
-                            "value": "instant messaging client",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Communication/Instant Messaging"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "ExactTagValue",
-                            "tag": "physical-activity",
-                            "value": "sleeping",
-                            "new_tags": [
-                                {
-                                    "tag": "category",
-                                    "value": "Flesh Prison/Sleep"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "browse-url",
-                                    "regex": "^https://github\\.com/(?P<username>[^/]+)/(?P<project>[^/]+)(/.*)?$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "github-project",
-                                    "value": "$username/$project"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "browse-url",
-                                    "regex": "^https://github\\.com/(?P<username>[^/]+)/(?P<project>[^/]+)(/.*)?$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "github-project-name",
-                                    "value": "$project"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "browse-url",
-                                    "regex": "^https://github\\.com/(?P<username>[^/]+)/(?P<project>[^/]+)(/.*)?$"
-                                }
-                            ],
-                            "new_tags": [
-                                {
-                                    "tag": "github-project-org",
-                                    "value": "$username"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "enabled": true,
-                        "rule": {
-                            "type": "TagRegex",
-                            "regexes": [
-                                {
-                                    "tag": "browse-url",
-                                    "regex": "^https://web\\.telegram\\.org/#/im\\?p=(?P<userid>[^&]+)$"
-                                }
-                            ],
-                            "new_tags": [
-                                { "tag": "telegram-chat", "value": "$userid" }
-                            ]
-                        }
-                    }
-                ]
-            }
-        }
+          }
+        ]
+      }
     }
+  },
+  {
+    "global_id": "krupdnguxgnjkpqo",
+    "data": {
+      "version": "V1",
+      "data": {
+        "name": "Default Rules",
+        "description": "These are shipped with the program :)",
+        "editable": false,
+        "enabled": true,
+        "rules": [
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "browse-main-domain",
+                  "regex": "^telegram\\.org$"
+                }
+              ],
+              "new_tags": [{ "tag": "use-service", "value": "Telegram" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "software-executable-path",
+                  "regex": "^.*/(?P<basename>.*?)(?: \\(deleted\\)|.exe)?$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "software-executable-basename",
+                  "value": "$basename"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "software-executable-basename",
+              "value": "telegram-desktop",
+              "new_tags": [{ "tag": "use-service", "value": "Telegram" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "software-executable-basename",
+                  "regex": "^(firefox|google-chrome|chromium)$"
+                }
+              ],
+              "new_tags": [{ "tag": "software-type", "value": "browser" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "software-executable-basename",
+                  "regex": "^(mpv|vlc)$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "software-type",
+                  "value": "media-player"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "software-window-title",
+                  "regex": "^.*(?P<url>https?://(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=!]*)).*$"
+                }
+              ],
+              "new_tags": [{ "tag": "browse-url", "value": "$url" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "HasTag",
+              "tag": "software-development-project-name",
+              "new_tags": [{ "tag": "project", "value": "$value" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "browse-full-domain",
+              "value": "mail.google.com",
+              "new_tags": [{ "tag": "use-service", "value": "Gmail" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "browse-main-domain",
+              "value": "youtube.com",
+              "new_tags": [{ "tag": "use-service", "value": "YouTube" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "device-hostname",
+                  "regex": "^(?P<hostname>.*)$"
+                },
+                {
+                  "tag": "title-match-sd-proj",
+                  "regex": "^(?P<path>.*)$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "software-development-project",
+                  "value": "$hostname/$path"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "software-executable-basename",
+                  "regex": "^electron\\d*$"
+                },
+                {
+                  "tag": "software-window-class",
+                  "regex": "^(?P<class>.+)$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "software-id",
+                  "value": "class:${class}"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "InternalFetcher",
+              "fetcher_id": "url-domain-matcher"
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExternalFetcher",
+              "fetcher_id": "youtube-meta-json"
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExternalFetcher",
+              "fetcher_id": "wikidata-domain-to-id-v1"
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExternalFetcher",
+              "fetcher_id": "wikidata-id-to-class"
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "software-development-project",
+                  "regex": "^.*/(?P<basename>.*)$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "software-development-project-name",
+                  "value": "$basename"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "HasTag",
+              "tag": "title-match-shell-cwd",
+              "new_tags": [{ "tag": "software-type", "value": "shell" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "HasTag",
+              "tag": "software-development-project",
+              "new_tags": [{ "tag": "software-type", "value": "ide" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "software-type",
+              "value": "ide",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Productivity/Software Development/IDE"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "software-type",
+              "value": "shell",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Productivity/Shell"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "software-type",
+              "value": "media-player",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Entertainment/Video"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "software-type",
+              "value": "shell",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Productivity/Shell"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "wikidata-category",
+              "value": "instant messaging client",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Communication/Instant Messaging"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "use-service",
+              "value": "Gmail",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Communication/Email"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "browse-domain",
+              "value": "reddit.com",
+              "new_tags": [{ "tag": "use-service", "value": "Reddit" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "software-executable-basename",
+              "value": "blender",
+              "new_tags": [{ "tag": "use-software", "value": "Blender" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "use-software",
+              "value": "Blender",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Productivity/3D Modeling"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "browse-url",
+                  "regex": "^http://localhost:8081/.*$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "software-development-project-name",
+                  "value": "track-pc-usage-rs"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "software-development-project-name",
+                  "regex": "^.*$"
+                },
+                {
+                  "tag": "browse-full-domain",
+                  "regex": "^localhost$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Productivity/Software Development/Testing"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "youtube-category",
+                  "regex": "^(Gaming|Entertainment|Comedy)$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Entertainment/Video"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "youtube-category",
+              "value": "News & Politics",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Entertainment/News"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "browse-main-domain",
+              "value": "github.com",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Productivity/Software Development/Research"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "use-service",
+              "value": "Reddit",
+              "new_tags": [{ "tag": "category", "value": "Social Media" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "browse-main-domain",
+              "value": "reddit.com",
+              "new_tags": [{ "tag": "use-service", "value": "Reddit" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "browse-main-domain",
+              "value": "twitch.tv",
+              "new_tags": [{ "tag": "use-service", "value": "Twitch" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "use-service",
+              "value": "Twitch",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Entertainment/Video"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "youtube-category",
+              "value": "Music",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Entertainment/Music"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "youtube-category",
+              "value": "Science & Technology",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Education/Video"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "browse-main-domain",
+                  "regex": "^(docs.rs|crates.io|rust-lang.org|diesel.rs|sqlite.org|serde.rs|stackoverflow.com|rocket.rs)$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Productivity/Software Development/Research"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "browse-main-domain",
+              "value": "wikipedia.org",
+              "new_tags": [{ "tag": "use-service", "value": "Wikipedia" }]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "browse-full-domain",
+              "value": "news.ycombinator.com",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Entertainment/News"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "use-service",
+              "value": "Wikipedia",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Education/Research"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "wikidata-category",
+              "value": "instant messaging client",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Communication/Instant Messaging"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "ExactTagValue",
+              "tag": "physical-activity",
+              "value": "sleeping",
+              "new_tags": [
+                {
+                  "tag": "category",
+                  "value": "Flesh Prison/Sleep"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "browse-url",
+                  "regex": "^https://github\\.com/(?P<username>[^/]+)/(?P<project>[^/]+)(/.*)?$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "github-project",
+                  "value": "$username/$project"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "browse-url",
+                  "regex": "^https://github\\.com/(?P<username>[^/]+)/(?P<project>[^/]+)(/.*)?$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "github-project-name",
+                  "value": "$project"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "browse-url",
+                  "regex": "^https://github\\.com/(?P<username>[^/]+)/(?P<project>[^/]+)(/.*)?$"
+                }
+              ],
+              "new_tags": [
+                {
+                  "tag": "github-project-org",
+                  "value": "$username"
+                }
+              ]
+            }
+          },
+          {
+            "enabled": true,
+            "rule": {
+              "type": "TagRegex",
+              "regexes": [
+                {
+                  "tag": "browse-url",
+                  "regex": "^https://web\\.telegram\\.org/#/im\\?p=(?P<userid>[^&]+)$"
+                }
+              ],
+              "new_tags": [{ "tag": "telegram-chat", "value": "$userid" }]
+            }
+          }
+        ]
+      }
+    }
+  }
 ]

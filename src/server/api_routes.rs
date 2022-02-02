@@ -136,71 +136,73 @@ async fn invalidate_extractions(
     Ok(ApiResponse { data: () })
 }
 
-async fn single_event(
+async fn single_events(
     db: DatyBasy,
-    req: Api::single_event::request,
-) -> Api::single_event::response {
+    req: Api::single_events::request,
+) -> Api::single_events::response {
     // println!("handling...");
     // println!("querying...");
-    let a = sqlx::query_as!(
+    let ids_json = serde_json::to_string(&req.ids)?;
+    let events: Vec<DbEvent> = sqlx::query_as!(
         DbEvent,
         r#"select insertion_sequence, id, timestamp_unix_ms as "timestamp_unix_ms: _",
-    data_type, duration_ms, data from raw_events.events where id = ?"#,
-        req.id
+    data_type, duration_ms, data from raw_events.events where id in (select value from json_each(?))"#,
+        ids_json
     )
-    .fetch_one(&db.db)
+    .fetch_all(&db.db)
     .await?;
 
-    let r = a.deserialize_data();
-    let progress = progress_events::new_progress("Single Event");
-    let v = match r {
-        Ok(raw) => {
-            if let Some(data) = raw.extract_info() {
-                let (tags, tags_reasons) = {
-                    if req.include_reasons {
-                        let (tags, r, _) = get_tags_with_reasons(&db, data, progress).await;
-                        (tags, Some(r))
-                    } else {
-                        let (tags, _) = get_tags(&db, data, progress).await;
-                        (tags, None)
-                    }
-                };
-                //let (tags, iterations) = get_tags(&db, data);
-                Some(SingleExtractedEventWithRaw {
-                    id: a.id,
-                    timestamp_unix_ms: a.timestamp_unix_ms,
-                    duration_ms: a.duration_ms,
-                    tags_reasons,
-                    tags,
-                    raw: req.include_raw.then(|| raw),
-                })
-            } else {
+    let mut v: Vec<SingleExtractedEventWithRaw> = vec![];
+
+    let progress = progress_events::new_progress("Single Events");
+
+    for event in events {
+        let r = event.deserialize_data();
+        let progress = progress.clone();
+
+        let ele = match r {
+            Ok(raw) => {
+                if let Some(data) = raw.extract_info() {
+                    let (tags, tags_reasons) = {
+                        if req.include_reasons {
+                            let (tags, r, _) = get_tags_with_reasons(&db, data, progress).await;
+                            (tags, Some(r))
+                        } else {
+                            let (tags, _) = get_tags(&db, data, progress).await;
+                            (tags, None)
+                        }
+                    };
+                    //let (tags, iterations) = get_tags(&db, data);
+                    Some(SingleExtractedEventWithRaw {
+                        id: event.id,
+                        timestamp_unix_ms: event.timestamp_unix_ms,
+                        duration_ms: event.duration_ms,
+                        tags_reasons,
+                        tags,
+                        raw: req.include_raw.then(|| raw),
+                    })
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                println!("deser of {} error: {:?}", event.id, e);
+                // println!("data=||{}", a.data);
                 None
             }
+        };
+        if let Some(e) = ele {
+            v.push(e);
         }
-        Err(e) => {
-            println!("deser of {} error: {:?}", a.id, e);
-            // println!("data=||{}", a.data);
-            None
-        }
-    };
+    }
 
     Ok(ApiResponse { data: v })
 }
 
 async fn rule_groups(db: DatyBasy) -> Api::rule_groups::response {
-    let groups = sqlx::query_as!(
-        TagRuleGroup,
-        r#"select global_id, data as "data: _" from config.tag_rule_groups"#
-    )
-    .fetch_all(&db.db)
-    .await
-    .context("fetching from db")?
-    .into_iter()
-    .chain(get_default_tag_rule_groups())
-    .collect::<Vec<_>>();
-
-    Ok(ApiResponse { data: groups })
+    Ok(ApiResponse {
+        data: get_rule_groups(&db.db).await?.collect::<Vec<_>>(),
+    })
 }
 
 async fn update_rule_groups(
@@ -219,7 +221,12 @@ async fn update_rule_groups(
         )
         .execute(&db.db)
         .await?;
+        let id = &g.global_id;
+        log::debug!("updated rule group with id {id}")
     }
+    db.reload_tag_rules()
+        .await
+        .context("Could not reload rule groups")?;
 
     Ok(ApiResponse { data: () })
 }
@@ -286,21 +293,34 @@ pub fn api_routes(
         })
         .boxed();
     let single_event = with_db(db.clone())
-        .and(warp::path("single-event"))
-        .and(warp::query::<Api::single_event::request>())
+        .and(warp::path("single-events"))
+        .and(warp::query::<Api::single_events::request>())
         .and_then(|db, query| async move {
-            single_event(db, query)
+            single_events(db, query)
                 .await
                 .map(|e| json(&e))
                 .map_err(map_error)
         })
         .boxed();
 
-    let update_rule_groups = with_db(db)
-        .and(warp::path("update-rule-groups"))
+    let update_rule_groups = warp::post()
+        .and(with_db(db.clone()))
+        .and(warp::path("rule-groups"))
         .and(warp::body::json())
         .and_then(|db, req| async move {
             update_rule_groups(db, req)
+                .await
+                .map(|e| json(&e))
+                .map_err(map_error)
+        })
+        .boxed();
+    let invalidate_extractions = warp::post()
+        .and(with_db(db.clone()))
+        .and(warp::path("invalidate-extractions"))
+        .and(warp::query::<Api::invalidate_extractions::request>())
+        .and_then(|db, query| async move {
+            log::info!("OOOO");
+            invalidate_extractions(db, query)
                 .await
                 .map(|e| json(&e))
                 .map_err(map_error)
@@ -345,34 +365,15 @@ pub fn api_routes(
         })
         .boxed();
 
-    let filter = warp::get().and(balanced_or_tree!(
+    let get_reqs = warp::get().and(balanced_or_tree!(
         time_range,
         get_known_tags,
         single_event,
         rule_groups,
-        update_rule_groups,
         timestamp_search,
         progress_events
-    )); /*rule_groups)
-        .boxed()
-        .or(time_range)
-        .boxed()
-        .unify()
-        .or(get_known_tags)
-        .boxed()
-        .unify()
-        .or(single_event)
-        .boxed()
-        .unify()
-        .or(update_rule_groups)
-        .boxed()
-        .unify()
-        .or(timestamp_search)
-        .boxed()
-        .unify()
-        .or(progress_events)
-        .boxed()
-        .unify();*/
+    ));
+    let post_reqs = balanced_or_tree!(update_rule_groups, invalidate_extractions);
 
-    filter
+    get_reqs.or(post_reqs)
 }
