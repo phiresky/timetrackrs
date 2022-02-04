@@ -6,6 +6,7 @@ pub mod api_types;
 pub mod capture;
 pub mod config;
 pub mod db;
+pub mod graphql;
 pub mod events;
 pub mod expand;
 pub mod extract;
