@@ -671,6 +671,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
+name = "core-graphics"
+version = "0.22.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2581bbab3b8ffc6fcbd550bf46c355135d16e9ff2a6ea032ad6b9bf1d7efe4fb"
+dependencies = [
+ "bitflags",
+ "core-foundation 0.9.2",
+ "core-graphics-types",
+ "foreign-types",
+ "libc",
+]
+
+[[package]]
+name = "core-graphics-types"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a68b68b3446082644c91ac778bf50cd4104bfb002b5a6a7c44cca5a2c70788b"
+dependencies = [
+ "bitflags",
+ "core-foundation 0.9.2",
+ "foreign-types",
+ "libc",
+]
+
+[[package]]
 name = "cpp_build"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3833,6 +3858,8 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "concat-reader",
+ "core-foundation 0.9.2",
+ "core-graphics",
  "crc32fast",
  "csv",
  "datachannel",
@@ -3852,6 +3879,7 @@ dependencies = [
  "hyper-tls",
  "itertools",
  "lazy_static",
+ "libc",
  "lru",
  "md5",
  "mediawiki",
@@ -3869,6 +3897,7 @@ dependencies = [
  "rsa",
  "rust-crypto",
  "rust-embed",
+ "rustc-hash",
  "serde 1.0.134",
  "serde_json",
  "serde_regex",

@@ -8,6 +8,7 @@ use crate::prelude::*;
 pub enum EventData {
     x11_v2(X11EventData),
     windows_v1(WindowsEventData),
+    macos_v1(MacOSEventData),
     app_usage_v2(AppUsageEntry),
     journald_v1(JournaldEntry),
     sleep_as_android_v1(SleepAsAndroidEntry),
@@ -29,6 +30,7 @@ impl std::convert::TryFrom<CreateNewDbEvent> for NewDbEvent {
         let (data_type, data) = match &value.data {
             EventData::x11_v2(d) => ("x11_v2", serde_json::to_string(d)?),
             EventData::windows_v1(d) => ("windows_v1", serde_json::to_string(d)?),
+            EventData::macos_v1(d) => ("macos_v1", serde_json::to_string(d)?),
             EventData::app_usage_v2(d) => ("app_usage_v2", serde_json::to_string(d)?),
             EventData::journald_v1(d) => ("journald_v1", serde_json::to_string(d)?),
             EventData::sleep_as_android_v1(d) => ("sleep_as_android_v1", serde_json::to_string(d)?),
@@ -47,6 +49,7 @@ pub fn deserialize_captured((data_type, data): (&str, &str)) -> anyhow::Result<E
     Ok(match data_type {
         "x11_v2" => serde_json::from_str::<X11EventData>(data)?.into(),
         "windows_v1" => serde_json::from_str::<WindowsEventData>(data)?.into(),
+        "macos_v1" => serde_json::from_str::<MacOSEventData>(data)?.into(),
         "app_usage_v2" => serde_json::from_str::<AppUsageEntry>(data)?.into(),
         "journald_v1" => serde_json::from_str::<JournaldEntry>(data)?.into(),
         "sleep_as_android_v1" => serde_json::from_str::<SleepAsAndroidEntry>(data)?.into(),
