@@ -46,7 +46,7 @@ impl ExtractInfo for MacOSEventData {
 
         for i in self.on_screen_windows.as_ref().unwrap() {
             let window = &self.windows[*i];
-            log::debug!("Yep WinCock {:?}", window);
+
             let cls = Some((window.process.name.clone(), "".to_owned()));
 
             let window_title = match window.title {

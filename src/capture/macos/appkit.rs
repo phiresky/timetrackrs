@@ -130,8 +130,6 @@ impl MacOSCapturer {
                 process_data_map.insert(procinfo.pid().as_u32() as i32, Arc::new(process_data));
             }
 
-            log::debug!("AXElementMap: {:?}", ax_elements_map);
-
             release(running_applications);
 
             let frontmost_application: *mut Object =
