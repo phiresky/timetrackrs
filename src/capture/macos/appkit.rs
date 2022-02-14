@@ -65,9 +65,6 @@ impl MacOSCapturer {
 
         let mut process_data_map: FxHashMap<i32, Arc<MacOSProcessData>> = FxHashMap::default();
 
-        let mut ax_elements_map: FxHashMap<i32, ItemRef<CFArray<*const c_void>>> =
-            FxHashMap::default();
-
         let mut system = System::new();
 
         unsafe {
