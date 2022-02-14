@@ -14,11 +14,9 @@ use core_foundation::{
     number::CFNumber,
     string::{kCFStringEncodingUTF8, CFString, CFStringGetCStringPtr, CFStringRef},
 };
-use core_graphics::{
-    window::{
-        kCGNullWindowID, kCGWindowListOptionAll, kCGWindowListOptionOnScreenOnly, CGWindowID,
-        CGWindowListCopyWindowInfo,
-    },
+use core_graphics::window::{
+    kCGNullWindowID, kCGWindowListOptionAll, kCGWindowListOptionOnScreenOnly, CGWindowID,
+    CGWindowListCopyWindowInfo,
 };
 use objc::{class, msg_send, runtime::Object, sel, sel_impl};
 use rustc_hash::FxHashMap;
@@ -27,10 +25,6 @@ use std::{
     sync::Arc,
 };
 use sysinfo::{Pid, PidExt, ProcessExt, System, SystemExt};
-
-extern "C" {
-    fn _AXUIElementGetWindow(_: AXUIElementRef, _: *mut CGWindowID) -> AXError;
-}
 
 pub struct MacOSCapturer {
     os_info: util::OsInfo,
@@ -53,88 +47,17 @@ impl MacOSCapturer {
 
     /// Gets all currently running apps that may have UIs and are visible in the dock.
     /// Reference: https://developer.apple.com/documentation/appkit/nsapplicationactivationpolicy?language=objc
-    pub fn get_windows(&mut self) -> (Option<Vec<usize>>, Vec<MacOSWindow>) {
+    pub fn get_windows(&mut self) -> Vec<MacOSWindow> {
         let MacOSCapturer {
             accessibility_permission,
             ..
         } = *self;
 
-        let mut on_screen_windows: Vec<usize> = vec![];
-
         let mut windows: Vec<MacOSWindow> = vec![];
-
-        let mut process_data_map: FxHashMap<i32, Arc<MacOSProcessData>> = FxHashMap::default();
 
         let mut system = System::new();
 
         unsafe {
-            let shared_workspace: *mut Object = msg_send![class!(NSWorkspace), sharedWorkspace];
-
-            let running_applications: *mut Object =
-                msg_send![shared_workspace, runningApplications];
-
-            let count: usize = msg_send![running_applications, count];
-
-            for i in 0..count {
-                let ns_running_application: *mut Object =
-                    msg_send![running_applications, objectAtIndex: i];
-
-                if ns_running_application.is_null() {
-                    continue;
-                }
-
-                let pid: i32 = msg_send![ns_running_application, processIdentifier];
-
-                if pid == -1 {
-                    continue;
-                }
-
-                let activation_policy: isize = msg_send![ns_running_application, activationPolicy];
-
-                // Reference: https://developer.apple.com/documentation/appkit/nsapplicationactivationpolicy/
-                if activation_policy != 0 {
-                    continue;
-                }
-
-                let pid = Pid::from_u32(pid as u32);
-                
-                system.refresh_process(pid);
-
-                let procinfo = match system.process(pid) {
-                    Some(procinfo) => procinfo,
-                    None => continue,
-                };
-
-                let parent = match procinfo.parent() {
-                    Some(parent) => parent.as_u32() as i32,
-                    None => continue,
-                };
-
-                // If the process wasn't launched by launchd
-                // it means that it's not the parent process
-                // for example it might be some chrome rendering
-                // process, but not the main chrome process
-                if parent != 1 {
-                    continue;
-                }
-
-                let process_data = MacOSProcessData {
-                    name: procinfo.name().to_string(),
-                    exe: procinfo.exe().to_string_lossy().to_string(), // tbh i don't care if your executables have filenames that are not unicode
-                    status: procinfo.status().to_string().to_string(),
-                };
-
-                process_data_map.insert(procinfo.pid().as_u32() as i32, Arc::new(process_data));
-            }
-
-            release(running_applications);
-
-            let frontmost_application: *mut Object =
-                msg_send![shared_workspace, frontmostApplication];
-
-            let frontmost_application_pid: i32 =
-                msg_send![frontmost_application, processIdentifier];
-
             let cf_array: ItemRef<CFArray<CFDictionary<CFStringRef, *const c_void>>> =
                 CFArray::from_void(CGWindowListCopyWindowInfo(
                     kCGWindowListOptionOnScreenOnly,
@@ -166,60 +89,56 @@ impl MacOSCapturer {
                 }
 
                 if let Some(pid) = pid {
-                    if let Some(process) = process_data_map.get(&pid) {
-                        macos_window.process = process.clone();
+                    let sysinfo_pid = Pid::from(pid);
+                    system.refresh_process(sysinfo_pid);
+                    if let Some(process) = system.process(sysinfo_pid) {
+                        macos_window.process = process.into(); 
+                        if accessibility_permission {
+                            let app_ref = AXUIElementCreateApplication(pid);
 
-                        if pid == frontmost_application_pid {
-                            if accessibility_permission {
-                                let app_ref = AXUIElementCreateApplication(pid);
+                            let mut ax_element_ref: *const c_void = std::ptr::null();
 
-                                let mut ax_element_ref: *const c_void = std::ptr::null();
+                            if AXUIElementCopyAttributeValue(
+                                app_ref,
+                                CFString::from_static_string(kAXFocusedWindowAttribute)
+                                    .as_concrete_TypeRef(),
+                                &mut ax_element_ref,
+                            ) == kAXErrorSuccess
+                            {
+                                let mut cf_string: *const c_void = std::ptr::null();
 
                                 if AXUIElementCopyAttributeValue(
-                                    app_ref,
-                                    CFString::from_static_string(kAXFocusedWindowAttribute)
+                                    ax_element_ref as *mut _,
+                                    CFString::from_static_string(kAXTitleAttribute)
                                         .as_concrete_TypeRef(),
-                                    &mut ax_element_ref,
+                                    &mut cf_string,
                                 ) == kAXErrorSuccess
                                 {
-                                    let mut cf_string: *const c_void = std::ptr::null();
+                                    let string = CFString::from_void(cf_string).to_string();
 
-                                    if AXUIElementCopyAttributeValue(
-                                        ax_element_ref as *mut _,
-                                        CFString::from_static_string(kAXTitleAttribute)
-                                            .as_concrete_TypeRef(),
-                                        &mut cf_string,
-                                    ) == kAXErrorSuccess
-                                    {
-                                        let string = CFString::from_void(cf_string).to_string();
+                                    macos_window.title = Some(string);
 
-                                        macos_window.title = Some(string);
-
-                                        CFRelease(cf_string);
-                                    }
-                                    CFRelease(ax_element_ref);
+                                    CFRelease(cf_string);
                                 }
-                                CFRelease(app_ref as *const _);
+                                CFRelease(ax_element_ref);
                             }
-                            on_screen_windows.push(windows.len());
-                            windows.push(macos_window);
+                            CFRelease(app_ref as *const _);
                         }
+                        windows.push(macos_window);
                     }
                 }
             }
         }
-        let on_screen_windows = if on_screen_windows.is_empty() {None} else {Some(on_screen_windows)};
-        (on_screen_windows, windows)
+        windows
     }
 }
 
 impl Capturer for MacOSCapturer {
     fn capture(&mut self) -> anyhow::Result<EventData> {
-        let (on_screen_windows, windows) = self.get_windows();
-
+        let windows = self.get_windows();
+        
         Ok(EventData::macos_v1(MacOSEventData {
             os_info: self.os_info.clone(),
-            on_screen_windows,
             windows,
             duration_since_user_input: user_idle::UserIdle::get_time()
                 .map(|e| e.duration())

@@ -1,7 +1,7 @@
 // MacOS capture types (must be cross-platform)
 use super::super::pc_common;
 use crate::prelude::*;
-
+use sysinfo::{Process, ProcessExt};
 use std::{sync::Arc, time::Duration};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,16 +26,11 @@ pub struct MacOSEventData {
     #[serde(default)]
     pub os_info: util::OsInfo,
     pub duration_since_user_input: Duration,
-    pub on_screen_windows: Option<Vec<usize>>,
     pub windows: Vec<MacOSWindow>,
 }
 
 impl ExtractInfo for MacOSEventData {
     fn extract_info(&self) -> Option<Tags> {
-        if self.on_screen_windows.is_none() {
-            return None;
-        }
-
         if pc_common::is_idle(self.duration_since_user_input) {
             return None;
         }
@@ -44,9 +39,7 @@ impl ExtractInfo for MacOSEventData {
         
         self.os_info.to_partial_general_software(&mut tags);
 
-        for i in self.on_screen_windows.as_ref().unwrap() {
-            let window = &self.windows[*i];
-
+        for window in &self.windows {
             let cls = Some((window.process.name.clone(), "".to_owned()));
 
             let window_title = match window.title {
@@ -71,7 +64,7 @@ impl ExtractInfo for MacOSEventData {
 pub struct MacOSWindow {
     pub window_id: i32,
     pub title: Option<String>,
-    pub process: Arc<MacOSProcessData>,
+    pub process: MacOSProcessData,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, TypeScriptify, Clone)]
@@ -79,4 +72,14 @@ pub struct MacOSProcessData {
     pub name: String,
     pub exe: String,
     pub status: String,
+}
+
+impl From<&Process> for MacOSProcessData {
+    fn from(other: &Process) -> Self {
+        MacOSProcessData {
+            name: other.name().to_string(),
+            exe: other.exe().to_str().unwrap_or_default().to_owned(),
+            status: other.status().to_string()
+        }
+    }
 }
