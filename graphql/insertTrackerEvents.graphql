@@ -1,0 +1,5 @@
+mutation insertEvent($data: json!, $user_agent: String!, $duration: bigint!, $timestamp: bigint!) {
+  insert_event: insert_tracker_events(objects: {data: $data, user_agent: $user_agent, duration: $duration, timestamp: $timestamp}) {
+    affected_rows
+  }
+}

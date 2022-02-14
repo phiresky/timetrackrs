@@ -236,7 +236,7 @@ impl ToSql<Text, Sqlite> for DateUtc {
     }
 }*/
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Clone)]
 pub struct NewDbEvent {
     pub id: String,
     pub timestamp_unix_ms: Timestamptz,
