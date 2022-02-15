@@ -60,26 +60,35 @@ impl ExtractInfo for MacOSEventData {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, TypeScriptify, Clone)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct MacOSWindow {
-    pub window_id: i32,
     pub title: Option<String>,
     pub process: MacOSProcessData,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, TypeScriptify, Clone)]
+#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct MacOSProcessData {
     pub name: String,
+    pub cmd: Vec<String>,
     pub exe: String,
+    pub cwd: String,
+    pub memory_kB: i64,
     pub status: String,
+    pub start_time: DateTime<Utc>,
+    pub cpu_usage: Option<f32>, // can be NaN -> null
 }
 
 impl From<&Process> for MacOSProcessData {
     fn from(other: &Process) -> Self {
         MacOSProcessData {
             name: other.name().to_string(),
-            exe: other.exe().to_str().unwrap_or_default().to_owned(),
-            status: other.status().to_string()
+            exe: other.exe().to_string_lossy().to_string(),
+            status: other.status().to_string(),
+            cmd: other.cmd().to_vec(),
+            cwd: other.cwd().to_string_lossy().to_string(),
+            memory_kB: other.memory() as i64,
+            start_time: util::unix_epoch_millis_to_date((other.start_time() as i64) * 1000),
+            cpu_usage: Some(other.cpu_usage())
         }
     }
 }

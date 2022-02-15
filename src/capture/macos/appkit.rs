@@ -28,10 +28,6 @@ use sysinfo::{Pid, PidExt, ProcessExt, System, SystemExt};
 
 pub struct MacOSCapturer {
     os_info: util::OsInfo,
-    // Using Arc<String>, so that
-    // we don't clone the string when passing it to the MacOSWindow
-    // struct.
-    window_titles: FxHashMap<i32, Arc<String>>,
     accessibility_permission: bool,
 }
 
@@ -40,7 +36,6 @@ impl MacOSCapturer {
         let accessibility_permission = unsafe { check_accessibility_permission() };
         MacOSCapturer {
             os_info: util::get_os_info(),
-            window_titles: FxHashMap::default(),
             accessibility_permission,
         }
     }
@@ -67,8 +62,6 @@ impl MacOSCapturer {
             for window in cf_array.iter() {
                 let (keys, values) = window.get_keys_and_values();
 
-                let mut macos_window = MacOSWindow::default();
-
                 let mut pid: Option<i32> = None;
 
                 for i in 0..keys.len() {
@@ -77,10 +70,6 @@ impl MacOSCapturer {
                     let key = CStr::from_ptr(key).to_str().unwrap();
 
                     match key {
-                        "kCGWindowNumber" => {
-                            macos_window.window_id =
-                                CFNumber::from_void(values[i]).to_i32().unwrap();
-                        }
                         "kCGWindowOwnerPID" => {
                             pid = CFNumber::from_void(values[i]).to_i32();
                         }
@@ -92,7 +81,8 @@ impl MacOSCapturer {
                     let sysinfo_pid = Pid::from(pid);
                     system.refresh_process(sysinfo_pid);
                     if let Some(process) = system.process(sysinfo_pid) {
-                        macos_window.process = process.into(); 
+                        let mut title: Option<String> = None;
+                       
                         if accessibility_permission {
                             let app_ref = AXUIElementCreateApplication(pid);
 
@@ -116,7 +106,7 @@ impl MacOSCapturer {
                                 {
                                     let string = CFString::from_void(cf_string).to_string();
 
-                                    macos_window.title = Some(string);
+                                    title = Some(string);
 
                                     CFRelease(cf_string);
                                 }
@@ -124,11 +114,18 @@ impl MacOSCapturer {
                             }
                             CFRelease(app_ref as *const _);
                         }
+                        
+                        let macos_window = MacOSWindow {
+                            title,
+                            process: process.into()
+                        };
+                        
                         windows.push(macos_window);
                     }
                 }
             }
         }
+        
         windows
     }
 }
