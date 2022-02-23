@@ -2,3 +2,4 @@
 pub mod appkit;
 
 pub mod types;
+pub mod peripherals;
