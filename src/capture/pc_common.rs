@@ -3,7 +3,10 @@
 use crate::prelude::*;
 use regex::Regex;
 use serde_json::Value as J;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::atomic::AtomicUsize
+};
 
 lazy_static::lazy_static! {
     static ref FORMATTED_TITLE_MATCH: Regex = Regex::new(r#"🛤([a-z]{2,5})🠚(.*)🠘"#).unwrap();
@@ -11,6 +14,9 @@ lazy_static::lazy_static! {
     static ref FORMATTED_TITLE_SPLIT: Regex = Regex::new("🙰").unwrap();
     static ref FORMATTED_TITLE_KV: Regex = Regex::new("^([a-z0-9]+)=(.*)$").unwrap();
     static ref JSON_TITLE: Regex = Regex::new(r#"\{".*[^\\]"}"#).unwrap();
+    
+    pub static ref KEYSTROKES: AtomicUsize = AtomicUsize::new(0);
+    pub static ref MOUSE_CLICKS: AtomicUsize = AtomicUsize::new(0);
 }
 
 fn match_cmdline_to_filepath(cwd: &str, cmdline: &[String]) -> anyhow::Result<String> {
