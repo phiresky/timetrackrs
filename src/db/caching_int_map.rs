@@ -65,7 +65,7 @@ impl CachingIntMap {
         }
     }
     // very shitty code. spent 2 hours figuring out how to do this get method generically
-    pub async fn get_bind2(&'c self, key: &'c str, bind1: i64, bind2: i64) -> i64 {
+    pub async fn get_bind2<'c>(&'c self, key: &'c str, bind1: i64, bind2: i64) -> i64 {
         let i: Option<i64> = self.lru.write().await.get(key).copied();
 
         match i {
