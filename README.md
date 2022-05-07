@@ -45,7 +45,7 @@ yarn install
 yarn build
 cd ..
 # build and install `timetrackrs` binary to ~/.cargo/bin
-./update-schema.sh
+./update-schemas.sh
 cargo install --path .
 ```
 
@@ -65,7 +65,7 @@ cargo install --features openssl-vendored --path .
 First, generate the dev-db needed for sqlx compilation:
 
 ```bash
-./update-schema.sh
+./update-schemas.sh
 ```
 
 To start a timetrackrs server (backend + frontend) without any capturing, you can run
