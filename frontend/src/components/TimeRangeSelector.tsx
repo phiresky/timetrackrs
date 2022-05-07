@@ -1,6 +1,5 @@
 import { observer, useLocalObservable } from "mobx-react"
 import React from "react"
-import "react-dates/initialize"
 import "react-dates/lib/css/_datepicker.css"
 import { DateRangePicker, SingleDatePicker } from "react-dates"
 import moment from "moment"
