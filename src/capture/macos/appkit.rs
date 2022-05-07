@@ -168,9 +168,6 @@ pub fn get_windows() -> (Option<i32>, Vec<MacOSWindow>) {
 
         let frontmost_application_pid: i32 = msg_send![frontmost_application, processIdentifier];
 
-        release(frontmost_application);
-        release(shared_workspace);
-
         let cf_array: ItemRef<CFArray<CFDictionary<CFStringRef, *const c_void>>> =
             CFArray::from_void(
                 CGWindowListCopyWindowInfo(kCGWindowListOptionAll, kCGNullWindowID) as *const _,
