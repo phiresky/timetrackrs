@@ -4,7 +4,8 @@
 Description=track pc usage rs
 
 [Service]
-ExecStart=%h/.cargo/bin/timetrackrs
+ExecStart=/usr/bin/env timetrackrs
+SyslogIdentifier=timetrackrs
 Restart=on-failure
 RestartSec=20
 
