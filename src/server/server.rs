@@ -52,7 +52,7 @@ pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Ne
         .or(warp::path("rule-editor"))
         .or(warp::path("tag-tree"))
         .or(warp::path("dashboard"))
-        .map(|_| warp::reply::html(include_str!("../../frontend/index.html")));
+        .map(|_| warp::reply::html(include_str!("../../frontend/dist/index.html")));
 
     let static_files = warp::path("dist")
         .and(warp::path::tail())

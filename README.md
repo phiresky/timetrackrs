@@ -45,6 +45,7 @@ yarn install
 yarn build
 cd ..
 # build and install `timetrackrs` binary to ~/.cargo/bin
+./update-schema.sh
 cargo install --path .
 ```
 
