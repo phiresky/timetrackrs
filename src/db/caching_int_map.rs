@@ -18,7 +18,7 @@ pub struct CachingIntMap {
 }
 
 type IntCache = Arc<RwLock<HashMap<String, i64>>>;
-impl CachingIntMap {
+impl<'c> CachingIntMap {
     pub async fn new(conn: SqlitePool, table: &str, cols: &str, keycol: &str) -> CachingIntMap {
         lazy_static! {
             static ref LRUS: Arc<RwLock<HashMap<String, IntCache>>> =

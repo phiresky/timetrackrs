@@ -134,7 +134,7 @@ impl<C: Connection + Send> Capturer for X11Capturer<C> {
 
         let mut windowsdata = vec![];
         if !windows.contains(&focus) {
-            println!("Focussed thing is not in window list!!");
+            println!("Focussed thing is not in window list! focus={focus}, windows={windows:?}");
         }
         for window in windows {
             let props = self.conn.list_properties(window)?.reply()?.atoms;

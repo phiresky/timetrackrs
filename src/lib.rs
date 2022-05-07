@@ -1,5 +1,3 @@
-#![feature(in_band_lifetimes)]
-#![feature(proc_macro_hygiene, decl_macro)]
 #![warn(clippy::print_stdout)]
 
 pub mod api_types;
