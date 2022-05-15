@@ -16,7 +16,7 @@ pub struct ServerConfig {
 }
 
 #[derive(RustEmbed)]
-#[folder = "frontend/dist/"]
+#[folder = "frontend/dist/assets/"]
 struct FrontendDistAssets;
 
 async fn serve_static(path: Tail) -> Result<impl Reply, Rejection> {
@@ -54,7 +54,7 @@ pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Ne
         .or(warp::path("dashboard"))
         .map(|_| warp::reply::html(include_str!("../../frontend/dist/index.html")));
 
-    let static_files = warp::path("dist")
+    let static_files = warp::path("assets")
         .and(warp::path::tail())
         .and_then(serve_static)
         .with(warp::compression::gzip());
