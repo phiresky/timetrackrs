@@ -39,41 +39,39 @@ export function ModalLink<A extends RouteArgs, Q extends QueryArgs>(p: {
 	)
 }
 
-export const MaybeModal: React.FC<{ appElement: HTMLElement }> = observer(
-	({ appElement, children }) => {
-		const store = useLocalObservable(() => {
-			const history = createHashHistory()
-			const routing = new Routing(router, new LocationService(history))
-			// modal is open if hash router path is not /
-			return {
-				history,
-				routing,
-				get isOpen() {
-					return (
-						routing.locationService.currentLocation.path.length > 0
-					)
-				},
-				close() {
-					this.history.push("/")
-				},
-			}
-		})
+export const MaybeModal: React.FC<
+	React.PropsWithChildren<{ appElement: HTMLElement }>
+> = observer(({ appElement, children }) => {
+	const store = useLocalObservable(() => {
+		const history = createHashHistory()
+		const routing = new Routing(router, new LocationService(history))
+		// modal is open if hash router path is not /
+		return {
+			history,
+			routing,
+			get isOpen() {
+				return routing.locationService.currentLocation.path.length > 0
+			},
+			close() {
+				this.history.push("/")
+			},
+		}
+	})
 
-		return (
-			<ModalContext.Provider value={store}>
-				{children}
-				{store.isOpen && (
-					<Modal
-						isOpen={true}
-						appElement={appElement}
-						onRequestClose={(_) => store.close()}
-					>
-						<RouterContext.Provider value={store.routing}>
-							<Routes />
-						</RouterContext.Provider>
-					</Modal>
-				)}
-			</ModalContext.Provider>
-		)
-	},
-)
+	return (
+		<ModalContext.Provider value={store}>
+			{children}
+			{store.isOpen && (
+				<Modal
+					isOpen={true}
+					appElement={appElement}
+					onRequestClose={(_) => store.close()}
+				>
+					<RouterContext.Provider value={store.routing}>
+						<Routes />
+					</RouterContext.Provider>
+				</Modal>
+			)}
+		</ModalContext.Provider>
+	)
+})

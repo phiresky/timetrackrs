@@ -1,10 +1,13 @@
 import { Temporal } from "@js-temporal/polyfill"
-import { TagRuleGroup, ApiTypesTS, ProgressReport } from "./server"
+import { ApiTypesTS, ProgressReport, TagRuleGroup } from "./server"
 
 type ApiTypes = { [T in ApiTypesTS["type"]]: ApiTypesTS & { type: T } }
 
-type ApiRequest<T extends keyof ApiTypes> = ApiTypes[T]["request"]
-type ApiResponse<T extends keyof ApiTypes> = ApiTypes[T]["response"]
+type ApiRequest<T extends keyof ApiTypes> = "request" extends keyof ApiTypes[T]
+	? ApiTypes[T]["request"]
+	: never
+type ApiResponse<T extends keyof ApiTypes> =
+	"response" extends keyof ApiTypes[T] ? ApiTypes[T]["response"] : never
 
 type ApiResponseO<T> = { data: T }
 
