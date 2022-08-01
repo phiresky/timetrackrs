@@ -73,5 +73,6 @@
 		"ts-node": "^10.7.0",
 		"ts-prune": "^0.10.3",
 		"vite": "^2.9.8"
-	}
+	},
+	"packageManager": "yarn@3.2.2"
 }
