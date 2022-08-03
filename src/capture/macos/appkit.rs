@@ -3,12 +3,15 @@ use crate::prelude::*;
 
 use core_foundation::{
     array::CFArray,
-    base::{FromVoid, ItemRef},
+    base::{Boolean, FromVoid, ItemRef},
     dictionary::CFDictionary,
     number::CFNumber,
-    string::{kCFStringEncodingUTF8, CFString, CFStringGetCStringPtr, CFStringRef},
+    string::{kCFStringEncodingUTF8, CFString, CFStringGetCStringPtr},
 };
-use core_graphics::window::{kCGNullWindowID, kCGWindowListOptionAll, CGWindowListCopyWindowInfo};
+use core_graphics::window::{
+    kCGNullWindowID, kCGWindowLayer, kCGWindowListOptionExcludeDesktopElements,
+    kCGWindowListOptionOnScreenOnly, CGWindowListCopyWindowInfo,
+};
 use objc::{class, msg_send, runtime::Object, sel, sel_impl};
 use rustc_hash::FxHashMap;
 use std::{
@@ -17,12 +20,20 @@ use std::{
 };
 use sysinfo::{Pid, PidExt, ProcessExt, System, SystemExt};
 
+#[link(name = "CoreGraphics", kind = "framework")]
+extern "C" {
+    pub fn CGRequestScreenCaptureAccess() -> Boolean;
+}
+
 pub struct MacOSCapturer {
     os_info: util::OsInfo,
 }
 
 impl MacOSCapturer {
     pub fn init() -> MacOSCapturer {
+        unsafe {
+            CGRequestScreenCaptureAccess();
+        }
         MacOSCapturer {
             os_info: util::get_os_info(),
         }
@@ -51,7 +62,7 @@ impl Capturer for MacOSCapturer {
 
 /// Frees any Objects
 unsafe fn release(object: *mut Object) {
-    let _: () = msg_send![object, release];
+    msg_send![object, release]
 }
 
 /// Turns an
@@ -168,12 +179,20 @@ pub fn get_windows() -> (Option<i32>, Vec<MacOSWindow>) {
 
         let frontmost_application_pid: i32 = msg_send![frontmost_application, processIdentifier];
 
-        let cf_array: ItemRef<CFArray<CFDictionary<CFStringRef, *const c_void>>> =
-            CFArray::from_void(
-                CGWindowListCopyWindowInfo(kCGWindowListOptionAll, kCGNullWindowID) as *const _,
-            );
+        let cf_array: ItemRef<CFArray<CFDictionary<CFString, *const c_void>>> =
+            CFArray::from_void(CGWindowListCopyWindowInfo(
+                kCGWindowListOptionExcludeDesktopElements | kCGWindowListOptionOnScreenOnly,
+                kCGNullWindowID,
+            ) as *const _);
 
         for window in cf_array.iter() {
+            if CFNumber::from_void(*window.get(kCGWindowLayer))
+                .to_i32()
+                .unwrap_unchecked()
+                != 0
+            {
+                continue;
+            }
             let (keys, values) = window.get_keys_and_values();
 
             let mut macos_window = MacOSWindow::default();
@@ -186,9 +205,6 @@ pub fn get_windows() -> (Option<i32>, Vec<MacOSWindow>) {
                 let key = CStr::from_ptr(key).to_str().unwrap();
 
                 match key {
-                    // Will most likely be NULL, because few applications set the
-                    // Quartz window name.
-                    // Reference: https://developer.apple.com/documentation/coregraphics/kcgwindowname?language=objc
                     "kCGWindowName" => {
                         macos_window.title = Some(CFString::from_void(values[i]).to_string());
                     }

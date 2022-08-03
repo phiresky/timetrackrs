@@ -9,6 +9,7 @@ type InternalFetcher = string
 export type EventData =
 	| { data_type: "x11_v2"; data: X11EventData }
 	| { data_type: "windows_v1"; data: WindowsEventData }
+	| { data_type: "macos_v1"; data: MacOSEventData }
 	| { data_type: "app_usage_v2"; data: AppUsageEntry }
 	| { data_type: "journald_v1"; data: JournaldEntry }
 	| { data_type: "sleep_as_android_v1"; data: SleepAsAndroidEntry }
@@ -56,6 +57,30 @@ export type WifiInterface = {
 	average_signal: number
 	bssid: string
 	connected_time: number
+}
+export type MacOSEventData = {
+	os_info: OsInfo
+	duration_since_user_input: { secs: number; nanos: number }
+	focused_window: number | null
+	windows: MacOSWindow[]
+}
+export type MacOSWindow = {
+	window_id: number
+	title: string | null
+	process: MacOSProcessData | null
+}
+export type MacOSProcessData = {
+	pid: number
+	name: string
+	bundle: string | null
+	cmd: string[]
+	exe: string
+	cwd: string
+	memory_kB: number
+	parent: number | null
+	status: string
+	start_time: DateTime<Utc>
+	cpu_usage: number | null
 }
 export type OsInfo = {
 	os_type: string
