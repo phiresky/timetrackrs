@@ -3,8 +3,8 @@
 
 use std::path::PathBuf;
 
+use futures::StreamExt;
 use futures::{never::Never, stream::FuturesUnordered};
-use futures::{StreamExt, TryStreamExt};
 
 use timetrackrs::{config::TimetrackrsConfig, prelude::*};
 use timetrackrs::{db::clear_wal_files, util::init_logging};

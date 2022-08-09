@@ -1,4 +1,5 @@
 use std::io::prelude::*;
+use std::process::Command;
 use timetrackrs::capture::*;
 
 use timetrackrs::prelude::*;
@@ -16,6 +17,9 @@ const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
     linux::types::ProcessData::type_script_ify,
     linux::types::NetworkInfo::type_script_ify,
     linux::types::WifiInterface::type_script_ify,
+    macos::types::MacOSEventData::type_script_ify,
+    macos::types::MacOSWindow::type_script_ify,
+    macos::types::MacOSProcessData::type_script_ify,
     util::OsInfo::type_script_ify,
     TagRuleGroup::type_script_ify,
     TagRuleGroupData::type_script_ify,
@@ -64,6 +68,11 @@ fn main() -> anyhow::Result<()> {
         for f in FS {
             writeln!(ofile, "{}", f())?;
         }
+        drop(ofile);
+        Command::new("yarn")
+            .args(["prettier", "--write", "src/server.d.ts"])
+            .current_dir("./frontend")
+            .status()?;
         println!("output {} types", FS.len());
     } else {
         println!("NOT IN DEBUG MODE, will not work!")
