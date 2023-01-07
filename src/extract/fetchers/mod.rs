@@ -53,13 +53,13 @@ impl From<Result<String, FetchError>> for FetchResultJson {
         match r {
             Ok(s) => FetchResultJson::Ok { value: s },
             Err(FetchError::TemporaryFailure(e, d)) => FetchResultJson::TemporaryFailure {
-                reason: format!("{}", e),
+                reason: format!("{e}"),
                 until: Timestamptz(
                     Utc::now() + chrono::Duration::from_std(d).expect("too large time"),
                 ),
             },
             Err(FetchError::PermanentFailure(e)) => FetchResultJson::PermanentFailure {
-                reason: format!("{}", e),
+                reason: format!("{e}"),
             },
         }
     }
@@ -124,15 +124,15 @@ impl SimpleFetcher for URLDomainMatcher {
         let url = get_capture(found, "url").context("Url match invalid?")?;
         let mut tags: Vec<TagValue> = Vec::new();
 
-        let url2 = Url::parse(url).with_context(|| format!("parsing url '{}'", url))?;
+        let url2 = Url::parse(url).with_context(|| format!("parsing url '{url}'"))?;
 
         let host = url2
             .host()
-            .with_context(|| format!("url has no host'{}'", url))?;
+            .with_context(|| format!("url has no host'{url}'"))?;
 
         if let url::Host::Domain(domain) = &host {
             let domain = addr::psl::List
-                .parse_domain_name(&domain)
+                .parse_domain_name(domain)
                 .map_err(|_e| anyhow::anyhow!("cant parse domain"))?;
             tags.add("browse-full-domain", domain.to_string());
             if let Some(root) = domain.root() {

@@ -151,7 +151,7 @@ mod tests {
 
         for i in 1..max {
             let filename = format!("{}/files/{}/{}", dir, i / 35, i % 35);
-            progress.update(i, Some(max), format!("Scanning file {}", filename));
+            progress.update(i, Some(max), format!("Scanning file {filename}"));
             sleep(Duration::from_millis(20)).await;
             files.push(filename);
         }
@@ -176,7 +176,7 @@ mod tests {
             copy_prog.update(
                 i as i64,
                 Some(files.len() as i64),
-                format!("Copying {}", file),
+                format!("Copying {file}"),
             );
             sleep(Duration::from_millis(rng.gen_range(400..1000))).await;
         }

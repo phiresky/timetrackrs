@@ -27,7 +27,7 @@ impl Importable for TimetrackrsImportArgs {
         let x = sqlx::query_scalar!("select count(*) as c from raw_events.events")
             .fetch_one(&mut db)
             .await?;
-        println!("have {}", x);
+        println!("have {x}");
 
         let db = Box::leak(Box::new(db)); // shh bby is ok
         let last_id = Box::leak(self.last_id.unwrap_or(0).into());

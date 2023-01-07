@@ -113,7 +113,7 @@ fn find_cap_ref(replacement: &[u8]) -> Option<CaptureRef> {
     // check with either unsafe or by parsing the number straight from &[u8].
     let cap = std::str::from_utf8(&rep[i..cap_end]).expect("valid UTF-8 capture name");
     Some(CaptureRef {
-        cap: &cap,
+        cap,
         end: cap_end,
     })
 }
@@ -135,7 +135,7 @@ fn find_cap_ref_braced(rep: &[u8], mut i: usize) -> Option<CaptureRef> {
         Ok(cap) => cap,
     };
     Some(CaptureRef {
-        cap: &cap,
+        cap,
         end: i + 1,
     })
 }

@@ -199,7 +199,7 @@ impl<C: Connection + Send> Capturer for X11Capturer<C> {
 
             let process = if let Some(pid) = pid {
                 system.refresh_process(sysinfo::Pid::from_u32(pid));
-                if let Some(procinfo) = system.process(sysinfo::Pid::from_u32(pid as u32)) {
+                if let Some(procinfo) = system.process(sysinfo::Pid::from_u32(pid)) {
                     Some(ProcessData {
                         pid: procinfo.pid().as_u32() as i32,
                         name: procinfo.name().to_string(),

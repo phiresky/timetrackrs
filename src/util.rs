@@ -15,9 +15,9 @@ pub fn unix_epoch_millis_to_date(timestamp: i64) -> DateTime<Utc> {
 pub fn iso_string_to_datetime(s: &str) -> anyhow::Result<DateTime<Utc>> {
     // https://tc39.es/proposal-temporal/docs/iso-string-ext.html
     // allow time zone suffix, e.g. 2007-12-03T10:15:30+01:00[Europe/Paris]
-    if s.ends_with("]") {
-        let splitchar = s.rfind("[").context("Invalid date, broken TZ")?;
-        let (s, tz) = (&s[0..splitchar], &s[splitchar..]);
+    if s.ends_with(']') {
+        let splitchar = s.rfind('[').context("Invalid date, broken TZ")?;
+        let (s, _tz) = (&s[0..splitchar], &s[splitchar..]);
         //let tz = chrono_tz::Tz::from_str(tz)
         //    .map_err(|e| anyhow::anyhow!("could not parse tz: {e}"))?;
 
@@ -109,7 +109,7 @@ pub fn get_os_info() -> OsInfo {
     }
 }
 
-use tracing_subscriber::{fmt, layer::SubscriberExt};
+use tracing_subscriber::{layer::SubscriberExt};
 
 pub fn init_logging() -> anyhow::Result<tracing_appender::non_blocking::WorkerGuard> {
     if std::env::var("RUST_LOG").is_err() {
@@ -160,7 +160,7 @@ where
         where
             E: de::Error,
         {
-            let iter = s.split(",").map(FromStr::from_str);
+            let iter = s.split(',').map(FromStr::from_str);
             Result::from_iter(iter).map_err(de::Error::custom)
         }
     }

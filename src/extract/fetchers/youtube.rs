@@ -112,7 +112,7 @@ impl ExternalFetcher for YoutubeFetcher {
     async fn fetch_data(&self, cache_key: &str) -> Result<String, FetchError> {
         log::debug!("querying youtube for {}", cache_key);
         let data =
-            youtube_dl::YoutubeDl::new(format!("https://www.youtube.com/watch?v={}", cache_key))
+            youtube_dl::YoutubeDl::new(format!("https://www.youtube.com/watch?v={cache_key}"))
                 .run()
                 .map_err(|e| match &e {
                     youtube_dl::Error::ExitCode { code: _, stderr }

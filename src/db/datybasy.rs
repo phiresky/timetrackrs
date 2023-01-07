@@ -33,20 +33,20 @@ pub async fn init_db_pool() -> anyhow::Result<DatyBasy> {
         tags_cache: CachingIntMap::new(db.clone(), "tags", "(text) values (?1)", "text").await,
         values_cache: CachingIntMap::new(db.clone(), "tag_values", "(text) values (?1)", "text")
             .await,
-        events_cache: CachingIntMap::new(
+        /*events_cache: CachingIntMap::new(
             db,
             "event_ids",
             "(raw_id, timestamp_unix_ms, duration_ms) values (?1, ?2, ?3)",
             "raw_id",
         )
-        .await,
+        .await,*/
     })
 }
 
 #[derive(Clone)]
 pub struct DatyBasy {
     pub db: SqlitePool,
-    events_cache: CachingIntMap,
+    // events_cache: CachingIntMap,
     tags_cache: CachingIntMap,
     values_cache: CachingIntMap,
     /// Arc<RwLock<Arc< should allow invalidating the tag rules for all clones of this datybasy
@@ -125,7 +125,7 @@ fn get_affected_timechunks_duration_ms(
     while timechunk_start <= to.0 {
         let timechunk_end = timechunk_start + interval;
         let chunk = TimeChunk::at(timechunk_start)
-            .with_context(|| format!("chunk at {:?}", timechunk_start))
+            .with_context(|| format!("chunk at {timechunk_start:?}"))
             .unwrap();
         let duration =
             to.0.min(timechunk_end)
@@ -330,7 +330,7 @@ impl DatyBasy {
         start: Timestamptz,
         end: Timestamptz,
     ) -> anyhow::Result<()> {
-        let progress = progress.child_inc(format!("extracting {:?} - {:?}", start, end));
+        let progress = progress.child_inc(format!("extracting {start:?} - {end:?}"));
         self.extract_time_range(start, end, progress)
             .await
             .with_context(|| {
@@ -353,7 +353,7 @@ impl DatyBasy {
         while date <= to_date {
             affected.push(
                 TimeChunk::at(date)
-                    .with_context(|| format!("chunk at {:?}", date))
+                    .with_context(|| format!("chunk at {date:?}"))
                     .unwrap(),
             );
             date = date + interval;
@@ -387,7 +387,7 @@ impl DatyBasy {
         .fetch_one(&self.db)
         .await
         .context("fetching currents")?;
-        if existing_range.first == None {
+        if existing_range.first.is_none() {
             return Ok(());
         }
         let from = max(
@@ -461,7 +461,7 @@ impl DatyBasy {
         let now = Instant::now();
         *total_cache_get_dur.write().unwrap() += now.elapsed();
         let _now = Instant::now();
-        let (tags, _iterations) = get_tags(&self, r, progress).await;
+        let (tags, _iterations) = get_tags(self, r, progress).await;
         //total_extract_dur += now.elapsed();
         //total_extract_iterations += iterations;
 
@@ -679,6 +679,6 @@ mod test {
             from,
             Timestamptz(from.0 + chrono::Duration::milliseconds(30000)),
         );
-        println!("resulting chunks: {:?}", res);
+        println!("resulting chunks: {res:?}");
     }
 }

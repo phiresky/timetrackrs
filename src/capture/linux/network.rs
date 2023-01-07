@@ -28,10 +28,10 @@ pub fn get_network_info() -> anyhow::Result<NetworkInfo> {
             {
                 return Ok(NetworkInfo {
                     wifi: Some(WifiInterface {
-                        ssid: parse_string(&ssid),
-                        mac: parse_hex(&mac),
-                        name: parse_string(&name).trim_end_matches('\0').to_string(),
-                        power: parse_u32(&power),
+                        ssid: parse_string(ssid),
+                        mac: parse_hex(mac),
+                        name: parse_string(name).trim_end_matches('\0').to_string(),
+                        power: parse_u32(power),
                         average_signal: parse_i8(&average_signal),
                         bssid: parse_hex(&bssid),
                         connected_time: parse_u32(&connected_time),

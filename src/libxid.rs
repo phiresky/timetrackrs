@@ -149,7 +149,7 @@ impl Generator {
     pub fn new_id_with_time(&self, t: SystemTime) -> Result<ID, IDGenerationError> {
         match t.duration_since(UNIX_EPOCH) {
             Ok(n) => Ok(self.generate(n.as_secs())),
-            Err(e) => Err(IDGenerationError(format!("{}", e))),
+            Err(e) => Err(IDGenerationError(format!("{e}"))),
         }
     }
 
@@ -226,38 +226,38 @@ impl ID {
     pub fn decode(input: &str) -> Self {
         let mut dec = [1u8; 256];
 
-        dec[48] = 0 as u8;
-        dec[49] = 1 as u8;
-        dec[50] = 2 as u8;
-        dec[51] = 3 as u8;
-        dec[52] = 4 as u8;
-        dec[53] = 5 as u8;
-        dec[54] = 6 as u8;
-        dec[55] = 7 as u8;
-        dec[56] = 8 as u8;
-        dec[57] = 9 as u8;
-        dec[97] = 10 as u8;
-        dec[98] = 11 as u8;
-        dec[99] = 12 as u8;
-        dec[100] = 13 as u8;
-        dec[101] = 14 as u8;
-        dec[102] = 15 as u8;
-        dec[103] = 16 as u8;
-        dec[104] = 17 as u8;
-        dec[105] = 18 as u8;
-        dec[106] = 19 as u8;
-        dec[107] = 20 as u8;
-        dec[108] = 21 as u8;
-        dec[109] = 22 as u8;
-        dec[110] = 23 as u8;
-        dec[111] = 24 as u8;
-        dec[112] = 25 as u8;
-        dec[113] = 26 as u8;
-        dec[114] = 27 as u8;
-        dec[115] = 28 as u8;
-        dec[116] = 29 as u8;
-        dec[117] = 30 as u8;
-        dec[118] = 31 as u8;
+        dec[48] = 0_u8;
+        dec[49] = 1_u8;
+        dec[50] = 2_u8;
+        dec[51] = 3_u8;
+        dec[52] = 4_u8;
+        dec[53] = 5_u8;
+        dec[54] = 6_u8;
+        dec[55] = 7_u8;
+        dec[56] = 8_u8;
+        dec[57] = 9_u8;
+        dec[97] = 10_u8;
+        dec[98] = 11_u8;
+        dec[99] = 12_u8;
+        dec[100] = 13_u8;
+        dec[101] = 14_u8;
+        dec[102] = 15_u8;
+        dec[103] = 16_u8;
+        dec[104] = 17_u8;
+        dec[105] = 18_u8;
+        dec[106] = 19_u8;
+        dec[107] = 20_u8;
+        dec[108] = 21_u8;
+        dec[109] = 22_u8;
+        dec[110] = 23_u8;
+        dec[111] = 24_u8;
+        dec[112] = 25_u8;
+        dec[113] = 26_u8;
+        dec[114] = 27_u8;
+        dec[115] = 28_u8;
+        dec[116] = 29_u8;
+        dec[117] = 30_u8;
+        dec[118] = 31_u8;
 
         // XXX: the code commented below generated the array above
         // let alphabet = String::from("0123456789abcdefghijklmnopqrstuv");
@@ -486,14 +486,14 @@ mod tests {
 
             assert!(
                 previous_id < id,
-                format!(
+                
                     "{} ({:?}) != {} ({:?}) {}",
                     previous_id.encode(),
                     previous_id,
                     id.encode(),
                     id,
                     i
-                )
+                
             );
 
             if i > 0 {
@@ -529,10 +529,10 @@ mod tests {
 
         assert!(
             elapsed <= limit,
-            format!(
+            
                 "Must generated {} ids id less than {} second, took {} seconds",
                 total, limit, elapsed
-            )
+            
         );
     }
 
@@ -561,10 +561,10 @@ mod tests {
 
         assert!(
             elapsed <= limit,
-            format!(
+            
                 "Must encode {} ids id less than {} second, took {} seconds",
                 total, limit, elapsed
-            )
+            
         );
     }
 
@@ -650,10 +650,10 @@ mod tests {
 
         assert!(
             elapsed <= limit,
-            format!(
+            
                 "Must decode {} ids in less than {} second, took {} seconds",
                 total, limit, elapsed
-            )
+            
         );
     }
 

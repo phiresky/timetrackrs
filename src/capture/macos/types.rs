@@ -2,10 +2,7 @@
 use super::super::pc_common;
 use crate::prelude::*;
 
-use std::{
-    sync::Arc,
-    time::Duration
-};
+use std::{sync::Arc, time::Duration};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MacOSCaptureArgs {}
@@ -13,7 +10,7 @@ pub struct MacOSCaptureArgs {}
 #[cfg(target_os = "macos")]
 impl CapturerCreator for MacOSCaptureArgs {
     fn create_capturer(&self) -> anyhow::Result<Box<dyn Capturer>> {
-        Ok(Box::new(super::appkit::MacOSCapturer::init()))        
+        Ok(Box::new(super::appkit::MacOSCapturer::init()))
     }
 }
 
@@ -36,31 +33,30 @@ pub struct MacOSEventData {
 impl ExtractInfo for MacOSEventData {
     fn extract_info(&self) -> Option<Tags> {
         let mut tags = Tags::new();
-        
+
         if pc_common::is_idle(self.duration_since_user_input) {
             return None;
         }
-        
+
         self.os_info.to_partial_general_software(&mut tags);
 
         if let Some(focused_window) = self.focused_window {
             if let Some(window) = self.windows.iter().find(|w| w.window_id == focused_window) {
                 if let Some(process) = &window.process {
-                
-                let cls = Some((process.name.clone(), "".to_owned()));
-                
-                let window_title = match window.title {
-                    Some(ref string) => string.as_str(),
-                    None => "Unknown"
-                };
-                
-                tags.extend(pc_common::match_software(
-                    window_title,
-                    &cls,
-                    Some(&process.exe),
-                    None,
-                    Some(&process.cmd)
-                ));
+                    let cls = Some((process.name.clone(), "".to_owned()));
+
+                    let window_title = match window.title {
+                        Some(ref string) => string.as_str(),
+                        None => "Unknown",
+                    };
+
+                    tags.extend(pc_common::match_software(
+                        window_title,
+                        &cls,
+                        Some(&process.exe),
+                        None,
+                        Some(&process.cmd),
+                    ));
                 }
             }
         }
@@ -76,6 +72,7 @@ pub struct MacOSWindow {
     pub process: Option<Arc<MacOSProcessData>>,
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
 pub struct MacOSProcessData {
     pub pid: i32,
@@ -84,6 +81,7 @@ pub struct MacOSProcessData {
     pub cmd: Vec<String>,
     pub exe: String,
     pub cwd: String,
+
     pub memory_kB: i64,
     pub parent: Option<i32>,
     pub status: String,

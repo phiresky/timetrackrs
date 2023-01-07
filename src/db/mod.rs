@@ -15,7 +15,7 @@ fn dbs_list() -> &'static [&'static str] {
 pub async fn clear_wal_files(db: &SqlitePool) -> anyhow::Result<()> {
     log::debug!("running wal_checkpoint(truncate)");
     for attachdb in dbs_list() {
-        sqlx::query(&format!("pragma {}.wal_checkpoint(truncate);", attachdb))
+        sqlx::query(&format!("pragma {attachdb}.wal_checkpoint(truncate);"))
             .execute(db)
             .await?;
     }
@@ -29,7 +29,7 @@ pub async fn connect(pool_size: Option<u32>) -> anyhow::Result<SqlitePool> {
     .await
 }
 pub async fn connect_dir(dir: String, pool_size: Option<u32>) -> anyhow::Result<SqlitePool> {
-    let main = format!("{}/lock.sqlite3", dir);
+    let main = format!("{dir}/lock.sqlite3");
     log::debug!("Connecting to db at {}", dir);
     let db = SqlitePoolOptions::new()
         .max_connections(pool_size.unwrap_or(10))
@@ -47,14 +47,13 @@ pub async fn connect_dir(dir: String, pool_size: Option<u32>) -> anyhow::Result<
                 for attachdb in dbs_list() {
                     let connn: &mut SqliteConnection = conn;
                     sqlx::query(&format!(
-                        "ATTACH DATABASE '{}/{}.sqlite3' as {}",
-                        dir, attachdb, attachdb
+                        "ATTACH DATABASE '{dir}/{attachdb}.sqlite3' as {attachdb}"
                     ))
                     .execute(connn)
                     .await?;
                     set_pragmas(conn, Some(attachdb))
                         .await
-                        .with_context(|| format!("set pragmas for {}", attachdb))
+                        .with_context(|| format!("set pragmas for {attachdb}"))
                         .map_err(|e| {
                             /*let b: Box<(dyn std::error::Error + Sync + std::marker::Send + 'static)> =
                             Box::new(std::error::Error::from(e));*/
@@ -71,7 +70,7 @@ pub async fn connect_dir(dir: String, pool_size: Option<u32>) -> anyhow::Result<
                 .create_if_missing(true),
         )
         .await
-        .with_context(|| format!("Establishing connection to db {}", main))?;
+        .with_context(|| format!("Establishing connection to db {main}"))?;
     let migrator = sqlx::migrate!();
     log::info!("Running {} migrations ", migrator.iter().count());
     migrator.run(&db).await.context("running migrations")?;
@@ -79,45 +78,45 @@ pub async fn connect_dir(dir: String, pool_size: Option<u32>) -> anyhow::Result<
 }
 pub async fn set_pragmas(db: &mut SqliteConnection, schema: Option<&str>) -> anyhow::Result<()> {
     let want_page_size = 32768;
-    let prefix = schema.map(|s| format!("{}.", s)).unwrap_or_default();
+    let prefix = schema.map(|s| format!("{s}.")).unwrap_or_default();
 
-    db.execute(format!("pragma {}busy_timeout = 5000;", prefix).as_str())
+    db.execute(format!("pragma {prefix}busy_timeout = 5000;").as_str())
         .await
         .context("setup pragma 1")?;
-    db.execute(format!("pragma {}page_size = {};", prefix, want_page_size).as_str())
+    db.execute(format!("pragma {prefix}page_size = {want_page_size};").as_str())
         .await
         .context("setup pragma 1")?;
-    db.execute(format!("pragma {}foreign_keys = on;", prefix).as_str())
+    db.execute(format!("pragma {prefix}foreign_keys = on;").as_str())
         .await
         .context("setup pragma 2")?;
-    db.execute(format!("pragma {}temp_store = memory;", prefix).as_str())
+    db.execute(format!("pragma {prefix}temp_store = memory;").as_str())
         .await
         .context("setup pragma 3")?;
-    db.execute(format!("pragma {}journal_mode = WAL;", prefix).as_str())
+    db.execute(format!("pragma {prefix}journal_mode = WAL;").as_str())
         .await
         .context("setup pragma 4")?;
-    db.execute(format!("pragma {}wal_autocheckpoint = 20;", prefix).as_str())
+    db.execute(format!("pragma {prefix}wal_autocheckpoint = 20;").as_str())
         .await
         .context("setup pragma 4b")?;
-    db.execute(format!("pragma {}synchronous = normal;", prefix).as_str())
+    db.execute(format!("pragma {prefix}synchronous = normal;").as_str())
         .await
         .context("setup pragma 5")?;
-    db.execute(format!("pragma {}mmap_size = 30000000000;", prefix).as_str())
+    db.execute(format!("pragma {prefix}mmap_size = 30000000000;").as_str())
         .await
         .context("setup pragma 6")?;
     let dbb: &mut SqliteConnection = db;
-    let page_size: i64 = sqlx::query_scalar(format!("pragma {}page_size;", prefix).as_str())
+    let page_size: i64 = sqlx::query_scalar(format!("pragma {prefix}page_size;").as_str())
         .fetch_one(dbb)
         .await?;
     let dbb: &mut SqliteConnection = db;
     let journal_mode: String =
-        sqlx::query_scalar(format!("pragma {}journal_mode;", prefix).as_str())
+        sqlx::query_scalar(format!("pragma {prefix}journal_mode;").as_str())
             .fetch_one(dbb)
             .await?;
     if page_size != want_page_size || journal_mode != "wal" {
         log::info!("vaccuuming db to ensure page size and journal mode");
         let dbb: &mut SqliteConnection = db;
-        sqlx::query(format!("pragma {}journal_mode = DELETE;", prefix).as_str())
+        sqlx::query(format!("pragma {prefix}journal_mode = DELETE;").as_str())
             .execute(dbb)
             .await
             .context("setup pragma 7")?;
@@ -127,13 +126,13 @@ pub async fn set_pragmas(db: &mut SqliteConnection, schema: Option<&str>) -> any
             .await
             .context("setup pragma 8")?;
         let dbb: &mut SqliteConnection = db;
-        sqlx::query(format!("pragma {}journal_mode = WAL;", prefix).as_str())
+        sqlx::query(format!("pragma {prefix}journal_mode = WAL;").as_str())
             .execute(dbb)
             .await
             .context("setup pragma 9")?;
     }
     let dbb: &mut SqliteConnection = db;
-    sqlx::query(format!("pragma {}auto_vacuum = full", prefix).as_str())
+    sqlx::query(format!("pragma {prefix}auto_vacuum = full").as_str())
         .execute(dbb)
         .await
         .context("setup pragma 10")?;

@@ -64,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
         None => timetrackrs::config::default_config(),
     };
 
-    println!("Configuration: {:#?}", config);
+    println!("Configuration: {config:#?}");
 
     let features: FuturesUnordered<JoinHandle<anyhow::Result<Never>>> = FuturesUnordered::new();
 

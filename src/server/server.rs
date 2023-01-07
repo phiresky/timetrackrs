@@ -66,7 +66,7 @@ pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Ne
         .recover(handle_error);
 
     let futures = config.listen.iter().map(|listen: &String| {
-        println!("starting server at http://{}", listen);
+        println!("starting server at http://{listen}");
         let listen = listen.to_string();
         let routes = routes.clone();
         async move {
@@ -74,7 +74,7 @@ pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Ne
                 .try_bind_ephemeral(
                     listen
                         .parse::<SocketAddr>()
-                        .with_context(|| format!("Could not parse listen address {}", listen))?,
+                        .with_context(|| format!("Could not parse listen address {listen}"))?,
                 )
                 .context("Could not bind to address")?;
             fut.await;

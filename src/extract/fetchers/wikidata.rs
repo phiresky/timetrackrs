@@ -75,12 +75,12 @@ impl ExternalFetcher for WikidataIdFetcher {
             .map(|e| {
                 e.root().map(|root| {
                     vec![
-                        format!("http://{}", root),
-                        format!("https://{}", root),
-                        format!("http://{}/", root),
-                        format!("https://{}/", root),
-                        format!("http://www.{}", root),
-                        format!("https://www.{}/", root),
+                        format!("http://{root}"),
+                        format!("https://{root}"),
+                        format!("http://{root}/"),
+                        format!("https://{root}/"),
+                        format!("http://www.{root}"),
+                        format!("https://www.{root}/"),
                     ]
                 })
             })
@@ -91,18 +91,17 @@ impl ExternalFetcher for WikidataIdFetcher {
         let urlinner: String = exact_domain_urls
             .iter()
             .chain(main_domain_urls.iter())
-            .map(|e| format!("<{}>", e))
+            .map(|e| format!("<{e}>"))
             .join(" ");
         let query = format!(
             r#"
             SELECT distinct ?service ?serviceLabel ?website_url WHERE {{
                 # service has official website url x
                 ?service wdt:P856 ?website_url.
-                VALUES ?website_url {{ {} }}
+                VALUES ?website_url {{ {urlinner} }}
                 SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en" }}
             }}                    
-            "#,
-            urlinner
+            "#
         );
         log::trace!("full sparql query: {}", query);
 
@@ -206,11 +205,10 @@ impl ExternalFetcher for WikidataCategoryFetcher {
             r#"
             SELECT ?category ?categoryLabel WHERE {{
                 # X instance of Y
-                wd:{} wdt:P31 ?category.
+                wd:{cache_key} wdt:P31 ?category.
                 SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en" }}
             }}
-            "#,
-            cache_key
+            "#
         );
         log::trace!("full sparql query: {}", query);
 

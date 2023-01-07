@@ -106,7 +106,7 @@ impl X11WindowData {
             .get("WM_CLASS")
             .and_then(|e| match e {
                 J::String(cls) => {
-                    let v = split_zero(&cls);
+                    let v = split_zero(cls);
                     Some((v[0].clone(), v[1].clone()))
                 }
                 _ => None,

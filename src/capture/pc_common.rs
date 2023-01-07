@@ -37,7 +37,7 @@ fn match_cmdline_to_filepath(cwd: &str, cmdline: &[String]) -> anyhow::Result<St
  * todo: smarter logic based on open program category?
  */
 pub fn is_idle(duration: Duration) -> bool {
-    return duration > Duration::from_secs(120);
+    duration > Duration::from_secs(120)
 }
 
 /**
@@ -86,7 +86,7 @@ pub fn match_software(
             kv
         };
         for (k, v) in &kv {
-            tags.add(format!("title-match-{}-{}", category, k), v);
+            tags.add(format!("title-match-{category}-{k}"), v);
         }
     }
     if let Some(m) = JSON_TITLE.find(window_title) {
@@ -101,9 +101,9 @@ pub fn match_software(
                     let txtv = match v {
                         // no "" around string
                         J::String(s) => s.to_string(),
-                        any => format!("{}", any),
+                        any => format!("{any}"),
                     };
-                    tags.add(format!("title-match-{}-{}", category, k), txtv);
+                    tags.add(format!("title-match-{category}-{k}"), txtv);
                 }
             }
         }
