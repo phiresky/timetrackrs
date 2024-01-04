@@ -84,14 +84,10 @@ impl Importable for JournaldImportArgs {
             let boot_id = cap.name("boot_id").unwrap().as_str();
             let start = cap.name("start").unwrap().as_str();
             let end = cap.name("end").unwrap().as_str();
-            let start = DateTime::<Utc>::from_utc(
-                NaiveDateTime::parse_from_str(start, "%Y-%m-%d %H:%M:%S")?,
-                Utc,
-            );
-            let end = DateTime::<Utc>::from_utc(
-                NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?,
-                Utc,
-            );
+            let start =
+                Utc.from_utc_datetime(&NaiveDateTime::parse_from_str(start, "%Y-%m-%d %H:%M:%S")?);
+            let end =
+                Utc.from_utc_datetime(&NaiveDateTime::parse_from_str(end, "%Y-%m-%d %H:%M:%S")?);
             outs.push(
                 CreateNewDbEvent {
                     id: format!("{boot_id}.powerup"),

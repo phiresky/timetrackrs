@@ -155,9 +155,8 @@ impl TimeChunk {
         format!("{}", self.0.format("%F-%R"))
     }
     fn from_string(s: &str) -> anyhow::Result<TimeChunk> {
-        let time = DateTime::from_utc(
-            NaiveDateTime::parse_from_str(s, "%F-%R").context("timechunk parser")?,
-            Utc,
+        let time = Utc.from_utc_datetime(
+            &NaiveDateTime::parse_from_str(s, "%F-%R").context("timechunk parser")?,
         );
 
         TimeChunk::at(time)

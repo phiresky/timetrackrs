@@ -3,9 +3,8 @@ use std::{fmt::Display, iter::FromIterator, str::FromStr};
 
 pub fn unix_epoch_millis_to_date(timestamp: i64) -> DateTime<Utc> {
     let timestamp_s = timestamp / 1000;
-    let timestamp_us = (timestamp % 1000) * 1_000_000;
-    let naive_datetime = NaiveDateTime::from_timestamp(timestamp_s, timestamp_us as u32);
-    DateTime::from_utc(naive_datetime, Utc)
+    let timestamp_us = ((timestamp % 1000) * 1_000_000) as u32;
+    DateTime::<Utc>::from_timestamp(timestamp_s, timestamp_us).expect("impssible")
 }
 
 /*fn timestamp_to_iso_string(timestamp: i64) -> String {
@@ -28,13 +27,6 @@ pub fn iso_string_to_datetime(s: &str) -> anyhow::Result<DateTime<Utc>> {
     Ok(DateTime::<chrono::FixedOffset>::parse_from_rfc3339(s)
         .context("iso_string_to_datetime")?
         .with_timezone(&chrono::Utc))
-}
-
-pub fn iso_string_to_date(s: &str) -> anyhow::Result<Date<Utc>> {
-    Ok(Date::from_utc(
-        NaiveDate::parse_from_str(s, "%F").context("iso_string_to_date")?,
-        Utc,
-    ))
 }
 
 pub fn random_uuid() -> String {
