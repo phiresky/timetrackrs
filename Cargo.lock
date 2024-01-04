@@ -3441,6 +3441,7 @@ dependencies = [
 [[package]]
 name = "sqlx"
 version = "0.7.3"
+source = "git+https://github.com/phiresky/sqlx.git#9043b0451e8719adde99b05361895f6b07163962"
 dependencies = [
  "sqlx-core",
  "sqlx-macros",
@@ -3452,6 +3453,7 @@ dependencies = [
 [[package]]
 name = "sqlx-core"
 version = "0.7.3"
+source = "git+https://github.com/phiresky/sqlx.git#9043b0451e8719adde99b05361895f6b07163962"
 dependencies = [
  "ahash 0.8.7",
  "atoi",
@@ -3491,6 +3493,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros"
 version = "0.7.3"
+source = "git+https://github.com/phiresky/sqlx.git#9043b0451e8719adde99b05361895f6b07163962"
 dependencies = [
  "proc-macro2 1.0.75",
  "quote 1.0.35",
@@ -3502,6 +3505,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros-core"
 version = "0.7.3"
+source = "git+https://github.com/phiresky/sqlx.git#9043b0451e8719adde99b05361895f6b07163962"
 dependencies = [
  "atomic-write-file",
  "dotenvy",
@@ -3526,6 +3530,7 @@ dependencies = [
 [[package]]
 name = "sqlx-mysql"
 version = "0.7.3"
+source = "git+https://github.com/phiresky/sqlx.git#9043b0451e8719adde99b05361895f6b07163962"
 dependencies = [
  "atoi",
  "base64 0.21.5",
@@ -3566,6 +3571,7 @@ dependencies = [
 [[package]]
 name = "sqlx-postgres"
 version = "0.7.3"
+source = "git+https://github.com/phiresky/sqlx.git#9043b0451e8719adde99b05361895f6b07163962"
 dependencies = [
  "atoi",
  "base64 0.21.5",
@@ -3603,6 +3609,7 @@ dependencies = [
 [[package]]
 name = "sqlx-sqlite"
 version = "0.7.3"
+source = "git+https://github.com/phiresky/sqlx.git#9043b0451e8719adde99b05361895f6b07163962"
 dependencies = [
  "atoi",
  "flume",

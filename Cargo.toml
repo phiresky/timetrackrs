@@ -60,7 +60,7 @@ rust-crypto = "0.2.36"
 rust-embed = {version = "8.2.0", features = ["compression"]}
 rustc-hash = "1.1.0"
 serde_regex = "1.1.0"
-sqlx = {version = "0.7.3", features = ["sqlite", "any", "runtime-tokio-native-tls", "json"], path = "../sqlx"}
+sqlx = {version = "0.7.3", features = ["sqlite", "any", "runtime-tokio-native-tls", "json"], git = "https://github.com/phiresky/sqlx.git"}
 structopt = "0.3.26"
 tar = "0.4.40"
 tempfile = "3.9.0"
