@@ -9,9 +9,6 @@ use crate::prelude::*;
 
 use serde_json::{json, Value as J};
 use std::collections::{BTreeMap, HashMap};
-use sysinfo::PidExt;
-use sysinfo::ProcessExt;
-use sysinfo::SystemExt;
 use x11rb::connection::Connection;
 use x11rb::connection::RequestConnection;
 use x11rb::protocol::xproto::get_property;
@@ -204,8 +201,12 @@ impl<C: Connection + Send> Capturer for X11Capturer<C> {
                         pid: procinfo.pid().as_u32() as i32,
                         name: procinfo.name().to_string(),
                         cmd: procinfo.cmd().to_vec(),
-                        exe: procinfo.exe().to_string_lossy().to_string(), // tbh i don't care if your executables have filenames that are not unicode
-                        cwd: procinfo.cwd().to_string_lossy().to_string(),
+                        exe: procinfo
+                            .exe()
+                            .map(|path| path.to_string_lossy().to_string()), // tbh i don't care if your executables have filenames that are not unicode
+                        cwd: procinfo
+                            .cwd()
+                            .map(|path| path.to_string_lossy().to_string()),
                         memory_kB: procinfo.memory() as i64,
                         parent: procinfo.parent().map(|p| p.as_u32() as i32),
                         status: procinfo.status().to_string().to_string(),

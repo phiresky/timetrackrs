@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use futures::never::Never;
-use hyper::StatusCode;
+use warp::http::StatusCode;
 use warp::Filter;
 
 use crate::prelude::*;

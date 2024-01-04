@@ -61,8 +61,8 @@ pub struct ProcessData {
     pub pid: i32,
     pub name: String,
     pub cmd: Vec<String>,
-    pub exe: String,
-    pub cwd: String,
+    pub exe: Option<String>,
+    pub cwd: Option<String>,
     pub memory_kB: i64,
     pub parent: Option<i32>,
     pub status: String,
@@ -147,8 +147,12 @@ impl ExtractInfo for X11EventData {
                     tags.extend(super::super::pc_common::match_software(
                         &window_title,
                         &cls,
-                        w.process.as_ref().map(|p| p.exe.as_ref()),
-                        w.process.as_ref().map(|p| p.cwd.as_ref()),
+                        w.process
+                            .as_ref()
+                            .and_then(|p| p.exe.as_ref().map(|e| e.as_ref())),
+                        w.process
+                            .as_ref()
+                            .and_then(|p| p.cwd.as_ref().map(|e| e.as_ref())),
                         w.process.as_ref().map(|p| p.cmd.as_ref()),
                     ));
                 }

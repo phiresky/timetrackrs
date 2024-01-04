@@ -33,7 +33,7 @@ pub async fn connect_dir(dir: String, pool_size: Option<u32>) -> anyhow::Result<
     log::debug!("Connecting to db at {}", dir);
     let db = SqlitePoolOptions::new()
         .max_connections(pool_size.unwrap_or(10))
-        .after_connect(move |conn| {
+        .after_connect(move |conn, _meta| {
             let dir = dir.clone();
             Box::pin(async move {
                 set_pragmas(conn, None)
@@ -109,10 +109,9 @@ pub async fn set_pragmas(db: &mut SqliteConnection, schema: Option<&str>) -> any
         .fetch_one(dbb)
         .await?;
     let dbb: &mut SqliteConnection = db;
-    let journal_mode: String =
-        sqlx::query_scalar(format!("pragma {prefix}journal_mode;").as_str())
-            .fetch_one(dbb)
-            .await?;
+    let journal_mode: String = sqlx::query_scalar(format!("pragma {prefix}journal_mode;").as_str())
+        .fetch_one(dbb)
+        .await?;
     if page_size != want_page_size || journal_mode != "wal" {
         log::info!("vaccuuming db to ensure page size and journal mode");
         let dbb: &mut SqliteConnection = db;

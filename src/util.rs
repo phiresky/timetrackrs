@@ -38,7 +38,7 @@ pub fn iso_string_to_date(s: &str) -> anyhow::Result<Date<Utc>> {
 }
 
 pub fn random_uuid() -> String {
-    uuid::Uuid::new_v4().to_hyphenated().to_string()
+    uuid::Uuid::new_v4().hyphenated().to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TypeScriptify)]
@@ -109,7 +109,7 @@ pub fn get_os_info() -> OsInfo {
     }
 }
 
-use tracing_subscriber::{layer::SubscriberExt};
+use tracing_subscriber::layer::SubscriberExt;
 
 pub fn init_logging() -> anyhow::Result<tracing_appender::non_blocking::WorkerGuard> {
     if std::env::var("RUST_LOG").is_err() {

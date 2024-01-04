@@ -604,13 +604,13 @@ impl DatyBasy {
                 "delete from extracted.extracted_chunks where timechunk = ?",
                 timechunk
             )
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await
             .context("Could not remove stale events")?;
 
             for ((tag, value), duration_ms) in events.into_iter() {
                 sqlx::query!("insert into extracted.extracted_chunks (timechunk, tag, value, duration_ms) values (?, ?, ?, ?)", timechunk, tag, value, duration_ms)
-                    .execute(&mut tx)
+                    .execute(&mut *tx)
                     .await.context("inserting extracted events")?;
                 updated += 1;
             }
@@ -655,7 +655,7 @@ impl DatyBasy {
         let mut db = self.db.begin().await?;
         for event in &events {
             let res = sqlx::query!("insert or ignore into raw_events.events (id, timestamp_unix_ms, data_type, duration_ms, data) values (?, ?, ?, ?, ?)",
-            event.id, event.timestamp_unix_ms, event.data_type, event.duration_ms, event.data).execute(&mut db).await.context("could not insert event")?;
+            event.id, event.timestamp_unix_ms, event.data_type, event.duration_ms, event.data).execute(&mut *db).await.context("could not insert event")?;
             inserted += res.rows_affected();
         }
         db.commit().await?;

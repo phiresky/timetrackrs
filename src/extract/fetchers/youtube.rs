@@ -144,7 +144,9 @@ impl ExternalFetcher for YoutubeFetcher {
         let d: YoutubeDlOutput = serde_json::from_str(data).context("serde")?;
         let mut tags: Vec<TagValue> = Vec::new();
         if let YoutubeDlOutput::SingleVideo(sv) = d {
-            tags.add("video-title", sv.title);
+            if let Some(u) = sv.title {
+                tags.add("video-title", u);
+            }
             if let Some(u) = sv.uploader_id {
                 tags.add("youtube-uploader", u)
             }
