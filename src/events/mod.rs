@@ -12,6 +12,7 @@ pub enum EventData {
     app_usage_v2(AppUsageEntry),
     journald_v1(JournaldEntry),
     sleep_as_android_v1(SleepAsAndroidEntry),
+    sway_v1(SwayEventData),
 }
 
 // todo: maybe borrow more here
@@ -27,6 +28,7 @@ impl std::convert::TryFrom<CreateNewDbEvent> for NewDbEvent {
     type Error = anyhow::Error;
 
     fn try_from(value: CreateNewDbEvent) -> Result<Self, Self::Error> {
+        // this can't be easily auto-generated because of the serde_json::to_string of the inner data type
         let (data_type, data) = match &value.data {
             EventData::x11_v2(d) => ("x11_v2", serde_json::to_string(d)?),
             EventData::windows_v1(d) => ("windows_v1", serde_json::to_string(d)?),
@@ -34,6 +36,7 @@ impl std::convert::TryFrom<CreateNewDbEvent> for NewDbEvent {
             EventData::app_usage_v2(d) => ("app_usage_v2", serde_json::to_string(d)?),
             EventData::journald_v1(d) => ("journald_v1", serde_json::to_string(d)?),
             EventData::sleep_as_android_v1(d) => ("sleep_as_android_v1", serde_json::to_string(d)?),
+            EventData::sway_v1(d) => ("sway_v1", serde_json::to_string(d)?),
         };
         Ok(NewDbEvent {
             id: value.id,
@@ -53,6 +56,7 @@ pub fn deserialize_captured((data_type, data): (&str, &str)) -> anyhow::Result<E
         "app_usage_v2" => serde_json::from_str::<AppUsageEntry>(data)?.into(),
         "journald_v1" => serde_json::from_str::<JournaldEntry>(data)?.into(),
         "sleep_as_android_v1" => serde_json::from_str::<SleepAsAndroidEntry>(data)?.into(),
+        "sway_v1" => serde_json::from_str::<SwayEventData>(data)?.into(),
         _ => anyhow::bail!("unknown data type {}", data_type),
     })
 }

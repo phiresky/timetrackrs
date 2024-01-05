@@ -40,8 +40,9 @@ impl MacOSCapturer {
     }
 }
 
+#[async_trait]
 impl Capturer for MacOSCapturer {
-    fn capture(&mut self) -> anyhow::Result<EventData> {
+    async fn capture(&mut self) -> anyhow::Result<EventData> {
         let (focused_window, windows) = get_windows();
 
         Ok(EventData::macos_v1(MacOSEventData {

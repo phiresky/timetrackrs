@@ -4,7 +4,7 @@
 
 #![allow(non_snake_case)]
 
-use super::types::*;
+use super::x11_types::*;
 use crate::prelude::*;
 
 use serde_json::{json, Value as J};
@@ -99,8 +99,9 @@ pub fn init(options: X11CaptureArgs) -> anyhow::Result<X11Capturer<impl Connecti
     })
 }
 
+#[async_trait]
 impl<C: Connection + Send> Capturer for X11Capturer<C> {
-    fn capture(&mut self) -> anyhow::Result<EventData> {
+    async fn capture(&mut self) -> anyhow::Result<EventData> {
         let mut system = sysinfo::System::new();
         let NET_CLIENT_LIST = self.atom("_NET_CLIENT_LIST")?;
         let NET_CURRENT_DESKTOP = self.atom("_NET_CURRENT_DESKTOP")?;
