@@ -5,6 +5,7 @@
 #![allow(non_snake_case)]
 
 use super::x11_types::*;
+use crate::capture::process::get_process_data;
 use crate::prelude::*;
 
 use serde_json::{json, Value as J};
@@ -159,7 +160,7 @@ impl<C: Connection + Send> Capturer for X11Capturer<C> {
                     pid = val
                         .value32()
                         .map(|e| e.collect::<Vec<_>>())
-                        .map(|e| single(&e));
+                        .map(|e| single(&e) as usize);
                 }
                 let pval = match (prop_name.as_str(), prop_type.as_str(), val.format) {
                     (_, "UTF8_STRING", _) | (_, "STRING", _) => {
@@ -196,38 +197,18 @@ impl<C: Connection + Send> Capturer for X11Capturer<C> {
             }
 
             let process = if let Some(pid) = pid {
-                system.refresh_process(sysinfo::Pid::from_u32(pid));
-                if let Some(procinfo) = system.process(sysinfo::Pid::from_u32(pid)) {
-                    Some(ProcessData {
-                        pid: procinfo.pid().as_u32() as i32,
-                        name: procinfo.name().to_string(),
-                        cmd: procinfo.cmd().to_vec(),
-                        exe: procinfo
-                            .exe()
-                            .map(|path| path.to_string_lossy().to_string()), // tbh i don't care if your executables have filenames that are not unicode
-                        cwd: procinfo
-                            .cwd()
-                            .map(|path| path.to_string_lossy().to_string()),
-                        memory_kB: procinfo.memory() as i64,
-                        parent: procinfo.parent().map(|p| p.as_u32() as i32),
-                        status: procinfo.status().to_string().to_string(),
-                        start_time: util::unix_epoch_millis_to_date(
-                            (procinfo.start_time() as i64) * 1000,
-                        ),
-                        cpu_usage: Some(procinfo.cpu_usage()),
-                    })
-                } else {
-                    println!(
-                        "could not get process by pid {} for window {} ({})",
-                        pid,
-                        window,
-                        json!(&propmap)
-                    );
-                    None
-                }
+                get_process_data(&mut system, pid)
             } else {
                 None
             };
+            if let None = process {
+                println!(
+                    "could not get process by pid {:?} for window {} ({})",
+                    pid,
+                    window,
+                    json!(&propmap)
+                );
+            }
 
             let geo = self.conn.get_geometry(window)?.reply()?;
             let coords = self

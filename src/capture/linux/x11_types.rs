@@ -1,6 +1,5 @@
 // x11 capture types (must be cross-platform)
-use crate::prelude::*;
-use chrono::DateTime;
+use crate::{capture::process::ProcessData, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as J;
 use std::collections::BTreeMap;
@@ -54,20 +53,6 @@ pub struct X11WindowGeometry {
     pub y: i32,
     pub width: i32,
     pub height: i32,
-}
-#[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]
-#[allow(non_snake_case)]
-pub struct ProcessData {
-    pub pid: i32,
-    pub name: String,
-    pub cmd: Vec<String>,
-    pub exe: Option<String>,
-    pub cwd: Option<String>,
-    pub memory_kB: i64,
-    pub parent: Option<i32>,
-    pub status: String,
-    pub start_time: DateTime<Utc>,
-    pub cpu_usage: Option<f32>, // can be NaN -> null
 }
 
 #[derive(Debug, Serialize, Deserialize, TypeScriptify, Clone)]

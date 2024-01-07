@@ -1,6 +1,7 @@
 pub mod linux;
 pub mod macos;
 pub mod pc_common;
+pub mod process;
 pub mod windows;
 use std::time::Duration;
 
@@ -82,17 +83,23 @@ pub async fn capture_loop(db: DatyBasy, config: CaptureConfig) -> anyhow::Result
         log::info!("sleeping {}s", config.interval.as_secs());
         interval.tick().await;
 
-        let data = c.capture().await?;
-        let act = CreateNewDbEvent {
-            id: idgen.new_id().unwrap().encode(),
-            timestamp: Utc::now(),
-            duration_ms: config.interval.as_millis() as i64,
-            data,
-        };
-        let ins: NewDbEvent = act.try_into()?;
+        match c.capture().await {
+            Ok(data) => {
+                let act = CreateNewDbEvent {
+                    id: idgen.new_id().unwrap().encode(),
+                    timestamp: Utc::now(),
+                    duration_ms: config.interval.as_millis() as i64,
+                    data,
+                };
+                let ins: NewDbEvent = act.try_into()?;
 
-        db.insert_events_if_needed(vec![ins])
-            .await
-            .context("Could not insert captured event")?;
+                db.insert_events_if_needed(vec![ins])
+                    .await
+                    .context("Could not insert captured event")?;
+            }
+            Err(e) => {
+                log::error!("Could not capture event: {}", e);
+            }
+        }
     }
 }

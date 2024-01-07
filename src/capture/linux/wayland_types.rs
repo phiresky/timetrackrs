@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{capture::process::ProcessData, prelude::*};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,8 +25,12 @@ impl CapturerCreator for WaylandCaptureArgs {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwayEventData {
+    pub os_info: util::OsInfo,
+    pub ms_since_user_input: u32,
+    pub network: Option<NetworkInfo>,
     /// response of swaymsg -t get_tree command
-    pub tree: serde_json::Value,
+    pub window_tree: serde_json::Value,
+    pub processes: Vec<ProcessData>,
 }
 
 impl ExtractInfo for SwayEventData {
