@@ -13,6 +13,7 @@ pub enum EventData {
     journald_v1(JournaldEntry),
     sleep_as_android_v1(SleepAsAndroidEntry),
     sway_v1(SwayEventData),
+    hyprland_v1(HyprlandEventData),
 }
 
 // todo: maybe borrow more here
@@ -37,6 +38,7 @@ impl std::convert::TryFrom<CreateNewDbEvent> for NewDbEvent {
             EventData::journald_v1(d) => ("journald_v1", serde_json::to_string(d)?),
             EventData::sleep_as_android_v1(d) => ("sleep_as_android_v1", serde_json::to_string(d)?),
             EventData::sway_v1(d) => ("sway_v1", serde_json::to_string(d)?),
+            EventData::hyprland_v1(d) => ("hyprland_v1", serde_json::to_string(d)?),
         };
         Ok(NewDbEvent {
             id: value.id,
