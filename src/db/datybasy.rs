@@ -103,7 +103,7 @@ impl ExtractedChunks {
             event.timestamp,
             Timestamptz(event.timestamp.0 + chrono::Duration::milliseconds(event.duration_ms)),
         ) {
-            let hm = self.data.entry(chunk).or_insert(HashMap::new());
+            let hm = self.data.entry(chunk).or_default();
             for tag in &event.tags {
                 *hm.entry(*tag).or_insert(0) += duration_ms;
             }
@@ -356,7 +356,7 @@ impl DatyBasy {
                     .with_context(|| format!("chunk at {date:?}"))
                     .unwrap(),
             );
-            date = date + interval;
+            date += interval;
         }
         affected
     }

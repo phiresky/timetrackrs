@@ -82,13 +82,7 @@ impl ExtractInfo for SwayEventData {
                             } else {
                                 None
                             }
-                        } else if let Some(app_id) =
-                            focused_window.get("app_id").and_then(|id| id.as_str())
-                        {
-                            Some((app_id.to_string(), "".to_string()))
-                        } else {
-                            None
-                        };
+                        } else { focused_window.get("app_id").and_then(|id| id.as_str()).map(|app_id| (app_id.to_string(), "".to_string())) };
 
                     tags.extend(super::super::pc_common::match_software(
                         window_title,
@@ -152,13 +146,7 @@ impl ExtractInfo for HyprlandEventData {
                                 .and_then(|ic| ic.as_str()),
                         ) {
                             Some((class.to_string(), initial_class.to_string()))
-                        } else if let Some(class) =
-                            focused_window.get("class").and_then(|c| c.as_str())
-                        {
-                            Some((class.to_string(), "".to_string()))
-                        } else {
-                            None
-                        };
+                        } else { focused_window.get("class").and_then(|c| c.as_str()).map(|class| (class.to_string(), "".to_string())) };
 
                         tags.extend(super::super::pc_common::match_software(
                             window_title,

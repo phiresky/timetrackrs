@@ -140,7 +140,7 @@ impl TimeChunk {
         TimeChunk(time)
     }
     pub fn at(time: DateTime<Utc>) -> anyhow::Result<TimeChunk> {
-        if time.minute() % CHUNK_LEN_MINS != 0 {
+        if !time.minute().is_multiple_of(CHUNK_LEN_MINS) {
             anyhow::bail!("not {}-minute chunk", CHUNK_LEN_MINS);
         }
         if time.second() != 0 {

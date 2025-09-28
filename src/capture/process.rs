@@ -19,8 +19,7 @@ pub struct ProcessData {
 
 pub fn get_process_data(system: &mut sysinfo::System, pid: usize) -> Option<ProcessData> {
     system.refresh_process(sysinfo::Pid::from(pid));
-    if let Some(procinfo) = system.process(sysinfo::Pid::from(pid)) {
-        Some(ProcessData {
+    system.process(sysinfo::Pid::from(pid)).map(|procinfo| ProcessData {
             pid: procinfo.pid().as_u32() as i32,
             name: procinfo.name().to_string(),
             cmd: procinfo.cmd().to_vec(),
@@ -36,7 +35,4 @@ pub fn get_process_data(system: &mut sysinfo::System, pid: usize) -> Option<Proc
             start_time: util::unix_epoch_millis_to_date((procinfo.start_time() as i64) * 1000),
             cpu_usage: Some(procinfo.cpu_usage()),
         })
-    } else {
-        None
-    }
 }

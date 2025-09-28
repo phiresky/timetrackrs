@@ -159,16 +159,12 @@ impl ExternalFetcher for YoutubeFetcher {
             if let Some(u) = sv.channel {
                 tags.add("youtube-channel-name", u)
             }
-            for tag in sv.tags.into_iter().flatten() {
-                if let Some(tag) = tag {
-                    tags.add("youtube-tag", tag);
-                }
+            for tag in sv.tags.into_iter().flatten().flatten() {
+                tags.add("youtube-tag", tag);
             }
             if let Some(tg) = sv.categories {
-                for tag in tg {
-                    if let Some(tag) = tag {
-                        tags.add("youtube-category", tag);
-                    }
+                for tag in tg.into_iter().flatten() {
+                    tags.add("youtube-category", tag);
                 }
             }
         } else {

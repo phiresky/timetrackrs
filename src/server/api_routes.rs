@@ -336,12 +336,7 @@ pub fn api_routes(
 
             // filter out and ignore the Lagged() err caused by polling behind a throttle
             let events = StreamExt::filter_map(events, |e| {
-                ready(match e {
-                    Ok(e) => Some(e),
-                    Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(_)) => {
-                        None
-                    }
-                })
+                ready(e.ok())
             })
             .map(|e| vec![e]);
             // separate stream for end progress events that's not throttled

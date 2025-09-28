@@ -56,7 +56,7 @@ where
                 replacement = &replacement[i..];
             }
         }
-        if replacement.as_bytes().get(1).map_or(false, |&b| b == b'$') {
+        if replacement.as_bytes().get(1).is_some_and(|&b| b == b'$') {
             dst.push('$');
             replacement = &replacement[2..];
             continue;
@@ -91,7 +91,7 @@ struct CaptureRef<'a> {
 /// starting at the beginning of `replacement`.
 ///
 /// If no such valid reference could be found, None is returned.
-fn find_cap_ref(replacement: &[u8]) -> Option<CaptureRef> {
+fn find_cap_ref(replacement: &[u8]) -> Option<CaptureRef<'_>> {
     let mut i = 0;
     let rep: &[u8] = replacement;
     if rep.len() <= 1 || rep[0] != b'$' {
@@ -102,7 +102,7 @@ fn find_cap_ref(replacement: &[u8]) -> Option<CaptureRef> {
         return find_cap_ref_braced(rep, i + 1);
     }
     let mut cap_end = i;
-    while rep.get(cap_end).map_or(false, is_valid_cap_letter) {
+    while rep.get(cap_end).is_some_and(is_valid_cap_letter) {
         cap_end += 1;
     }
     if cap_end == i {
@@ -118,12 +118,12 @@ fn find_cap_ref(replacement: &[u8]) -> Option<CaptureRef> {
     })
 }
 
-fn find_cap_ref_braced(rep: &[u8], mut i: usize) -> Option<CaptureRef> {
+fn find_cap_ref_braced(rep: &[u8], mut i: usize) -> Option<CaptureRef<'_>> {
     let start = i;
-    while rep.get(i).map_or(false, |&b| b != b'}') {
+    while rep.get(i).is_some_and(|&b| b != b'}') {
         i += 1;
     }
-    if !rep.get(i).map_or(false, |&b| b == b'}') {
+    if !rep.get(i).is_some_and(|&b| b == b'}') {
         return None;
     }
     // When looking at braced names, we don't put any restrictions on the name,

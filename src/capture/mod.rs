@@ -28,7 +28,7 @@ fn default_capture_args() -> anyhow::Result<CaptureArgs> {
     #[cfg(target_os = "linux")]
     {
         let session = std::env::var("XDG_SESSION_TYPE").unwrap_or_else(|_| "".to_string());
-        return Ok(match session.as_ref() {
+        Ok(match session.as_ref() {
             "wayland" => CaptureArgs::Wayland(WaylandCaptureArgs {
                 only_focused_window: false,
             }),
@@ -38,7 +38,7 @@ fn default_capture_args() -> anyhow::Result<CaptureArgs> {
             _ => {
                 anyhow::bail!("Unknown XDG_SESSION_TYPE: {}", session);
             }
-        });
+        })
     }
     #[cfg(target_os = "windows")]
     return CaptureArgs::Windows(WindowsCaptureArgs {});

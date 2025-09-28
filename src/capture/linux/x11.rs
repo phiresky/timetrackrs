@@ -165,9 +165,8 @@ impl<C: Connection + Send> Capturer for X11Capturer<C> {
                 let pval = match (prop_name.as_str(), prop_type.as_str(), val.format) {
                     (_, "UTF8_STRING", _) | (_, "STRING", _) => {
                         let QQQ = val.value.clone();
-                        let s = String::from_utf8(val.value).map_err(|e| {
+                        let s = String::from_utf8(val.value).inspect_err(|e| {
                             println!("str {} was!! {:x?}", &prop_name, QQQ);
-                            e
                         })?;
                         // if(s[s.len() - 1] == '\0') return
                         J::String(s)
@@ -201,7 +200,7 @@ impl<C: Connection + Send> Capturer for X11Capturer<C> {
             } else {
                 None
             };
-            if let None = process {
+            if process.is_none() {
                 println!(
                     "could not get process by pid {:?} for window {} ({})",
                     pid,

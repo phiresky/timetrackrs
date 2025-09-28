@@ -31,10 +31,10 @@ use wayland_protocols_wlr::foreign_toplevel::v1::client::{
 // update 2025: wlr_foreign_toplevel_management_v1 is implemented, but since it does not allow getting pids i'll keep using wm-specific methods
 
 pub fn init_sway(_options: WaylandCaptureArgs) -> anyhow::Result<SwayCapturer> {
-    Ok(SwayCapturer::new()?)
+    SwayCapturer::new()
 }
 pub fn init_hyprland(_options: WaylandCaptureArgs) -> anyhow::Result<HyprlandCapturer> {
-    Ok(HyprlandCapturer::new()?)
+    HyprlandCapturer::new()
 }
 pub struct SwayCapturer {
     event_queue: EventQueue<WaylandListener>,
@@ -70,16 +70,16 @@ fn deep_collect_pids_sway(obj: &serde_json::Value) -> Vec<usize> {
             .iter()
             .flat_map(|(k, v)| {
                 if k == "pid" {
-                    return v
+                    v
                         .as_number()
                         .and_then(|e| e.as_u64())
                         .map(|e| vec![e as usize])
                         .unwrap_or_else(|| {
                             log::error!("could not parse pid {k}");
                             vec![]
-                        });
+                        })
                 } else {
-                    return deep_collect_pids_sway(v);
+                    deep_collect_pids_sway(v)
                 }
             })
             .collect(),
@@ -425,8 +425,6 @@ impl Dispatch<ZwlrForeignToplevelHandleV1, ()> for WaylandListener {
         _: &QueueHandle<Self>,
     ) {
         println!("got foreign toplevel handle event: {:?}", event);
-        match event {
-            _ => {}
-        }
+        {}
     }
 }

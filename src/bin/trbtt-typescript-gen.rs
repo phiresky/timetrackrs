@@ -14,7 +14,7 @@ const FS: &[fn() -> std::borrow::Cow<'static, str>] = &[
     linux::x11_types::X11EventData::type_script_ify,
     linux::x11_types::X11WindowData::type_script_ify,
     linux::x11_types::X11WindowGeometry::type_script_ify,
-    linux::x11_types::ProcessData::type_script_ify,
+    crate::process::ProcessData::type_script_ify,
     linux::x11_types::NetworkInfo::type_script_ify,
     linux::x11_types::WifiInterface::type_script_ify,
     macos::types::MacOSEventData::type_script_ify,

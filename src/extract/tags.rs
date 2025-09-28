@@ -64,7 +64,7 @@ impl Tags {
             .get(key)
             .and_then(|e| e.iter().next().map(|s| s.as_str()))
     }
-    pub fn get_all_values_of<'a>(&'a self, key: &'a str) -> Box<dyn Iterator<Item = &str> + 'a> {
+    pub fn get_all_values_of<'a>(&'a self, key: &'a str) -> Box<dyn Iterator<Item = &'a str> + 'a> {
         self.map
             .get(key)
             .map(|e| Box::new(e.iter().map(|e| e.as_str())) as Box<dyn Iterator<Item = &'a str>>)
@@ -83,7 +83,7 @@ impl Tags {
     }
     pub fn iter(
         &self,
-    ) -> std::collections::hash_map::Iter<std::string::String, HashSet<std::string::String>> {
+    ) -> std::collections::hash_map::Iter<'_, std::string::String, HashSet<std::string::String>> {
         self.map.iter()
     }
     pub fn iter_values(&self) -> impl Iterator<Item = (&str, &str)> {
