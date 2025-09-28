@@ -70,14 +70,14 @@ pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Ne
         let listen = listen.to_string();
         let routes = routes.clone();
         async move {
-            warp::serve(routes)
-                .bind(
+            let (_, fut) = warp::serve(routes)
+                .try_bind_ephemeral(
                     listen
                         .parse::<SocketAddr>()
                         .with_context(|| format!("Could not parse listen address {listen}"))?,
                 )
-                .await;
-            // .context("Could not bind to address")?;
+                .context("Could not bind to address")?;
+            fut.await;
             Ok::<_, anyhow::Error>(())
         }
     });

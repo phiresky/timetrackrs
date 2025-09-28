@@ -58,7 +58,7 @@ tracing-subscriber = {version = "0.3.20", features = ["env-filter"]}
 tungstenite = "0.28.0"
 url = "2.5.7"
 uuid = {version = "1.18.1", features = ["serde", "v4"]}
-warp = {version = "0.4.2", features = ["compression", "server"]}
+warp = {version = "0.3", features = ["compression"]}
 whoami = "1.6.1"
 youtube_dl = "0.10.0"
 zip = "5.1.1"
@@ -83,6 +83,7 @@ objc = "0.2.7"
 [features]
 openssl-vendored = ["openssl/vendored"]
 sync = ["datachannel"]
+export-typescript = []
 
 [profile.dev.package."*"]
 opt-level = 3

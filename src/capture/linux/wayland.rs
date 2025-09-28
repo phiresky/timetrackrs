@@ -43,6 +43,7 @@ pub struct SwayCapturer {
     system: sysinfo::System,
 }
 
+#[allow(unused)]
 pub struct WaylandForeignTopLevelManagerCapturer {
     event_queue: EventQueue<WaylandListener>,
     listener: WaylandListener,
@@ -389,7 +390,7 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for WaylandListener {
 
 impl Dispatch<ZwlrForeignToplevelManagerV1, ()> for WaylandListener {
     fn event(
-        state: &mut Self,
+        _state: &mut Self,
         _x: &ZwlrForeignToplevelManagerV1,
         event: <ZwlrForeignToplevelManagerV1 as Proxy>::Event,
         _: &(),
@@ -423,7 +424,7 @@ impl Dispatch<ZwlrForeignToplevelManagerV1, ()> for WaylandListener {
 
 impl Dispatch<ZwlrForeignToplevelHandleV1, ()> for WaylandListener {
     fn event(
-        state: &mut Self,
+        _state: &mut Self,
         _: &ZwlrForeignToplevelHandleV1,
         event: <ZwlrForeignToplevelHandleV1 as Proxy>::Event,
         _: &(),

@@ -3,16 +3,16 @@ use regex::Captures;
 // https://github.com/rust-lang/regex/blob/master/src/expand.rs
 
 pub fn find_byte(needle: u8, haystack: &[u8]) -> Option<usize> {
-    #[cfg(not(feature = "perf-literal"))]
+    // #[cfg(not(feature = "perf-literal"))]
     fn imp(needle: u8, haystack: &[u8]) -> Option<usize> {
         haystack.iter().position(|&b| b == needle)
     }
 
-    #[cfg(feature = "perf-literal")]
+    /*#[cfg(feature = "perf-literal")]
     fn imp(needle: u8, haystack: &[u8]) -> Option<usize> {
         use memchr::memchr;
         memchr(needle, haystack)
-    }
+    }*/
 
     imp(needle, haystack)
 }
@@ -112,10 +112,7 @@ fn find_cap_ref(replacement: &[u8]) -> Option<CaptureRef<'_>> {
     // therefore be valid UTF-8. If we really cared, we could avoid this UTF-8
     // check with either unsafe or by parsing the number straight from &[u8].
     let cap = std::str::from_utf8(&rep[i..cap_end]).expect("valid UTF-8 capture name");
-    Some(CaptureRef {
-        cap,
-        end: cap_end,
-    })
+    Some(CaptureRef { cap, end: cap_end })
 }
 
 fn find_cap_ref_braced(rep: &[u8], mut i: usize) -> Option<CaptureRef<'_>> {
@@ -123,7 +120,7 @@ fn find_cap_ref_braced(rep: &[u8], mut i: usize) -> Option<CaptureRef<'_>> {
     while rep.get(i).is_some_and(|&b| b != b'}') {
         i += 1;
     }
-    if !rep.get(i).is_some_and(|&b| b == b'}') {
+    if rep.get(i).is_none_or(|&b| b != b'}') {
         return None;
     }
     // When looking at braced names, we don't put any restrictions on the name,
@@ -134,10 +131,7 @@ fn find_cap_ref_braced(rep: &[u8], mut i: usize) -> Option<CaptureRef<'_>> {
         Err(_) => return None,
         Ok(cap) => cap,
     };
-    Some(CaptureRef {
-        cap,
-        end: i + 1,
-    })
+    Some(CaptureRef { cap, end: i + 1 })
 }
 
 /// Returns true if and only if the given byte is allowed in a capture name.

@@ -232,7 +232,7 @@ impl DatyBasy {
             .fetch_all(&self.db).await
             .context("querying extracted db")?
         };
-        let ee = q.into_iter().group_by(|e| e.timechunk);
+        let ee = q.into_iter().chunk_by(|e| e.timechunk);
         let e: Vec<_> = ee
             .into_iter()
             .map(|(id, group)| {

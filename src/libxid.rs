@@ -96,7 +96,7 @@ extern crate rand;
 
 use byteorder::{BigEndian, ByteOrder};
 use gethostname::*;
-use rand::{prelude::*, rng, thread_rng};
+use rand::{prelude::*, rng};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::error::Error;
@@ -394,7 +394,7 @@ impl<'de> Deserialize<'de> for ID {
 fn rand_int() -> AtomicUsize {
     let mut buff = [0u8; 3];
 
-    thread_rng().fill_bytes(&mut buff);
+    rng().fill_bytes(&mut buff);
 
     let x = (buff[0] as usize) << 16 | (buff[1] as usize) << 8 | buff[2] as usize;
 

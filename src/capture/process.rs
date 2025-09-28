@@ -26,7 +26,7 @@ pub fn get_process_data(system: &mut sysinfo::System, pid: usize) -> Option<Proc
             name: procinfo.name().to_string_lossy().to_string(),
             cmd: procinfo
                 .cmd()
-                .into_iter()
+                .iter()
                 .map(|e| e.to_string_lossy().to_string())
                 .collect(),
             exe: procinfo

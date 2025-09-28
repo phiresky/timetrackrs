@@ -110,6 +110,7 @@ impl Progress {
 }
 
 #[derive(Debug)]
+#[allow(unused)]
 struct TerminalReporter {}
 impl ProgressReporter for TerminalReporter {
     fn report(&self, state: Vec<ProgressState>) {
