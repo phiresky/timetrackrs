@@ -59,6 +59,7 @@ pub fn deserialize_captured((data_type, data): (&str, &str)) -> anyhow::Result<E
         "journald_v1" => serde_json::from_str::<JournaldEntry>(data)?.into(),
         "sleep_as_android_v1" => serde_json::from_str::<SleepAsAndroidEntry>(data)?.into(),
         "sway_v1" => serde_json::from_str::<SwayEventData>(data)?.into(),
+        "hyprland_v1" => serde_json::from_str::<HyprlandEventData>(data)?.into(),
         _ => anyhow::bail!("unknown data type {}", data_type),
     })
 }
