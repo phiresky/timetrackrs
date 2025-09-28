@@ -70,8 +70,7 @@ fn deep_collect_pids_sway(obj: &serde_json::Value) -> Vec<usize> {
             .iter()
             .flat_map(|(k, v)| {
                 if k == "pid" {
-                    v
-                        .as_number()
+                    v.as_number()
                         .and_then(|e| e.as_u64())
                         .map(|e| vec![e as usize])
                         .unwrap_or_else(|| {
@@ -179,7 +178,7 @@ impl HyprlandCapturer {
 }
 
 impl WaylandForeignTopLevelManagerCapturer {
-    fn new() -> anyhow::Result<WaylandForeignTopLevelManagerCapturer> {
+    pub fn new() -> anyhow::Result<WaylandForeignTopLevelManagerCapturer> {
         let connection = Connection::connect_to_env()
             .with_context(|| "Unable to connect to Wayland compositor")?;
         let (globals, mut event_queue) =
@@ -293,6 +292,13 @@ impl Capturer for HyprlandCapturer {
                 .map_err(|e| log::info!("could not get net info: {}", e))
                 .ok(),
         }))
+    }
+}
+
+#[async_trait]
+impl Capturer for WaylandForeignTopLevelManagerCapturer {
+    async fn capture(&mut self) -> anyhow::Result<EventData> {
+        anyhow::bail!("not implemented");
     }
 }
 

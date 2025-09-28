@@ -96,7 +96,7 @@ extern crate rand;
 
 use byteorder::{BigEndian, ByteOrder};
 use gethostname::*;
-use rand::prelude::*;
+use rand::{prelude::*, rng, thread_rng};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::error::Error;
@@ -441,7 +441,7 @@ fn read_machine_id() -> [u8; 3] {
 
     if id.is_empty() {
         let mut buff = [0u8; 3];
-        thread_rng().fill_bytes(&mut buff);
+        rng().fill_bytes(&mut buff);
         return buff;
     }
 
@@ -486,14 +486,12 @@ mod tests {
 
             assert!(
                 previous_id < id,
-                
-                    "{} ({:?}) != {} ({:?}) {}",
-                    previous_id.encode(),
-                    previous_id,
-                    id.encode(),
-                    id,
-                    i
-                
+                "{} ({:?}) != {} ({:?}) {}",
+                previous_id.encode(),
+                previous_id,
+                id.encode(),
+                id,
+                i
             );
 
             if i > 0 {
@@ -529,10 +527,10 @@ mod tests {
 
         assert!(
             elapsed <= limit,
-            
-                "Must generated {} ids id less than {} second, took {} seconds",
-                total, limit, elapsed
-            
+            "Must generated {} ids id less than {} second, took {} seconds",
+            total,
+            limit,
+            elapsed
         );
     }
 
@@ -561,10 +559,10 @@ mod tests {
 
         assert!(
             elapsed <= limit,
-            
-                "Must encode {} ids id less than {} second, took {} seconds",
-                total, limit, elapsed
-            
+            "Must encode {} ids id less than {} second, took {} seconds",
+            total,
+            limit,
+            elapsed
         );
     }
 
@@ -650,10 +648,10 @@ mod tests {
 
         assert!(
             elapsed <= limit,
-            
-                "Must decode {} ids in less than {} second, took {} seconds",
-                total, limit, elapsed
-            
+            "Must decode {} ids in less than {} second, took {} seconds",
+            total,
+            limit,
+            elapsed
         );
     }
 

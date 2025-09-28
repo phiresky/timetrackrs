@@ -18,11 +18,17 @@ pub struct ProcessData {
 }
 
 pub fn get_process_data(system: &mut sysinfo::System, pid: usize) -> Option<ProcessData> {
-    system.refresh_process(sysinfo::Pid::from(pid));
-    system.process(sysinfo::Pid::from(pid)).map(|procinfo| ProcessData {
+    system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[pid.into()]), true);
+    system
+        .process(sysinfo::Pid::from(pid))
+        .map(|procinfo| ProcessData {
             pid: procinfo.pid().as_u32() as i32,
-            name: procinfo.name().to_string(),
-            cmd: procinfo.cmd().to_vec(),
+            name: procinfo.name().to_string_lossy().to_string(),
+            cmd: procinfo
+                .cmd()
+                .into_iter()
+                .map(|e| e.to_string_lossy().to_string())
+                .collect(),
             exe: procinfo
                 .exe()
                 .map(|path| path.to_string_lossy().to_string()), // tbh i don't care if your executables have filenames that are not unicode

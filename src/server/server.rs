@@ -24,7 +24,7 @@ async fn serve_static(path: Tail) -> Result<impl Reply, Rejection> {
     let asset = FrontendDistAssets::get(path).ok_or_else(warp::reject::not_found)?;
     let mime = mime_guess::from_path(path).first_or_octet_stream();
 
-    let mut res = Response::new(asset.data.into());
+    let mut res = Response::new(asset.data.to_vec().into());
     res.headers_mut().insert(
         "content-type",
         HeaderValue::from_str(mime.as_ref()).unwrap(),
@@ -70,14 +70,14 @@ pub async fn run_server(db: DatyBasy, config: ServerConfig) -> anyhow::Result<Ne
         let listen = listen.to_string();
         let routes = routes.clone();
         async move {
-            let (_, fut) = warp::serve(routes)
-                .try_bind_ephemeral(
+            warp::serve(routes)
+                .bind(
                     listen
                         .parse::<SocketAddr>()
                         .with_context(|| format!("Could not parse listen address {listen}"))?,
                 )
-                .context("Could not bind to address")?;
-            fut.await;
+                .await;
+            // .context("Could not bind to address")?;
             Ok::<_, anyhow::Error>(())
         }
     });

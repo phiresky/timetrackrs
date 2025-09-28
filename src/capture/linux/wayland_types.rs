@@ -22,7 +22,9 @@ impl CapturerCreator for WaylandCaptureArgs {
                 .map(|e| Box::new(e) as Box<dyn Capturer>),
             _ => {
                 log::warn!("Unknown or unsupported desktop environment");
-                anyhow::bail!("Unsupported desktop environment")
+                // anyhow::bail!("Unsupported desktop environment")
+                super::wayland::WaylandForeignTopLevelManagerCapturer::new()
+                    .map(|e| Box::new(e) as Box<dyn Capturer>)
             }
         }
     }
@@ -82,7 +84,12 @@ impl ExtractInfo for SwayEventData {
                             } else {
                                 None
                             }
-                        } else { focused_window.get("app_id").and_then(|id| id.as_str()).map(|app_id| (app_id.to_string(), "".to_string())) };
+                        } else {
+                            focused_window
+                                .get("app_id")
+                                .and_then(|id| id.as_str())
+                                .map(|app_id| (app_id.to_string(), "".to_string()))
+                        };
 
                     tags.extend(super::super::pc_common::match_software(
                         window_title,
@@ -146,7 +153,12 @@ impl ExtractInfo for HyprlandEventData {
                                 .and_then(|ic| ic.as_str()),
                         ) {
                             Some((class.to_string(), initial_class.to_string()))
-                        } else { focused_window.get("class").and_then(|c| c.as_str()).map(|class| (class.to_string(), "".to_string())) };
+                        } else {
+                            focused_window
+                                .get("class")
+                                .and_then(|c| c.as_str())
+                                .map(|class| (class.to_string(), "".to_string()))
+                        };
 
                         tags.extend(super::super::pc_common::match_software(
                             window_title,
