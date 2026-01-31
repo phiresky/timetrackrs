@@ -1,78 +1,37 @@
 {
-	"scripts": {
-		"dev": "vite",
-		"build": "vite build",
-		"setup-pages": "git worktree add -b gh-pages dist",
-		"pages": "rm -r dist/* && yarn build && cd dist && git add -A . && git commit -m'update binaries'",
-		"lint": "eslint . && ts-prune --error"
-	},
-	"dependencies": {
-		"@babel/runtime": "^7.17.9",
-		"@fontsource/open-sans": "^4.5.8",
-		"@fortawesome/fontawesome-free": "^6.1.1",
-		"@js-temporal/polyfill": "^0.4.1",
-		"@types/chart.js": "^2.9.37",
-		"@types/lodash": "^4.14.182",
-		"@types/plotly.js": "^2.12.11",
-		"@types/react": "^18.0.9",
-		"@types/react-dates": "^21.8.3",
-		"@types/react-dom": "^18.0.3",
-		"@types/react-modal": "^3.13.1",
-		"@types/react-plotly.js": "^2.5.0",
-		"@typescript-eslint/eslint-plugin": "^5.22.0",
-		"@typescript-eslint/parser": "^5.22.0",
-		"bootstrap": "4",
-		"chart.js": "3.7.1",
-		"classnames": "^2.3.1",
-		"eslint": "^8.15.0",
-		"eslint-config-airbnb": "^19.0.4",
-		"eslint-config-prettier": "^8.5.0",
-		"eslint-plugin-import": "^2.26.0",
-		"eslint-plugin-jsx-a11y": "^6.5.1",
-		"eslint-plugin-prettier": "^4.0.0",
-		"eslint-plugin-react": "^7.29.4",
-		"eslint-plugin-react-hooks": "^4.5.0",
-		"history": "^5.3.0",
-		"husky": "^8.0.3",
-		"lint-staged": "^13.1.0",
-		"lodash": "^4.17.21",
-		"mobx": "^6.5.0",
-		"mobx-react": "^7.4.0",
-		"mobx-react-lite": "^3.4.0",
-		"mobx-utils": "6.0.5",
-		"moment": "^2.29.3",
-		"path-to-regexp": "^6.2.1",
-		"plotly.js": "^2.12.0",
-		"plotly.js-dist": "^2.12.0",
-		"prettier": "^2.6.2",
-		"react": "^18.1.0",
-		"react-chartjs-2": "^4.1.0",
-		"react-dates": "^21.8.0",
-		"react-dom": "^18.1.0",
-		"react-icons": "^4.3.1",
-		"react-modal": "^3.15.1",
-		"react-plotly.js": "^2.5.1",
-		"react-select": "^5.3.1",
-		"reactstrap": "^9.0.2",
-		"typescript": "^4.6.4"
-	},
-	"husky": {
-		"hooks": {
-			"pre-commit": "lint-staged"
-		}
-	},
-	"lint-staged": {
-		"*.{js,json,css,less,scss,ts,tsx,md}": [
-			"prettier --write"
-		]
-	},
-	"devDependencies": {
-		"@types/node": "^18.11.18",
-		"cross-env": "^7.0.3",
-		"sass": "^1.51.0",
-		"ts-node": "^10.7.0",
-		"ts-prune": "^0.10.3",
-		"vite": "^4.0.4"
-	},
-	"packageManager": "yarn@4.0.0-rc.34"
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1",
+    "@tanstack/react-router": "^1.157.17",
+    "mobx": "^6.15.0",
+    "mobx-react-lite": "^4.1.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "recharts": "^3.7.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "tailwindcss": "^4.1.18",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vite": "^7.2.4"
+  }
 }

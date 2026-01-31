@@ -1,645 +1,101 @@
-/*!
+import { useEffect } from 'react'
+import { observer } from 'mobx-react-lite'
+import { dashboardStore } from '../stores/dashboardStore'
+import { TimeRangeSelector } from '../components/TimeRangeSelector'
+import { StatCard } from '../components/StatCard'
+import { CategoryHistoryChart } from '../components/CategoryHistoryChart'
+import { CategoryPieChart } from '../components/CategoryPieChart'
+import { formatDuration, formatPercentage } from '../lib/formatDuration'
 
-=========================================================
-* Argon Dashboard React - v1.2.0
-=========================================================
+export const Dashboard = observer(function Dashboard() {
+  useEffect(() => {
+    void dashboardStore.fetchData()
+  }, [])
 
-* Product Page: https://www.creative-tim.com/product/argon-dashboard-react
-* Copyright 2021 Creative Tim (https://www.creative-tim.com)
-* Licensed under MIT (https://github.com/creativetimofficial/argon-dashboard-react/blob/master/LICENSE.md)
+  const {
+    totalTrackedTime,
+    timeOnComputer,
+    uncategorizedPercentage,
+    productivityPercentage,
+    isLoading,
+    error,
+  } = dashboardStore
 
-* Coded by Creative Tim
+  return (
+    <div className="px-4 py-6 sm:px-0">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="mt-2 text-gray-600">
+          Overview of your tracked time and activities
+        </p>
+      </div>
 
-=========================================================
+      <TimeRangeSelector />
 
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800">{error}</p>
+        </div>
+      )}
 
-*/
+      {/* Stats cards */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <StatCard
+          title="Total tracked time"
+          value={formatDuration(totalTrackedTime)}
+          icon="📊"
+          color="bg-red-500"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Time on computer"
+          value={formatDuration(timeOnComputer)}
+          icon="💻"
+          color="bg-yellow-500"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Uncategorized time"
+          value={formatPercentage(uncategorizedPercentage)}
+          icon="❓"
+          color="bg-amber-500"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Productivity"
+          value={formatPercentage(productivityPercentage)}
+          icon="📈"
+          color="bg-indigo-500"
+          isLoading={isLoading}
+        />
+      </div>
 
-import "@fortawesome/fontawesome-free/css/all.min.css"
-import { Temporal } from "@js-temporal/polyfill"
-// javascipt plugin for creating charts
-import { Chart } from "chart.js"
-// node.js library that concatenates classes (strings)
-import classnames from "classnames"
-import { observer, useLocalObservable } from "mobx-react"
-import React from "react"
-// react plugin used to create charts
-import { Bar } from "react-chartjs-2"
-// reactstrap components
-import {
-	Button,
-	Card,
-	CardBody,
-	CardHeader,
-	CardTitle,
-	Col,
-	Container,
-	Nav,
-	NavItem,
-	NavLink,
-	Progress,
-	Row,
-	Table,
-} from "reactstrap"
-import { LoadEvents } from "../components/ChooserWithChild"
-import { Page } from "../components/Page"
-import { InnerPlot } from "../components/Plot"
-import { SingleNumberValue } from "../components/SingleNumberValue"
-import {
-	TimeRangeSelector,
-	TimeRangeSelectorSimple,
-	TimeRangeTarget,
-} from "../components/TimeRangeSelector"
-// core components
-import { chartOptions, parseOptions } from "./charts"
+      {/* Main content area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <div className="bg-gray-800 rounded-lg shadow-lg p-6">
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                Time spent by category
+              </h3>
+              <h2 className="text-xl font-bold text-white">History</h2>
+            </div>
+            <CategoryHistoryChart />
+          </div>
+        </div>
 
-function NotEnoughDataPlot(p: { dark?: boolean }) {
-	return (
-		<table style={{ height: 400, width: "100%" }}>
-			<tr>
-				<td className="align-middle">
-					<h2 className="text-muted text-center">Not enough data</h2>
-				</td>
-			</tr>
-		</table>
-	)
-}
-export const Dashboard: React.FC = observer((_) => {
-	const store = useLocalObservable(() => ({
-		timeRange: {
-			from: Temporal.Now.zonedDateTimeISO().startOfDay(),
-			to: Temporal.Now.zonedDateTimeISO().add({ days: 1 }).startOfDay(),
-			mode: "day",
-		} as TimeRangeTarget,
-		deep: false,
-		setDeep(n: boolean) {
-			this.deep = n
-		},
-	}))
-
-	if (window.Chart) {
-		parseOptions(Chart.defaults, chartOptions())
-	}
-
-	return (
-		<Page
-			navRight={() => (
-				<div className="pr-0 pt-1" style={{ color: "white" }}>
-					Showing data for{" "}
-					<TimeRangeSelectorSimple target={store.timeRange} />
-				</div>
-			)}
-		>
-			<div className="header bg-gradient-info pb-8 pt-7 pt-md-7">
-				<Container fluid>
-					<div className="header-body">
-						{/* Card stats */}
-						<Row>
-							<Col lg="6" xl="3">
-								<Card className="card-stats mb-4 mb-xl-0">
-									<CardBody>
-										<Row>
-											<div className="col">
-												<CardTitle
-													tag="h5"
-													className="text-uppercase text-muted mb-0"
-												>
-													Total tracked time
-												</CardTitle>
-												<span className="h2 font-weight-bold mb-0">
-													<SingleNumberValue
-														time={store.timeRange}
-														fetchFilter="timetrackrs-tracked"
-														calculation="timetrackrs-tracked"
-														unit="duration"
-													/>
-												</span>
-											</div>
-											<Col className="col-auto">
-												<div className="icon icon-shape bg-danger text-white rounded-circle shadow">
-													<i className="fas fa-chart-bar" />
-												</div>
-											</Col>
-										</Row>
-										<p className="mt-3 mb-0 text-muted text-sm">
-											<span className="text-success mr-2">
-												<i className="fa fa-arrow-up" />{" "}
-												3.48%
-											</span>{" "}
-											<span className="text-nowrap">
-												Since last month
-											</span>
-										</p>
-									</CardBody>
-								</Card>
-							</Col>
-							<Col lg="6" xl="3">
-								<Card className="card-stats mb-4 mb-xl-0">
-									<CardBody>
-										<Row>
-											<div className="col">
-												<CardTitle
-													tag="h5"
-													className="text-uppercase text-muted mb-0"
-												>
-													Time spent on computer
-												</CardTitle>
-												<span className="h2 font-weight-bold mb-0">
-													<SingleNumberValue
-														time={store.timeRange}
-														fetchFilter="use-device"
-														calculation={{
-															tag: "use-device",
-															value: "computer",
-														}}
-														unit="duration"
-													/>
-												</span>
-											</div>
-											<Col className="col-auto">
-												<div className="icon icon-shape bg-warning text-white rounded-circle shadow">
-													<i className="fas fa-chart-pie" />
-												</div>
-											</Col>
-										</Row>
-										<p className="mt-3 mb-0 text-muted text-sm">
-											<span className="text-danger mr-2">
-												<i className="fas fa-arrow-down" />{" "}
-												3.48%
-											</span>{" "}
-											<span className="text-nowrap">
-												Since last week
-											</span>
-										</p>
-									</CardBody>
-								</Card>
-							</Col>
-							<Col lg="6" xl="3">
-								<Card className="card-stats mb-4 mb-xl-0">
-									<CardBody>
-										<Row>
-											<div className="col">
-												<CardTitle
-													tag="h5"
-													className="text-uppercase text-muted mb-0"
-												>
-													Uncategorized time
-												</CardTitle>
-												<span className="h2 font-weight-bold mb-0">
-													<SingleNumberValue
-														time={store.timeRange}
-														calculation={{
-															minus: [
-																1,
-																{
-																	div: [
-																		{
-																			tag: "category",
-																		},
-																		{
-																			tag: "timetrackrs-tracked",
-																		},
-																	],
-																},
-															],
-														}}
-														unit="percentage"
-													/>
-												</span>
-											</div>
-											<Col className="col-auto">
-												<div className="icon icon-shape bg-yellow text-white rounded-circle shadow">
-													<i className="fas fa-users" />
-												</div>
-											</Col>
-										</Row>
-										<p className="mt-3 mb-0 text-muted text-sm">
-											<span className="text-warning mr-2">
-												<i className="fas fa-arrow-down" />{" "}
-												1.10%
-											</span>{" "}
-											<span className="text-nowrap">
-												Since yesterday
-											</span>
-										</p>
-									</CardBody>
-								</Card>
-							</Col>
-							<Col lg="6" xl="3">
-								<Card className="card-stats mb-4 mb-xl-0">
-									<CardBody>
-										<Row>
-											<div className="col">
-												<CardTitle
-													tag="h5"
-													className="text-uppercase text-muted mb-0"
-												>
-													Productivity
-												</CardTitle>
-												<span className="h2 font-weight-bold mb-0">
-													<SingleNumberValue
-														time={store.timeRange}
-														fetchFilter="category"
-														calculation={{
-															div: [
-																{
-																	tag: "category",
-																	valuePrefix:
-																		"Productivity/",
-																},
-																{
-																	tag: "category",
-																},
-															],
-														}}
-														unit="percentage"
-													/>
-												</span>
-											</div>
-											<Col className="col-auto">
-												<div className="icon icon-shape bg-info text-white rounded-circle shadow">
-													<i className="fas fa-percent" />
-												</div>
-											</Col>
-										</Row>
-										<p className="mt-3 mb-0 text-muted text-sm">
-											<span className="text-success mr-2">
-												<i className="fas fa-arrow-up" />{" "}
-												12%
-											</span>{" "}
-											<span className="text-nowrap">
-												Since last month
-											</span>
-										</p>
-									</CardBody>
-								</Card>
-							</Col>
-						</Row>
-					</div>
-				</Container>
-			</div>
-			{/* Page content */}
-			<Container className="mt--7" fluid>
-				<Row>
-					<Col className="mb-5 mb-xl-0" xl="8">
-						<Card className="bg-gradient-default shadow">
-							<CardHeader className="bg-transparent">
-								<Row className="align-items-center">
-									<div className="col">
-										<h6 className="text-uppercase text-light ls-1 mb-1">
-											Time spent by category
-										</h6>
-										<h2 className="text-white mb-0">
-											History
-										</h2>
-									</div>
-									<div className="col">
-										<Nav
-											className="justify-content-end"
-											pills
-										>
-											<NavItem>
-												<NavLink
-													className={classnames(
-														"py-2 px-3",
-														{
-															active: !store.deep,
-														},
-													)}
-													href="#"
-													onClick={(e) => {
-														e.preventDefault()
-														store.setDeep(false)
-													}}
-												>
-													<span className="d-none d-md-block">
-														Simple
-													</span>
-													<span className="d-md-none">
-														S
-													</span>
-												</NavLink>
-											</NavItem>
-											<NavItem>
-												<NavLink
-													className={classnames(
-														"py-2 px-3",
-														{
-															active: store.deep,
-														},
-													)}
-													data-toggle="tab"
-													href="#"
-													onClick={(e) => {
-														e.preventDefault()
-														store.setDeep(true)
-													}}
-												>
-													<span className="d-none d-md-block">
-														Detailed
-													</span>
-													<span className="d-md-none">
-														D
-													</span>
-												</NavLink>
-											</NavItem>
-										</Nav>
-									</div>
-								</Row>
-							</CardHeader>
-							<CardBody>
-								<LoadEvents
-									timeRange={store.timeRange}
-									tag="category"
-									child={(p) => {
-										if (p.events.length < 3)
-											return (
-												<NotEnoughDataPlot
-													dark
-												></NotEnoughDataPlot>
-											)
-										return (
-											<InnerPlot
-												events={p.events}
-												tag={p.tag}
-												binSizeMS={20 * 1000 * 60}
-												aggregator={{
-													name: "none",
-													mapper: (d) => d,
-													visible: true,
-												}}
-												deep={store.deep}
-												dark={true}
-												scaleTo100={false}
-											/>
-										)
-									}}
-								/>
-								{/* Chart 
-								<div className="chart">
-									<Line
-										data={chartExample1[chartExample1Data]}
-										options={chartExample1.options}
-										getDatasetAtEvent={(e) =>
-											console.log(e)
-										}
-									/>
-									</div>*/}
-							</CardBody>
-						</Card>
-					</Col>
-					<Col xl="4">
-						<Card className="shadow">
-							<CardHeader className="bg-transparent">
-								<Row className="align-items-center">
-									<div className="col">
-										<h6 className="text-uppercase text-muted ls-1 mb-1">
-											Time spent by category
-										</h6>
-										<h2 className="mb-0">Overview</h2>
-									</div>
-								</Row>
-							</CardHeader>
-							<CardBody>
-								<LoadEvents
-									timeRange={store.timeRange}
-									tag="category"
-									child={(p) => {
-										if (p.events.length < 3)
-											return <NotEnoughDataPlot />
-										return (
-											<InnerPlot
-												events={p.events}
-												chartType="pie"
-												tag={p.tag}
-												binSizeMS={Infinity}
-												aggregator={{
-													name: "none",
-													mapper: (d) => d,
-													visible: true,
-												}}
-												deep={store.deep}
-												dark={false}
-												scaleTo100={false}
-											/>
-										)
-									}}
-								/>
-							</CardBody>
-						</Card>
-					</Col>
-				</Row>
-				<Row className="mt-5">
-					<Col className="mb-5 mb-xl-0" xl="8">
-						<Card className="shadow">
-							<CardHeader className="border-0">
-								<Row className="align-items-center">
-									<div className="col">
-										<h3 className="mb-0">
-											Todo some table
-										</h3>
-									</div>
-									<div className="col text-right">
-										<Button
-											color="primary"
-											href="#pablo"
-											onClick={(e) => e.preventDefault()}
-											size="sm"
-										>
-											See all
-										</Button>
-									</div>
-								</Row>
-							</CardHeader>
-							<Table
-								className="align-items-center table-flush"
-								responsive
-							>
-								<thead className="thead-light">
-									<tr>
-										<th scope="col">Page name</th>
-										<th scope="col">Visitors</th>
-										<th scope="col">Unique users</th>
-										<th scope="col">Bounce rate</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr>
-										<th scope="row">/argon/</th>
-										<td>4,569</td>
-										<td>340</td>
-										<td>
-											<i className="fas fa-arrow-up text-success mr-3" />{" "}
-											46,53%
-										</td>
-									</tr>
-									<tr>
-										<th scope="row">/argon/index.html</th>
-										<td>3,985</td>
-										<td>319</td>
-										<td>
-											<i className="fas fa-arrow-down text-warning mr-3" />{" "}
-											46,53%
-										</td>
-									</tr>
-									<tr>
-										<th scope="row">/argon/charts.html</th>
-										<td>3,513</td>
-										<td>294</td>
-										<td>
-											<i className="fas fa-arrow-down text-warning mr-3" />{" "}
-											36,49%
-										</td>
-									</tr>
-									<tr>
-										<th scope="row">/argon/tables.html</th>
-										<td>2,050</td>
-										<td>147</td>
-										<td>
-											<i className="fas fa-arrow-up text-success mr-3" />{" "}
-											50,87%
-										</td>
-									</tr>
-									<tr>
-										<th scope="row">/argon/profile.html</th>
-										<td>1,795</td>
-										<td>190</td>
-										<td>
-											<i className="fas fa-arrow-down text-danger mr-3" />{" "}
-											46,53%
-										</td>
-									</tr>
-								</tbody>
-							</Table>
-						</Card>
-					</Col>
-					<Col xl="4">
-						<Card className="shadow">
-							<CardHeader className="border-0">
-								<Row className="align-items-center">
-									<div className="col">
-										<h3 className="mb-0">Some right bar</h3>
-									</div>
-									<div className="col text-right">
-										<Button
-											color="primary"
-											href="#pablo"
-											onClick={(e) => e.preventDefault()}
-											size="sm"
-										>
-											See all
-										</Button>
-									</div>
-								</Row>
-							</CardHeader>
-							<Table
-								className="align-items-center table-flush"
-								responsive
-							>
-								<thead className="thead-light">
-									<tr>
-										<th scope="col">Referral</th>
-										<th scope="col">Visitors</th>
-										<th scope="col" />
-									</tr>
-								</thead>
-								<tbody>
-									<tr>
-										<th scope="row">Facebook</th>
-										<td>1,480</td>
-										<td>
-											<div className="d-flex align-items-center">
-												<span className="mr-2">
-													60%
-												</span>
-												<div>
-													<Progress
-														max="100"
-														value="60"
-														barClassName="bg-gradient-danger"
-													/>
-												</div>
-											</div>
-										</td>
-									</tr>
-									<tr>
-										<th scope="row">Facebook</th>
-										<td>5,480</td>
-										<td>
-											<div className="d-flex align-items-center">
-												<span className="mr-2">
-													70%
-												</span>
-												<div>
-													<Progress
-														max="100"
-														value="70"
-														barClassName="bg-gradient-success"
-													/>
-												</div>
-											</div>
-										</td>
-									</tr>
-									<tr>
-										<th scope="row">Google</th>
-										<td>4,807</td>
-										<td>
-											<div className="d-flex align-items-center">
-												<span className="mr-2">
-													80%
-												</span>
-												<div>
-													<Progress
-														max="100"
-														value="80"
-													/>
-												</div>
-											</div>
-										</td>
-									</tr>
-									<tr>
-										<th scope="row">Instagram</th>
-										<td>3,678</td>
-										<td>
-											<div className="d-flex align-items-center">
-												<span className="mr-2">
-													75%
-												</span>
-												<div>
-													<Progress
-														max="100"
-														value="75"
-														barClassName="bg-gradient-info"
-													/>
-												</div>
-											</div>
-										</td>
-									</tr>
-									<tr>
-										<th scope="row">twitter</th>
-										<td>2,645</td>
-										<td>
-											<div className="d-flex align-items-center">
-												<span className="mr-2">
-													30%
-												</span>
-												<div>
-													<Progress
-														max="100"
-														value="30"
-														barClassName="bg-gradient-warning"
-													/>
-												</div>
-											</div>
-										</td>
-									</tr>
-								</tbody>
-							</Table>
-						</Card>
-					</Col>
-				</Row>
-			</Container>
-		</Page>
-	)
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Time spent by category
+              </h3>
+              <h2 className="text-xl font-bold text-gray-900">Overview</h2>
+            </div>
+            <CategoryPieChart />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 })

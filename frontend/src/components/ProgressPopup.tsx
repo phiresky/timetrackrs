@@ -1,61 +1,46 @@
-import { useLocalObservable, observer } from "mobx-react"
-import * as React from "react"
-import { useEffect } from "react"
-import { progressEvents } from "../api"
-import { ProgressReport } from "../server"
+import { observer } from 'mobx-react-lite'
+import { useEffect } from 'react'
+import { appStore } from '../stores/appStore'
 
-export const ProgressPopup = observer(() => {
-	const obs = useLocalObservable(() => ({
-		progresses: new Map<string, ProgressReport>(),
-		es: null as EventSource | null,
-		updateProgress(p: ProgressReport) {
-			console.log("updating progress", p)
-			if (p.state.length === 0) {
-				// obs.progresses.delete(p.call_id)
-				// console.log("deleted", p.call_id)
-				// return
-			}
-			const prog = obs.progresses.get(p.call_id)
-			if (prog) {
-				// event already ended, ignore update
-				if (prog.done) return
-				Object.assign(prog, p)
-			} else {
-				obs.progresses.set(p.call_id, p)
-			}
-		},
-	}))
-	useEffect(() => {
-		console.log("opening events connection")
-		obs.es = progressEvents((p) => p.forEach((p) => obs.updateProgress(p)))
-		return () => {
-			console.log("closing events connection")
-			obs.es?.close()
-		}
-	}, [])
-	if (obs.progresses.size === 0) return null
-	return (
-		<div className="progress-popup">
-			{[...obs.progresses.values()]
-				.filter((prog) => !prog.done)
-				.map((prog) => (
-					<div key={prog.call_id}>
-						<p>Task {prog.call_desc}</p>
-						{prog.state.map((state, i) => (
-							<div key={i}>
-								{state.desc}:{" "}
-								{state.total
-									? `${(
-											(state.current / state.total) *
-											100
-									  ).toFixed(0)}% (${state.current}/${
-											state.total
-									  })`
-									: state.current}
-							</div>
-						))}
-					</div>
-				))}
-		</div>
-	)
+export const ProgressPopup = observer(function ProgressPopup() {
+  useEffect(() => {
+    appStore.startProgressListener()
+    return () => appStore.stopProgressListener()
+  }, [])
+
+  const reports = appStore.activeProgressReports
+
+  if (reports.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 space-y-2">
+      {reports.map((report) => (
+        <div
+          key={report.call_id}
+          className="bg-white rounded-lg shadow-lg p-4 max-w-sm border border-gray-200"
+        >
+          <div className="text-sm font-medium text-gray-900 mb-2">
+            {report.call_desc}
+          </div>
+          {report.state.map((state, idx) => (
+            <div key={idx} className="mb-1">
+              <div className="text-xs text-gray-600">{state.desc}</div>
+              {state.total !== null && (
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                    style={{
+                      width: `${(state.current / state.total) * 100}%`,
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
 })
