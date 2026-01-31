@@ -44,6 +44,46 @@ function formatTagValue(value: unknown): FormattedValue {
   return { display: String(value), isJson: false };
 }
 
+function JsonAsList({ json }: { json: string }) {
+  try {
+    const parsed = JSON.parse(json);
+    if (typeof parsed === "object" && parsed !== null) {
+      const entries = Object.entries(parsed);
+      return (
+        <div className="mt-1 space-y-1">
+          {entries.map(([key, val]) => {
+            const values = Array.isArray(val) ? val : [val];
+            return (
+              <div key={key} className="flex flex-wrap items-start gap-1">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-0">
+                  {key}:
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {values.map((v, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                    >
+                      {typeof v === "object" ? JSON.stringify(v) : String(v)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+  } catch {
+    // Fall back to showing raw JSON
+  }
+  return (
+    <pre className="mt-1 p-2 bg-gray-50 dark:bg-gray-900 rounded text-xs overflow-x-auto max-h-48 text-gray-700 dark:text-gray-300">
+      {json}
+    </pre>
+  );
+}
+
 function TagValue({ value, tagKey, reason }: { value: FormattedValue; tagKey: string; reason?: TagAddReason | null }) {
   const isIntrinsic = reason?.type === "IntrinsicTag";
 
@@ -59,9 +99,7 @@ function TagValue({ value, tagKey, reason }: { value: FormattedValue; tagKey: st
         >
           {value.display}
         </summary>
-        <pre className="mt-1 p-2 bg-gray-50 dark:bg-gray-900 rounded text-xs overflow-x-auto max-h-48 text-gray-700 dark:text-gray-300">
-          {value.formatted}
-        </pre>
+        <JsonAsList json={value.formatted} />
       </details>
     );
   }
