@@ -244,7 +244,7 @@ interface RuleEditorModalProps {
 }
 
 function RuleEditorModal({ rule, onSave, onCancel, knownTags, editable }: RuleEditorModalProps) {
-  const [localRule, setLocalRule] = useState<TagRuleWithMeta>(JSON.parse(JSON.stringify(rule)) as TagRuleWithMeta)
+  const [localRule, setLocalRule] = useState<TagRuleWithMeta>(structuredClone(rule))
 
   const handleTypeChange = (type: TagRule['type']) => {
     setLocalRule({

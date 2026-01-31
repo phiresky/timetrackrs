@@ -156,8 +156,10 @@ class TimelineStore {
     this.isLoadingDetails = true
 
     try {
-      // Use the block's timestamp as an ID - the backend expects specific event IDs
-      // For now, we'll just show the block's tag info
+      // The API expects actual event IDs from the database, but we only have
+      // aggregated chunk data. We attempt to use the midpoint timestamp as an ID,
+      // but this may not match. If no events are found, we just display the
+      // block's tag information which is already available.
       const midpoint = Math.floor(
         (block.from.epochMilliseconds + block.to.epochMilliseconds) / 2
       )
@@ -172,11 +174,17 @@ class TimelineStore {
       runInAction(() => {
         if (events.length > 0) {
           this.selectedEventDetails = events[0]
+        } else {
+          // No event found with this ID - this is expected since we're using
+          // timestamps rather than actual event IDs
+          this.selectedEventDetails = null
         }
         this.isLoadingDetails = false
       })
     } catch {
       runInAction(() => {
+        // On error, we fall back to just showing the block info
+        this.selectedEventDetails = null
         this.isLoadingDetails = false
       })
     }

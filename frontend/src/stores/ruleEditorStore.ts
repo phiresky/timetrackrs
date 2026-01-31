@@ -135,7 +135,7 @@ class RuleEditorStore {
   discardChanges() {
     this.groups = this.originalGroups.map((group) => ({
       global_id: group.global_id,
-      data: JSON.parse(JSON.stringify(group.data.data)) as TagRuleGroupV1,
+      data: structuredClone(group.data.data),
       isExpanded: this.groups.find((g) => g.global_id === group.global_id)?.isExpanded ?? false,
     }))
     this.editingRuleIndex = null

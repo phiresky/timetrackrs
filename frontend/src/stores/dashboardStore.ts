@@ -24,6 +24,7 @@ class DashboardStore {
   chunks: SingleExtractedChunk[] = []
   isLoading = false
   error: string | null = null
+  private readonly timezone = Temporal.Now.timeZoneId()
 
   constructor() {
     makeAutoObservable(this)
@@ -138,7 +139,7 @@ class DashboardStore {
     for (const chunk of this.chunks) {
       const date = Temporal.Instant.fromEpochMilliseconds(
         chunk.from.epochMilliseconds
-      ).toZonedDateTimeISO('UTC').toPlainDate().toString()
+      ).toZonedDateTimeISO(this.timezone).toPlainDate().toString()
       
       if (!dataByDate.has(date)) {
         dataByDate.set(date, new Map())
@@ -169,7 +170,7 @@ class DashboardStore {
       
       const point: HistoryDataPoint = {
         date: currentDate.toLocaleString('en-US', { month: 'short', day: 'numeric' }),
-        timestamp: currentDate.toZonedDateTime('UTC').epochMilliseconds,
+        timestamp: currentDate.toZonedDateTime(this.timezone).epochMilliseconds,
       }
       
       for (const category of allCategories) {
@@ -241,10 +242,10 @@ class DashboardStore {
 
     try {
       const after = Temporal.Instant.fromEpochMilliseconds(
-        this.rangeStart.toZonedDateTime('UTC').epochMilliseconds
+        this.rangeStart.toZonedDateTime(this.timezone).epochMilliseconds
       )
       const before = Temporal.Instant.fromEpochMilliseconds(
-        this.rangeEnd.toZonedDateTime('UTC').epochMilliseconds
+        this.rangeEnd.toZonedDateTime(this.timezone).epochMilliseconds
       )
 
       const data = await getTimeRange({
