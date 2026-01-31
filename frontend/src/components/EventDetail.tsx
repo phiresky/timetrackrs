@@ -88,20 +88,7 @@ function TagValue({ value, tagKey, reason }: { value: FormattedValue; tagKey: st
   const isIntrinsic = reason?.type === "IntrinsicTag";
 
   if (value.isJson && value.formatted) {
-    return (
-      <details className="w-full">
-        <summary
-          className={`cursor-pointer inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-            isIntrinsic
-              ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-              : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-          }`}
-        >
-          {value.display}
-        </summary>
-        <JsonAsList json={value.formatted} />
-      </details>
-    );
+    return <JsonAsList json={value.formatted} />;
   }
 
   return (
