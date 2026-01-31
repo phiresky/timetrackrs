@@ -1,22 +1,11 @@
-import "react-dates/initialize"
-import React from "react"
-import { render } from "react-dom"
-import { MaybeModal } from "./components/ModalLink"
-import { ProgressPopup } from "./components/ProgressPopup"
-import { Routes, BrowserRouterProvider } from "./components/Routes"
-import "./style.scss"
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { RouterProvider } from '@tanstack/react-router'
+import './index.css'
+import { router } from './routes/router'
 
-const appElement = document.getElementById("root")
-
-function Main() {
-	if (!appElement) throw Error("could not find app container")
-	return (
-		<MaybeModal appElement={appElement}>
-			<BrowserRouterProvider>
-				<Routes />
-				<ProgressPopup />
-			</BrowserRouterProvider>
-		</MaybeModal>
-	)
-}
-render(<Main />, appElement)
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <RouterProvider router={router} />
+  </StrictMode>
+)
