@@ -10,9 +10,11 @@ interface TagListProps {
 }
 
 function TagList({ tags, reasons }: TagListProps) {
-  const entries = Object.entries(tags).flatMap(([key, values]) =>
-    (values || []).map((value) => ({ key, value }))
-  );
+  const entries = Object.entries(tags).flatMap(([key, values]) => {
+    // Handle cases where values might be a single string instead of array
+    const valueArray = Array.isArray(values) ? values : values ? [values] : [];
+    return valueArray.map((value) => ({ key, value: String(value) }));
+  });
 
   // Group by tag key
   const grouped = new Map<string, string[]>();
