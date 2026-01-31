@@ -36,22 +36,25 @@ class RulesStore {
 
 const rulesStore = new RulesStore();
 
-function getRuleDescription(rule: TagRule): string {
+function getRuleDescription(rule: TagRule): { text: string; regexes?: Array<{ tag: string; regex: string }> } {
   switch (rule.type) {
     case "HasTag":
-      return `When tag "${rule.tag}" exists`;
+      return { text: `When tag "${rule.tag}" exists` };
     case "ExactTagValue":
-      return `When ${rule.tag} = "${rule.value}"`;
+      return { text: `When ${rule.tag} = "${rule.value}"` };
     case "TagValuePrefix":
-      return `When ${rule.tag} starts with "${rule.prefix}"`;
+      return { text: `When ${rule.tag} starts with "${rule.prefix}"` };
     case "TagRegex":
-      return `Regex match on ${rule.regexes.map((r) => r.tag).join(", ")}`;
+      return {
+        text: `Regex match on ${rule.regexes.map((r) => r.tag).join(", ")}`,
+        regexes: rule.regexes.map((r) => ({ tag: r.tag, regex: r.regex })),
+      };
     case "InternalFetcher":
-      return `Internal fetcher: ${rule.fetcher_id}`;
+      return { text: `Internal fetcher: ${rule.fetcher_id}` };
     case "ExternalFetcher":
-      return `External fetcher: ${rule.fetcher_id}`;
+      return { text: `External fetcher: ${rule.fetcher_id}` };
     default:
-      return "Unknown rule type";
+      return { text: "Unknown rule type" };
   }
 }
 
@@ -111,28 +114,40 @@ function RuleGroupCard({ group }: RuleGroupCardProps) {
           )}
 
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {data.rules.map((ruleWithMeta, idx) => (
-              <div
-                key={idx}
-                className={`px-4 py-3 ${!ruleWithMeta.enabled ? "opacity-50" : ""}`}
-              >
-                <div className="flex items-start gap-2">
-                  <span
-                    className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                      ruleWithMeta.enabled ? "bg-green-500" : "bg-gray-400"
-                    }`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-gray-900 dark:text-white">
-                      {getRuleDescription(ruleWithMeta.rule)}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      → {getRuleOutput(ruleWithMeta.rule) || "(no output tags)"}
-                    </p>
+            {data.rules.map((ruleWithMeta, idx) => {
+              const desc = getRuleDescription(ruleWithMeta.rule);
+              return (
+                <div
+                  key={idx}
+                  className={`px-4 py-3 ${!ruleWithMeta.enabled ? "opacity-50" : ""}`}
+                >
+                  <div className="flex items-start gap-2">
+                    <span
+                      className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                        ruleWithMeta.enabled ? "bg-green-500" : "bg-gray-400"
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {desc.text}
+                      </p>
+                      {desc.regexes && desc.regexes.length > 0 && (
+                        <div className="mt-1 space-y-0.5">
+                          {desc.regexes.map((r, i) => (
+                            <p key={i} className="text-xs font-mono text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-1.5 py-0.5 rounded inline-block mr-2">
+                              {r.tag}: <span className="text-purple-800 dark:text-purple-200">{r.regex}</span>
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        → {getRuleOutput(ruleWithMeta.rule) || "(no output tags)"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {data.rules.length === 0 && (
               <p className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
