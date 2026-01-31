@@ -9,11 +9,18 @@ interface TagListProps {
   reasons?: Record<string, TagAddReason> | null;
 }
 
+function formatTagValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 function TagList({ tags, reasons }: TagListProps) {
   const entries = Object.entries(tags).flatMap(([key, values]) => {
-    // Handle cases where values might be a single string instead of array
+    // Handle cases where values might be a single value instead of array
     const valueArray = Array.isArray(values) ? values : values ? [values] : [];
-    return valueArray.map((value) => ({ key, value: String(value) }));
+    return valueArray.map((value) => ({ key, value: formatTagValue(value) }));
   });
 
   // Group by tag key
