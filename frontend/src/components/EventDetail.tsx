@@ -84,7 +84,7 @@ function JsonAsList({ json }: { json: string }) {
   );
 }
 
-function TagValue({ value, tagKey, reason }: { value: FormattedValue; tagKey: string; reason?: TagAddReason | null }) {
+function TagValue({ value, reason }: { value: FormattedValue; reason?: TagAddReason | null }) {
   const isIntrinsic = reason?.type === "IntrinsicTag";
 
   if (value.isJson && value.formatted) {
@@ -137,7 +137,7 @@ function TagList({ tags, reasons }: TagListProps) {
             {values.map((value, idx) => {
               const reasonKey = `${tagKey}:${value.display}`;
               const reason = reasons?.[reasonKey];
-              return <TagValue key={idx} value={value} tagKey={tagKey} reason={reason} />;
+              return <TagValue key={idx} value={value} reason={reason} />;
             })}
           </div>
         </div>
@@ -150,15 +150,58 @@ interface EventCardProps {
   event: SingleExtractedEventWithRaw;
 }
 
+// Helper to extract value from a potential nested map object
+function extractFromMap(mapData: unknown, key: string): string | undefined {
+  // mapData might be a JSON string or already an object
+  let parsed = mapData;
+  if (typeof mapData === "string") {
+    try {
+      parsed = JSON.parse(mapData);
+    } catch {
+      return undefined;
+    }
+  }
+  if (parsed && typeof parsed === "object" && key in parsed) {
+    const val = (parsed as Record<string, unknown>)[key];
+    if (Array.isArray(val)) return val[0] != null ? String(val[0]) : undefined;
+    return val != null ? String(val) : undefined;
+  }
+  return undefined;
+}
+
+// Helper to get a tag value, checking both top-level and nested "map" tag
+function getTagValue(tags: Tags, key: string): string | undefined {
+  // First check top-level
+  const direct = tags[key]?.[0];
+  if (direct !== undefined) return direct;
+
+  // Check inside nested "map" tag if it exists
+  const mapTag = tags["map"];
+  if (mapTag) {
+    // mapTag could be: string[], object[], a single object, or a single string
+    if (Array.isArray(mapTag)) {
+      // Try each element in the array
+      for (const item of mapTag) {
+        const result = extractFromMap(item, key);
+        if (result !== undefined) return result;
+      }
+    } else {
+      // Direct value (not array)
+      return extractFromMap(mapTag, key);
+    }
+  }
+  return undefined;
+}
+
 function EventCard({ event }: EventCardProps) {
   const title =
-    event.tags["browse-title"]?.[0] ||
-    event.tags["software-window-title"]?.[0] ||
-    event.tags["software-name"]?.[0] ||
+    getTagValue(event.tags, "browse-title") ||
+    getTagValue(event.tags, "software-window-title") ||
+    getTagValue(event.tags, "software-name") ||
     "Unknown";
 
-  const category = event.tags["category"]?.[0] || "Uncategorized";
-  const software = event.tags["software-name"]?.[0];
+  const category = getTagValue(event.tags, "category") || "Uncategorized";
+  const software = getTagValue(event.tags, "software-name");
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-4">

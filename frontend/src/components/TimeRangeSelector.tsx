@@ -21,13 +21,14 @@ export const TimeRangeSelector = observer(function TimeRangeSelector() {
   };
 
   const handleReextractAll = async () => {
-    if (!confirm("This will clear ALL extraction cache and re-process everything. This may take a while. Continue?")) {
+    if (!confirm("This will clear extraction cache for the last month and re-process. This may take a while. Continue?")) {
       return;
     }
     setIsReextractingAll(true);
     try {
-      // Invalidate from epoch to far future
-      await api.invalidateExtractions(0, Date.now() + 365 * 24 * 60 * 60 * 1000);
+      // Invalidate last 31 days (max allowed range)
+      const oneMonthAgo = Date.now() - 31 * 24 * 60 * 60 * 1000;
+      await api.invalidateExtractions(oneMonthAgo, Date.now());
       await timelineStore.loadData();
     } finally {
       setIsReextractingAll(false);

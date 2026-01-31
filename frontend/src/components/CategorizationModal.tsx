@@ -3,7 +3,6 @@ import { useState } from "react";
 import { makeAutoObservable, runInAction } from "mobx";
 import { api } from "../api/client";
 import type { SingleExtractedEventWithRaw } from "../api/types";
-import { getUnixMs } from "../api/types";
 import { timelineStore } from "../stores/timelineStore";
 
 interface TagSelection {

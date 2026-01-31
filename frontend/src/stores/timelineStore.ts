@@ -55,6 +55,9 @@ export function getEventTitle(tags: Tags): string {
   return browseTitle || windowTitle || software || category || "Unknown";
 }
 
+// Maximum time range: 31 days
+const MAX_RANGE_MS = 31 * 24 * 60 * 60 * 1000;
+
 class TimelineStore {
   // Time range state
   rangeStart: Date = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
@@ -79,6 +82,12 @@ class TimelineStore {
   }
 
   setTimeRange(start: Date, end: Date) {
+    // Enforce maximum range of 31 days
+    const rangeMs = end.getTime() - start.getTime();
+    if (rangeMs > MAX_RANGE_MS) {
+      // Keep end date, adjust start to be 31 days before
+      start = new Date(end.getTime() - MAX_RANGE_MS);
+    }
     this.rangeStart = start;
     this.rangeEnd = end;
     this.loadData();
