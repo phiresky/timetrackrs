@@ -9,11 +9,81 @@ interface TagListProps {
   reasons?: Record<string, TagAddReason> | null;
 }
 
-function formatTagValue(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
+interface FormattedValue {
+  display: string;
+  isJson: boolean;
+  formatted?: string;
+}
+
+function formatTagValue(value: unknown): FormattedValue {
+  if (value === null || value === undefined) return { display: "", isJson: false };
+  if (typeof value === "string") {
+    // Check if it's a JSON string
+    if (value.startsWith("{") || value.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(value);
+        return {
+          display: value.length > 50 ? value.substring(0, 50) + "..." : value,
+          isJson: true,
+          formatted: JSON.stringify(parsed, null, 2),
+        };
+      } catch {
+        // Not valid JSON, treat as string
+      }
+    }
+    return { display: value, isJson: false };
+  }
+  if (typeof value === "object") {
+    const json = JSON.stringify(value, null, 2);
+    return {
+      display: json.length > 50 ? json.substring(0, 50) + "..." : json,
+      isJson: true,
+      formatted: json,
+    };
+  }
+  return { display: String(value), isJson: false };
+}
+
+function TagValue({ value, tagKey, reason }: { value: FormattedValue; tagKey: string; reason?: TagAddReason | null }) {
+  const isIntrinsic = reason?.type === "IntrinsicTag";
+
+  if (value.isJson && value.formatted) {
+    return (
+      <details className="w-full">
+        <summary
+          className={`cursor-pointer inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+            isIntrinsic
+              ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+              : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+          }`}
+        >
+          {value.display}
+        </summary>
+        <pre className="mt-1 p-2 bg-gray-50 dark:bg-gray-900 rounded text-xs overflow-x-auto max-h-48 text-gray-700 dark:text-gray-300">
+          {value.formatted}
+        </pre>
+      </details>
+    );
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+        isIntrinsic
+          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+          : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+      }`}
+      title={
+        reason?.type === "AddedByRule"
+          ? `Added by rule matching: ${reason.matched_tags.map((t) => `${t.tag}:${t.value}`).join(", ")}`
+          : reason?.type === "IntrinsicTag"
+            ? `Intrinsic tag from ${reason.raw_data_type}`
+            : undefined
+      }
+    >
+      {value.display}
+    </span>
+  );
 }
 
 function TagList({ tags, reasons }: TagListProps) {
@@ -24,7 +94,7 @@ function TagList({ tags, reasons }: TagListProps) {
   });
 
   // Group by tag key
-  const grouped = new Map<string, string[]>();
+  const grouped = new Map<string, FormattedValue[]>();
   for (const { key, value } of entries) {
     const list = grouped.get(key) || [];
     list.push(value);
@@ -40,29 +110,9 @@ function TagList({ tags, reasons }: TagListProps) {
           </h4>
           <div className="flex flex-wrap gap-1">
             {values.map((value, idx) => {
-              const reasonKey = `${tagKey}:${value}`;
+              const reasonKey = `${tagKey}:${value.display}`;
               const reason = reasons?.[reasonKey];
-              const isIntrinsic = reason?.type === "IntrinsicTag";
-
-              return (
-                <span
-                  key={idx}
-                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                    isIntrinsic
-                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                      : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                  }`}
-                  title={
-                    reason?.type === "AddedByRule"
-                      ? `Added by rule matching: ${reason.matched_tags.map((t) => `${t.tag}:${t.value}`).join(", ")}`
-                      : reason?.type === "IntrinsicTag"
-                        ? `Intrinsic tag from ${reason.raw_data_type}`
-                        : undefined
-                  }
-                >
-                  {value}
-                </span>
-              );
+              return <TagValue key={idx} value={value} tagKey={tagKey} reason={reason} />;
             })}
           </div>
         </div>
